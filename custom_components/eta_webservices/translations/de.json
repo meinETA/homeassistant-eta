@@ -70,8 +70,7 @@
                     "chosen_switches": "Schalter",
                     "chosen_text_sensors": "Zustandssensoren",
                     "chosen_writable_sensors": "Schreibbare Sensoren",
-                    "chosen_pending_sensors": "Sensoren, die erst später verfügbar werden könnten",
-                    "unavailable_sensors": "Nicht verfügbare Sensoren"
+                    "chosen_pending_sensors": "Sensoren, die erst später verfügbar werden könnten"
                 }
             },
             "advanced_options": {
@@ -86,7 +85,7 @@
             "legacy_mode_selected": "Alter API Modus wird verwendet. Einige Entitäten werden möglicherweise nicht oder falsch erkannt.",
             "endpoint_discovery_failed": "Die Suche nach verfügbaren Entitäten ist fehlgeschlagen. Bitte versuche es erneut und prüfe die Protokolle, falls das Problem bestehen bleibt.",
             "value_update_error": "Mindestens ein Endpunkt konnte nicht aktualisiert werden. Du musst die Liste der verfügbaren Sensoren eventuell aktualisieren..",
-            "unavailable_sensors": "Mindestens ein ausgewählter Sensor ist nicht mehr verfügbar oder wurde verschoben. Bitte überprüfe die Listen der ausgewählten Sensoren auf fehlende oder falsch detektierte Sensoren. Du findest eine Liste der betroffenen Sensoren am Ende."
+            "unavailable_sensors": "Mindestens ein ausgewählter Sensor ist nicht mehr verfügbar oder wurde verschoben. Bitte überprüfe die Listen der ausgewählten Sensoren auf fehlende oder falsch detektierte Sensoren. Du findest eine Liste der betroffenen Sensoren in den Protokollen."
         }
     },
     "entity": {
