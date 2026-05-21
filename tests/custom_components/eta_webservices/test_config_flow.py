@@ -668,7 +668,7 @@ def test_handle_deleted_sensors_non_chosen_float_deleted():
 
 
 def test_handle_deleted_sensors_chosen_float_tracked_as_unavailable():
-    """Chosen float sensor deleted → moved to unavailable_sensors, removed from chosen list."""
+    """Chosen float sensor deleted, removed from chosen list."""
     sensor = _make_sensor()
     flow = _flow_with_data(
         {
@@ -682,7 +682,6 @@ def test_handle_deleted_sensors_chosen_float_tracked_as_unavailable():
     assert result == 1
     assert "gone" not in flow.data[FLOAT_DICT]
     assert "gone" not in flow.data[CHOSEN_FLOAT_SENSORS]
-    assert flow.unavailable_sensors["gone"] is sensor
 
 
 def test_handle_deleted_sensors_sensor_still_present():
@@ -1064,11 +1063,3 @@ def test_build_endpoint_selection_schema_applies_defaults():
         k for k in schema if hasattr(k, "schema") and k.schema == CHOSEN_FLOAT_SENSORS
     )
     assert float_key.default() == ["f1"]
-
-
-def test_build_endpoint_selection_schema_adds_unavailable_sensors_field():
-    """An 'unavailable_sensors' TextSelector key is added when unavailable_sensors is non-empty."""
-    data = _make_runtime_config()
-    unavailable = {"gone": _make_sensor(url="/gone")}
-    schema = _build_endpoint_selection_schema(data, unavailable_sensors=unavailable)
-    assert "unavailable_sensors" in _schema_keys(schema)

@@ -85,7 +85,6 @@ def _build_endpoint_selection_schema(
     data: dict,
     auto_select_default: bool = False,
     defaults: dict | None = None,
-    unavailable_sensors: dict | None = None,
 ) -> dict:
     """Build the voluptuous schema dict for the endpoint selection form.
 
@@ -93,7 +92,6 @@ def _build_endpoint_selection_schema(
         data: The flow's data dict containing the sensor category dicts.
         auto_select_default: Default value for the AUTO_SELECT_ALL_ENTITIES toggle.
         defaults: Optional dict mapping CHOSEN_* const keys to pre-selected lists.
-        unavailable_sensors: When non-empty, adds a read-only text field listing them.
     """
     defaults = defaults or {}
     float_dict: dict[str, ETAEndpoint] = data[FLOAT_DICT]
@@ -198,21 +196,6 @@ def _build_endpoint_selection_schema(
                     ],
                     mode=selector.SelectSelectorMode.DROPDOWN,
                     multiple=True,
-                )
-            )
-        )
-
-    if unavailable_sensors:
-        unavailable_sensor_keys = "\n\n".join(
-            [
-                f"{value['friendly_name']}\n ({key})"
-                for key, value in unavailable_sensors.items()
-            ]
-        )
-        schema[vol.Optional("unavailable_sensors", default=unavailable_sensor_keys)] = (
-            selector.TextSelector(
-                selector.TextSelectorConfig(
-                    multiline=True,
                 )
             )
         )
@@ -668,7 +651,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
         self.max_parallel_requests = DEFAULT_MAX_PARALLEL_REQUESTS
         self.update_interval = DEFAULT_UPDATE_INTERVAL
         self.request_semaphore: asyncio.Semaphore | None = None
-        self.unavailable_sensors: dict = {}
+        self.show_unavailable_sensor_warning = False
         self.advanced_options_writable_sensors = []
         self._options_update_task: asyncio.Task | None = None
         self._options_update_error: str | None = None
@@ -971,6 +954,11 @@ class EtaOptionsFlowHandler(OptionsFlow):
                 del new_pending_sensors[key]
                 new_float_sensors[key] = current_float_sensors[key]
                 deleted_pending_count += 1
+
+        _LOGGER.info(
+            "Verified pending sensors, removed %i sensors which are now available as regular sensors from the pending sensors list",
+            deleted_pending_count,
+        )
         return deleted_pending_count
 
     def _handle_new_sensors(
@@ -980,8 +968,9 @@ class EtaOptionsFlowHandler(OptionsFlow):
         new_text_sensors: dict,
         new_writable_sensors: dict,
         new_pending_sensors: dict,
-    ):
+    ) -> int:
         added_sensor_count = 0
+        added_sensors: dict[str, ETAEndpoint] = {}
         # Add newly detected sensors to the lists of available sensors
         category_mapping = [
             (new_float_sensors, FLOAT_DICT),
@@ -990,12 +979,24 @@ class EtaOptionsFlowHandler(OptionsFlow):
             (new_writable_sensors, WRITABLE_DICT),
             (new_pending_sensors, PENDING_DICT),
         ]
+
         for new_dict, category_key in category_mapping:
             for key, value in new_dict.items():
                 if key not in self.data[category_key]:
+                    added_sensors[key] = value
                     added_sensor_count += 1
                     self.data[category_key][key] = value
 
+        if added_sensor_count > 0:
+            added_sensor_string = ",\n".join(
+                f"{key} ({value['friendly_name']})"
+                for key, value in added_sensors.items()
+            )
+            _LOGGER.warning(
+                "Added %i new sensors (or changed their category):\n%s",
+                added_sensor_count,
+                added_sensor_string,
+            )
         return added_sensor_count
 
     def _handle_deleted_sensors(
@@ -1005,36 +1006,83 @@ class EtaOptionsFlowHandler(OptionsFlow):
         new_text_sensors: dict,
         new_writable_sensors: dict,
         new_pending_sensors: dict,
-    ):
-        deleted_sensor_count = 0
-        # Delete sensors which are no longer available; loop over a copy of the
-        # keys so items can be removed in-place.
+    ) -> int:
+        moved_sensors: dict[str, dict] = {}
+        unavailable_sensors: dict[str, dict] = {}
+        unavailable_sensor_count = 0
+
         standard_categories = [
             (FLOAT_DICT, CHOSEN_FLOAT_SENSORS, new_float_sensors),
             (SWITCHES_DICT, CHOSEN_SWITCHES, new_switches),
             (TEXT_DICT, CHOSEN_TEXT_SENSORS, new_text_sensors),
             (WRITABLE_DICT, CHOSEN_WRITABLE_SENSORS, new_writable_sensors),
         ]
+        standard_category_strings = {
+            FLOAT_DICT: "float sensors",
+            SWITCHES_DICT: "switches",
+            TEXT_DICT: "text sensors",
+            WRITABLE_DICT: "writable sensors",
+        }
+
+        # Delete sensors which are no longer available; loop over a copy of the
+        # keys so items can be removed in-place.
         for category_key, chosen_key, new_dict in standard_categories:
             for key in list(self.data[category_key].keys()):
                 if key not in new_dict:
-                    deleted_sensor_count += 1
                     if key in self.data[chosen_key]:
-                        # Remember deleted chosen sensors to show them to the user later
+                        # Remove the sensor from the list of chosen sensors
+                        # If the sensor has been moved to a different category, it will still be removed
+                        # but added back to the correct category in `async_step_user`
                         self.data[chosen_key].remove(key)
-                        self.unavailable_sensors[key] = self.data[category_key][key]
+                    unavailable_sensors[key] = self.data[category_key][key]
+                    unavailable_sensors[key]["old_category"] = category_key
+                    unavailable_sensor_count += 1
+                    self.show_unavailable_sensor_warning = True
                     del self.data[category_key][key]
 
         # PENDING: no unavailable_sensors tracking (pending sensors have no HA entities yet)
         for key in list(self.data[PENDING_DICT].keys()):
             if key not in new_pending_sensors:
-                deleted_sensor_count += 1
                 self.data[CHOSEN_PENDING_SENSORS] = [
                     k for k in self.data[CHOSEN_PENDING_SENSORS] if k != key
                 ]
+                unavailable_sensor_count += 1
                 del self.data[PENDING_DICT][key]
 
-        return deleted_sensor_count
+        # Check if any of the unavailable sensors have been moved to a different category, and handle them accordingly
+        for key in list(unavailable_sensors.keys()):
+            for category_key, _, new_dict in standard_categories:
+                if (
+                    category_key != unavailable_sensors[key]["old_category"]
+                    and key in new_dict
+                ):
+                    # The sensor has been moved to a different category
+                    moved_sensors[key] = unavailable_sensors[key]
+                    moved_sensors[key]["new_category"] = category_key
+                    del unavailable_sensors[key]
+                    break  # break out of the inner loop once a moved sensor has been found
+
+        if len(unavailable_sensors) > 0:
+            unavailable_sensor_string = ",\n".join(
+                f"{key} ({value['friendly_name']})"
+                for key, value in unavailable_sensors.items()
+            )
+            _LOGGER.warning(
+                "Removed %i unavailable sensors:\n%s",
+                len(unavailable_sensors),
+                unavailable_sensor_string,
+            )
+        if len(moved_sensors) > 0:
+            moved_sensor_string = ",\n".join(
+                f"{key} ({value['friendly_name']}): {standard_category_strings.get(value['old_category'])} -> {standard_category_strings.get(value['new_category'])}"
+                for key, value in moved_sensors.items()
+            )
+            _LOGGER.warning(
+                "Moved %i sensor categories:\n%s",
+                len(moved_sensors),
+                moved_sensor_string,
+            )
+        return unavailable_sensor_count
 
     def _handle_sensor_value_updates_from_enumeration(
         self,
@@ -1119,39 +1167,27 @@ class EtaOptionsFlowHandler(OptionsFlow):
                 progress_callback=self._on_options_progress,
             )
 
-            removed_pending_count = self._verify_pending_sensors(
+            self._verify_pending_sensors(
                 new_pending_sensors, new_float_sensors, self.data[FLOAT_DICT]
             )
-            _LOGGER.info(
-                "Verified pending sensors, removed %i sensors which are now available as regular sensors from the pending sensors list",
-                removed_pending_count,
-            )
 
-            added_sensor_count = self._handle_new_sensors(
+            self._handle_new_sensors(
                 new_float_sensors,
                 new_switches,
                 new_text_sensors,
                 new_writable_sensors,
                 new_pending_sensors,
             )
-            _LOGGER.info("Added %i new sensors", added_sensor_count)
-            self._on_options_progress(
-                f"Added {added_sensor_count} newly discovered entities",
-                0.92,
-            )
+            self._on_options_progress("Processed newly discovered entities", 0.92)
 
-            deleted_sensor_count = self._handle_deleted_sensors(
+            self._handle_deleted_sensors(
                 new_float_sensors,
                 new_switches,
                 new_text_sensors,
                 new_writable_sensors,
                 new_pending_sensors,
             )
-            _LOGGER.info("Deleted %i unavailable sensors", deleted_sensor_count)
-            self._on_options_progress(
-                f"Removed {deleted_sensor_count} unavailable entities",
-                0.95,
-            )
+            self._on_options_progress("Processed unavailable entities", 0.95)
 
             self._handle_sensor_value_updates_from_enumeration(
                 new_float_sensors,
@@ -1359,7 +1395,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
         current_chosen_writable_sensors,
     ):
         """Show the configuration form to select which endpoints should become entities."""
-        if len(self.unavailable_sensors) > 0:
+        if self.show_unavailable_sensor_warning:
             self._errors["base"] = "unavailable_sensors"
 
         count_placeholders = _build_discovered_entity_placeholders(
@@ -1380,7 +1416,6 @@ class EtaOptionsFlowHandler(OptionsFlow):
             self.data,
             auto_select_default=self.auto_select_all_entities,
             defaults=defaults,
-            unavailable_sensors=self.unavailable_sensors or None,
         )
         return self.async_show_form(
             step_id="user",
