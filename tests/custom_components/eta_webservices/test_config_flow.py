@@ -346,8 +346,8 @@ async def test_prepare_data_structures_runs_full_discovery_pipeline():
     empty = ({}, {}, {}, {}, {})
     flow._get_possible_endpoints_with_progress = AsyncMock(return_value=empty)
     flow._verify_pending_sensors = Mock(return_value=0)
-    flow._handle_new_sensors = Mock(return_value=0)
-    flow._handle_deleted_sensors = Mock(return_value=0)
+    flow._handle_new_sensors = Mock(return_value={})
+    flow._handle_deleted_sensors = Mock(return_value=({}, {}))
     flow._handle_sensor_value_updates_from_enumeration = Mock()
     flow._update_sensor_values = AsyncMock()
 
@@ -382,8 +382,8 @@ async def test_prepare_data_structures_discovery_passes_correct_arguments():
         return_value=(new_floats, new_switches, new_text, new_writable, new_pending)
     )
     flow._verify_pending_sensors = Mock(return_value=0)
-    flow._handle_new_sensors = Mock(return_value=0)
-    flow._handle_deleted_sensors = Mock(return_value=0)
+    flow._handle_new_sensors = Mock(return_value={})
+    flow._handle_deleted_sensors = Mock(return_value=({}, {}))
     flow._handle_sensor_value_updates_from_enumeration = Mock()
 
     await flow._prepare_data_structures()
@@ -590,7 +590,7 @@ def test_handle_new_sensors_adds_new_float():
 
     result = flow._handle_new_sensors({"f1": new_sensor}, {}, {}, {}, {})
 
-    assert result == 1
+    assert len(result) == 1
     assert flow.data[FLOAT_DICT]["f1"] is new_sensor
 
 
@@ -601,7 +601,7 @@ def test_handle_new_sensors_skips_existing_float():
 
     result = flow._handle_new_sensors({"f1": _make_sensor(url="/f1")}, {}, {}, {}, {})
 
-    assert result == 0
+    assert len(result) == 0
     assert flow.data[FLOAT_DICT]["f1"] is existing
 
 
@@ -617,7 +617,7 @@ def test_handle_new_sensors_one_per_category():
         {"p1": _make_sensor(url="/p1")},
     )
 
-    assert result == 5
+    assert len(result) == 5
     assert "f1" in flow.data[FLOAT_DICT]
     assert "sw1" in flow.data[SWITCHES_DICT]
     assert "t1" in flow.data[TEXT_DICT]
@@ -638,7 +638,7 @@ def test_handle_new_sensors_all_already_present():
         {"f1": _make_sensor()}, {"sw1": _make_sensor()}, {}, {}, {}
     )
 
-    assert result == 0
+    assert len(result) == 0
 
 
 def test_handle_new_sensors_adds_pending():
@@ -647,7 +647,7 @@ def test_handle_new_sensors_adds_pending():
 
     result = flow._handle_new_sensors({}, {}, {}, {}, {"p1": _make_sensor(url="/p1")})
 
-    assert result == 1
+    assert len(result) == 1
     assert "p1" in flow.data[PENDING_DICT]
 
 
@@ -660,9 +660,9 @@ def test_handle_deleted_sensors_non_chosen_float_deleted():
     """Float absent from new discovery is removed; not stored as unavailable."""
     flow = _flow_with_data({FLOAT_DICT: {"gone": _make_sensor()}})
 
-    result = flow._handle_deleted_sensors({}, {}, {}, {}, {})
+    deleted, moved = flow._handle_deleted_sensors({}, {}, {}, {}, {})
 
-    assert result == 1
+    assert len(deleted) + len(moved) == 1
     assert "gone" not in flow.data[FLOAT_DICT]
     assert "gone" not in flow.unavailable_sensors
 
@@ -677,9 +677,9 @@ def test_handle_deleted_sensors_chosen_float_tracked_as_unavailable():
         }
     )
 
-    result = flow._handle_deleted_sensors({}, {}, {}, {}, {})
+    deleted, moved = flow._handle_deleted_sensors({}, {}, {}, {}, {})
 
-    assert result == 1
+    assert len(deleted) + len(moved) == 1
     assert "gone" not in flow.data[FLOAT_DICT]
     assert "gone" not in flow.data[CHOSEN_FLOAT_SENSORS]
 
@@ -689,9 +689,9 @@ def test_handle_deleted_sensors_sensor_still_present():
     sensor = _make_sensor(url="/s1")
     flow = _flow_with_data({FLOAT_DICT: {"s1": sensor}})
 
-    result = flow._handle_deleted_sensors({"s1": sensor}, {}, {}, {}, {})
+    deleted, moved = flow._handle_deleted_sensors({"s1": sensor}, {}, {}, {}, {})
 
-    assert result == 0
+    assert len(deleted) + len(moved) == 0
     assert "s1" in flow.data[FLOAT_DICT]
 
 
@@ -704,9 +704,9 @@ def test_handle_deleted_sensors_chosen_pending_cleaned_up():
         }
     )
 
-    result = flow._handle_deleted_sensors({}, {}, {}, {}, {})
+    deleted, moved = flow._handle_deleted_sensors({}, {}, {}, {}, {})
 
-    assert result == 1
+    assert len(deleted) + len(moved) == 1
     assert "p1" not in flow.data[PENDING_DICT]
     assert "p1" not in flow.data[CHOSEN_PENDING_SENSORS]
 
@@ -721,9 +721,9 @@ def test_handle_deleted_sensors_multiple_categories():
         }
     )
 
-    result = flow._handle_deleted_sensors({}, {}, {}, {}, {})
+    deleted, moved = flow._handle_deleted_sensors({}, {}, {}, {}, {})
 
-    assert result == 3
+    assert len(deleted) + len(moved) == 3
     assert flow.data[FLOAT_DICT] == {}
     assert flow.data[SWITCHES_DICT] == {}
     assert flow.data[TEXT_DICT] == {}
