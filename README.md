@@ -60,6 +60,10 @@ This integration can be configured directly in Home Assistant via HACS:
 
 -   Your ETA heating unit needs a static IP address! Either configure the IP adress directly on the ETA terminal, or set the DHCP server on your router to give the ETA unit a static lease.
 
+## Related Integrations
+
+You can check out this HACS integration [eta-flow](https://github.com/orazefabian/eta-flow) which provides an animated heat-flow card for visualizing an ETA heating system.
+
 ## Updating the List of Sensors
 
 If the sensors on the ETA unit are changed, the integration can be updated to reflect that. This is useful for example if new sensors are added, which should be shown in HA.
