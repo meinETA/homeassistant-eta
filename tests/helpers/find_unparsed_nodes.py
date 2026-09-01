@@ -4,9 +4,9 @@
 import argparse
 import csv
 import json
+from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
-from pathlib import Path
 
 from analyze_sensors import SensorAnalyzer
 
@@ -226,7 +226,13 @@ def create_parsed_info(metadata: dict) -> str:
     return f"{name} | {full_name} | writable={is_writable}"
 
 
-def write_unparsed_csv(unparsed_data: dict, output_path: Path, uri_to_duplicates: dict, assigned_urls: set, var_uris: dict):
+def write_unparsed_csv(
+    unparsed_data: dict,
+    output_path: Path,
+    uri_to_duplicates: dict,
+    assigned_urls: set,
+    var_uris: dict,
+):
     """Write unparsed nodes to CSV file with var data columns.
 
     Args:
@@ -239,22 +245,24 @@ def write_unparsed_csv(unparsed_data: dict, output_path: Path, uri_to_duplicates
     with output_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
         # Update header with new columns
-        writer.writerow([
-            "status",
-            "node",
-            "parsed_info",
-            "duplicates",
-            "correctly_enumerated_duplicate",
-            "strValue",
-            "value",
-            "unit",
-            "correctly_enumerated_unit",
-            "correctly_enumerated_strValue",
-            "correctly_enumerated_value",
-            "raw_var_xml",
-            "raw_varinfo_xml",
-            "correctly_enumerated_raw_var_xml"
-        ])
+        writer.writerow(
+            [
+                "status",
+                "node",
+                "parsed_info",
+                "duplicates",
+                "correctly_enumerated_duplicate",
+                "strValue",
+                "value",
+                "unit",
+                "correctly_enumerated_unit",
+                "correctly_enumerated_strValue",
+                "correctly_enumerated_value",
+                "raw_var_xml",
+                "raw_varinfo_xml",
+                "correctly_enumerated_raw_var_xml",
+            ]
+        )
 
         # Sort URIs for consistent output
         for uri in sorted(unparsed_data.keys()):
@@ -282,7 +290,9 @@ def write_unparsed_csv(unparsed_data: dict, output_path: Path, uri_to_duplicates
                 duplicates_str = ",".join(other_duplicates)
 
                 # Find which duplicates are correctly enumerated (assigned)
-                correctly_enumerated = [dup for dup in other_duplicates if dup in assigned_urls]
+                correctly_enumerated = [
+                    dup for dup in other_duplicates if dup in assigned_urls
+                ]
                 correctly_enumerated_str = ",".join(correctly_enumerated)
 
                 # Get var data from first correctly enumerated duplicate
@@ -291,14 +301,20 @@ def write_unparsed_csv(unparsed_data: dict, output_path: Path, uri_to_duplicates
                     enumerated_var_data = var_uris.get(first_enumerated_uri, {})
 
                     correctly_enumerated_unit = enumerated_var_data.get("unit") or ""
-                    correctly_enumerated_strValue = enumerated_var_data.get("strValue") or ""
+                    correctly_enumerated_strValue = (
+                        enumerated_var_data.get("strValue") or ""
+                    )
                     correctly_enumerated_value = enumerated_var_data.get("value") or ""
 
                     # Handle var errors for enumerated duplicate
                     if enumerated_var_data.get("error"):
-                        correctly_enumerated_raw_var_xml = f"ERROR: {enumerated_var_data['error']}"
+                        correctly_enumerated_raw_var_xml = (
+                            f"ERROR: {enumerated_var_data['error']}"
+                        )
                     else:
-                        correctly_enumerated_raw_var_xml = enumerated_var_data.get("raw_xml", "")
+                        correctly_enumerated_raw_var_xml = enumerated_var_data.get(
+                            "raw_xml", ""
+                        )
                 else:
                     correctly_enumerated_unit = ""
                     correctly_enumerated_strValue = ""
@@ -323,22 +339,24 @@ def write_unparsed_csv(unparsed_data: dict, output_path: Path, uri_to_duplicates
             else:
                 raw_var_xml = var_data.get("raw_xml", "")
 
-            writer.writerow([
-                status,
-                uri,
-                parsed_info,
-                duplicates_str,
-                correctly_enumerated_str,
-                str_value,
-                value,
-                unit,
-                correctly_enumerated_unit,
-                correctly_enumerated_strValue,
-                correctly_enumerated_value,
-                raw_var_xml,
-                raw_varinfo_xml,
-                correctly_enumerated_raw_var_xml
-            ])
+            writer.writerow(
+                [
+                    status,
+                    uri,
+                    parsed_info,
+                    duplicates_str,
+                    correctly_enumerated_str,
+                    str_value,
+                    value,
+                    unit,
+                    correctly_enumerated_unit,
+                    correctly_enumerated_strValue,
+                    correctly_enumerated_value,
+                    raw_var_xml,
+                    raw_varinfo_xml,
+                    correctly_enumerated_raw_var_xml,
+                ]
+            )
 
 
 def main():
@@ -424,13 +442,16 @@ Examples:
         unparsed_data = {
             uri: {
                 "varinfo": varinfo_uris[uri],
-                "var": var_uris.get(uri, {
-                    "strValue": None,
-                    "value": None,
-                    "unit": None,
-                    "error": "Missing from fixture",
-                    "raw_xml": ""
-                })
+                "var": var_uris.get(
+                    uri,
+                    {
+                        "strValue": None,
+                        "value": None,
+                        "unit": None,
+                        "error": "Missing from fixture",
+                        "raw_xml": "",
+                    },
+                ),
             }
             for uri in unparsed_uri_set
         }
@@ -438,21 +459,27 @@ Examples:
 
         # Count duplicates in unparsed
         unparsed_duplicates = sum(
-            1 for uri in unparsed_data.keys() if uri in uri_to_duplicates
+            1 for uri in unparsed_data if uri in uri_to_duplicates
         )
         if unparsed_duplicates:
             print(f"  {unparsed_duplicates} of these are duplicates")
 
         # Write CSV with duplicates column
         print(f"Writing results to {args.output}...")
-        write_unparsed_csv(unparsed_data, args.output, uri_to_duplicates, assigned_urls, var_uris)
+        write_unparsed_csv(
+            unparsed_data, args.output, uri_to_duplicates, assigned_urls, var_uris
+        )
         print(f"✓ Done! Wrote {len(unparsed_data)} unparsed nodes to {args.output}")
 
         # Summary statistics
-        error_count = sum(1 for data in unparsed_data.values() if data["varinfo"]["error"])
-        var_error_count = sum(1 for data in unparsed_data.values() if data["var"].get("error"))
+        error_count = sum(
+            1 for data in unparsed_data.values() if data["varinfo"]["error"]
+        )
+        var_error_count = sum(
+            1 for data in unparsed_data.values() if data["var"].get("error")
+        )
         valid_count = len(unparsed_data) - error_count
-        print(f"\nSummary:")
+        print("\nSummary:")
         print(f"  Valid unparsed nodes: {valid_count}")
         print(f"  Varinfo error responses: {error_count}")
         print(f"  Var error responses: {var_error_count}")

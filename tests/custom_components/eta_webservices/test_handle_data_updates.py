@@ -11,22 +11,21 @@ the full error list from the coordinator rather than a value keyed by entity —
 
 from unittest.mock import MagicMock, patch
 
-from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.core import HomeAssistant
-
 from custom_components.eta_webservices.const import (
     ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION,
     CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT,
     CUSTOM_UNIT_TIMESLOT,
 )
 from custom_components.eta_webservices.number import EtaWritableNumberSensor
-from custom_components.eta_webservices.switch import EtaSwitch
 from custom_components.eta_webservices.sensor import (
     EtaFloatSensor,
     EtaTextSensor,
     EtaTimeslotSensor,
 )
+from custom_components.eta_webservices.switch import EtaSwitch
 from custom_components.eta_webservices.time import EtaTime
+from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import HomeAssistant
 
 # ---------------------------------------------------------------------------
 # Shared constants

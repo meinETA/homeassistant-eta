@@ -20,13 +20,13 @@ Usage:
 import argparse
 import json
 import logging
+from pathlib import Path
 import sys
 import termios
 import threading
-from pathlib import Path
 
-from aiohttp import web
 import aiohttp
+from aiohttp import web
 
 SCRIPT_DIR = Path(__file__).parent
 FIXTURE_PATH = SCRIPT_DIR / "../fixtures/changing_endpoint.json"
@@ -77,18 +77,20 @@ def keyboard_thread(fixture: dict):
             ch = sys.stdin.read(1)
             if ch in ("q", "\x03"):  # q or Ctrl-C
                 print("\r\nExiting...\r\n", flush=True)
-                import os, signal
+                import os
+                import signal
+
                 os.kill(os.getpid(), signal.SIGTERM)
                 break
-            elif ch == "1":
+            if ch == "1":
                 set_mode(1)
-                print(f"\r\n[mode] 1 — pass-through\r\n", flush=True)
+                print("\r\n[mode] 1 — pass-through\r\n", flush=True)
             elif ch == "2":
                 set_mode(2)
-                print(f"\r\n[mode] 2 — valid node\r\n", flush=True)
+                print("\r\n[mode] 2 — valid node\r\n", flush=True)
             elif ch == "3":
                 set_mode(3)
-                print(f"\r\n[mode] 3 — invalid node\r\n", flush=True)
+                print("\r\n[mode] 3 — invalid node\r\n", flush=True)
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
@@ -137,7 +139,9 @@ async def proxy_request(
         return web.Response(status=502, text=f"Upstream error: {exc}")
 
 
-def make_app(upstream_base: str, fixture: dict, session: aiohttp.ClientSession) -> web.Application:
+def make_app(
+    upstream_base: str, fixture: dict, session: aiohttp.ClientSession
+) -> web.Application:
     app = web.Application()
 
     async def handle(request: web.Request) -> web.Response:
@@ -164,13 +168,14 @@ async def run(host: str, port: int, listen_port: int, fixture: dict):
 
         print(f"Proxy listening on http://0.0.0.0:{listen_port}")
         print(f"Upstream:         {upstream_base}")
-        print(f"Mode:             1 — pass-through  [active]")
+        print("Mode:             1 — pass-through  [active]")
         print()
         print("Keys:  1=pass-through  2=valid node  3=invalid node  q=quit")
         print()
 
         # Block until the server is stopped (SIGTERM/SIGINT handled by aiohttp)
         import asyncio
+
         stop = asyncio.Event()
 
         import signal
@@ -189,9 +194,14 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    parser.add_argument("--host", required=True, help="Upstream ETA device hostname or IP")
     parser.add_argument(
-        "--port", type=int, default=8080, help="Upstream ETA device port (default: 8080)"
+        "--host", required=True, help="Upstream ETA device hostname or IP"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Upstream ETA device port (default: 8080)",
     )
     parser.add_argument(
         "--listen-port",
@@ -205,7 +215,9 @@ def parse_args():
         default=FIXTURE_PATH,
         help=f"Path to changing_endpoint.json (default: {FIXTURE_PATH})",
     )
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable debug logging"
+    )
     return parser.parse_args()
 
 
@@ -225,6 +237,7 @@ def main():
     kb.start()
 
     import asyncio
+
     asyncio.run(run(args.host, args.port, args.listen_port, fixture))
 
 

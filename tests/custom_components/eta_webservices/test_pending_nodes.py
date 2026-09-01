@@ -1,28 +1,20 @@
 """Tests for pending node detection and promotion."""
 
-import pytest
 from copy import deepcopy
 from unittest.mock import AsyncMock, MagicMock, patch
+
 from aiohttp import ClientSession
-from homeassistant.config_entries import ConfigEntry
+import pytest
 
 from custom_components.eta_webservices.api import EtaAPI
-from custom_components.eta_webservices.coordinator import ETAPendingNodeCoordinator
-from custom_components.eta_webservices import async_migrate_entry
 from custom_components.eta_webservices.const import (
     CHOSEN_FLOAT_SENSORS,
     CHOSEN_PENDING_SENSORS,
-    CHOSEN_SWITCHES,
-    CHOSEN_TEXT_SENSORS,
-    CHOSEN_WRITABLE_SENSORS,
     FLOAT_DICT,
-    FORCE_LEGACY_MODE,
     PENDING_DICT,
-    SWITCHES_DICT,
-    TEXT_DICT,
-    WRITABLE_DICT,
 )
-
+from custom_components.eta_webservices.coordinator import ETAPendingNodeCoordinator
+from homeassistant.config_entries import ConfigEntry
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -153,9 +145,9 @@ async def test_pending_node_goes_to_pending_dict(load_fixture):
 
     # The node must NOT appear in any other dict.
     assert float_dict == {}, f"float_dict should be empty, got: {list(float_dict)}"
-    assert switches_dict == {}, f"switches_dict should be empty"
-    assert text_dict == {}, f"text_dict should be empty"
-    assert writable_dict == {}, f"writable_dict should be empty"
+    assert switches_dict == {}, "switches_dict should be empty"
+    assert text_dict == {}, "text_dict should be empty"
+    assert writable_dict == {}, "writable_dict should be empty"
 
 
 @pytest.mark.asyncio

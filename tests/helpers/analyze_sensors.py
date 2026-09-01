@@ -3,6 +3,7 @@
 
 import argparse
 import sys
+
 import xmltodict
 
 
@@ -55,7 +56,7 @@ class SensorAnalyzer:
         """
         # Read and parse XML file
         try:
-            with open(xml_file_path, 'r', encoding='utf-8') as f:
+            with open(xml_file_path, encoding="utf-8") as f:
                 xml_content = f.read()
         except FileNotFoundError:
             print(f"Error: File '{xml_file_path}' not found.", file=sys.stderr)
@@ -79,8 +80,7 @@ class SensorAnalyzer:
 
         # Filter to only keys with duplicates (more than 1 URI)
         duplicate_keys = {
-            key: uris for key, uris in self._all_keys_with_uris.items()
-            if len(uris) > 1
+            key: uris for key, uris in self._all_keys_with_uris.items() if len(uris) > 1
         }
 
         return uri_dict, self._num_duplicates, duplicate_keys
@@ -89,16 +89,16 @@ class SensorAnalyzer:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='Analyze ETA sensors from a local XML file'
+        description="Analyze ETA sensors from a local XML file"
     )
     parser.add_argument(
-        'xml_file',
-        help='Path to the XML file containing ETA sensor data'
+        "xml_file", help="Path to the XML file containing ETA sensor data"
     )
     parser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        help='Show detailed output including all sensor URIs'
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Show detailed output including all sensor URIs",
     )
 
     args = parser.parse_args()

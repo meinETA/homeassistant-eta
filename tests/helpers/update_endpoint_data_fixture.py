@@ -9,12 +9,11 @@ fresh data. This ensures tests use realistic, current API responses.
 
 import argparse
 import asyncio
+from datetime import datetime
 import json
 import logging
-import sys
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Optional
+import sys
 from time import time
 
 import aiohttp
@@ -54,8 +53,8 @@ class FixtureUpdater:
         self.mode = mode
         self.timeout = timeout
         self.max_concurrent = max_concurrent
-        self.api: Optional[EtaAPI] = None
-        self.session: Optional[aiohttp.ClientSession] = None
+        self.api: EtaAPI | None = None
+        self.session: aiohttp.ClientSession | None = None
 
         # Statistics tracking
         self.stats = {
@@ -69,7 +68,7 @@ class FixtureUpdater:
             "updated": 0,
             "unchanged": 0,
         }
-        self.failed_endpoints: List[Tuple[str, str]] = []
+        self.failed_endpoints: list[tuple[str, str]] = []
         self.start_time: float = 0
 
     async def __aenter__(self):
@@ -106,7 +105,7 @@ class FixtureUpdater:
             logging.error(f"Failed to fetch menu: {e}")
             raise RuntimeError(f"Menu fetch failed: {e}") from e
 
-    def extract_uris_from_menu(self, menu_xml: str) -> Dict[str, str]:
+    def extract_uris_from_menu(self, menu_xml: str) -> dict[str, str]:
         """Parse menu XML and extract all unique URIs.
 
         Uses same logic as EtaAPI._evaluate_xml_dict() to ensure consistency.
@@ -132,8 +131,8 @@ class FixtureUpdater:
             fubs = [fubs]
 
         # Extract URIs from each FUB
-        uri_to_fub: Dict[str, str] = {}
-        uri_dict: Dict[str, List[str]] = {}
+        uri_to_fub: dict[str, str] = {}
+        uri_dict: dict[str, list[str]] = {}
 
         for fub in fubs:
             fub_name = fub.get("@name", "Unknown")
@@ -165,8 +164,8 @@ class FixtureUpdater:
         self,
         xml_dict,
         fub_name: str,
-        uri_to_fub: Dict[str, str],
-        uri_dict: Dict[str, List[str]],
+        uri_to_fub: dict[str, str],
+        uri_dict: dict[str, list[str]],
         prefix: str,
     ):
         """Recursively extract URIs from XML dict structure.
@@ -220,7 +219,7 @@ class FixtureUpdater:
 
     async def fetch_endpoint_data(
         self, uri: str, fub: str, semaphore: asyncio.Semaphore
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Fetch both varinfo and var data for a URI.
 
         Args:
@@ -266,7 +265,7 @@ class FixtureUpdater:
 
             return result
 
-    async def fetch_all_endpoints(self, uri_to_fub: Dict[str, str]) -> Dict[str, str]:
+    async def fetch_all_endpoints(self, uri_to_fub: dict[str, str]) -> dict[str, str]:
         """Fetch all endpoint data with rate limiting.
 
         Args:
@@ -317,8 +316,8 @@ class FixtureUpdater:
         return merged
 
     def merge_fixture_data(
-        self, existing: Dict[str, str], new: Dict[str, str]
-    ) -> Dict[str, str]:
+        self, existing: dict[str, str], new: dict[str, str]
+    ) -> dict[str, str]:
         """Merge new data with existing fixture based on mode.
 
         Args:
@@ -333,7 +332,7 @@ class FixtureUpdater:
             self.stats["added"] = len(new)
             return new
 
-        elif self.mode == "add-only":
+        if self.mode == "add-only":
             # Only add new entries
             result = existing.copy()
             for key, value in new.items():
@@ -344,20 +343,20 @@ class FixtureUpdater:
                     self.stats["unchanged"] += 1
             return result
 
-        else:  # mode == "update"
-            # Update existing + add new
-            result = existing.copy()
-            for key, value in new.items():
-                if key not in existing:
-                    self.stats["added"] += 1
-                elif existing[key] != value:
-                    self.stats["updated"] += 1
-                else:
-                    self.stats["unchanged"] += 1
-                result[key] = value
-            return result
+        # mode == "update"
+        # Update existing + add new
+        result = existing.copy()
+        for key, value in new.items():
+            if key not in existing:
+                self.stats["added"] += 1
+            elif existing[key] != value:
+                self.stats["updated"] += 1
+            else:
+                self.stats["unchanged"] += 1
+            result[key] = value
+        return result
 
-    def save_fixture(self, data: Dict[str, str], backup: bool = True):
+    def save_fixture(self, data: dict[str, str], backup: bool = True):
         """Save fixture with automatic backup.
 
         Args:
@@ -402,7 +401,7 @@ class FixtureUpdater:
                 temp_path.unlink()
             raise RuntimeError(f"Failed to save fixture: {e}") from e
 
-    def load_existing_fixture(self) -> Dict[str, str]:
+    def load_existing_fixture(self) -> dict[str, str]:
         """Load existing fixture data.
 
         Returns:
@@ -433,9 +432,8 @@ class FixtureUpdater:
             if await self.api.does_endpoint_exists():  # type: ignore
                 logging.info("✓ API connection successful")
                 return True
-            else:
-                logging.error("API endpoint check failed")
-                return False
+            logging.error("API endpoint check failed")
+            return False
         except Exception as e:
             logging.error(f"Failed to connect to ETA device: {e}")
             return False

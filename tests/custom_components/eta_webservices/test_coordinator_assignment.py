@@ -1,12 +1,26 @@
 """Tests that verify every entity is fed by exactly one coordinator."""
 
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.core import HomeAssistant
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.eta_webservices.const import (
+    ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION,
+    CHOSEN_FLOAT_SENSORS,
+    CHOSEN_SWITCHES,
+    CHOSEN_TEXT_SENSORS,
+    CHOSEN_WRITABLE_SENSORS,
+    CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT,
+    DOMAIN,
+    ERROR_UPDATE_COORDINATOR,
+    FLOAT_DICT,
+    SENSOR_UPDATE_COORDINATOR,
+    SWITCHES_DICT,
+    TEXT_DICT,
+    WRITABLE_DICT,
+    WRITABLE_UPDATE_COORDINATOR,
+)
 from custom_components.eta_webservices.coordinator import (
     ETAErrorUpdateCoordinator,
     ETASensorUpdateCoordinator,
@@ -25,22 +39,8 @@ from custom_components.eta_webservices.switch import (
 from custom_components.eta_webservices.time import (
     async_setup_entry as time_async_setup_entry,
 )
-from custom_components.eta_webservices.const import (
-    ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION,
-    CHOSEN_FLOAT_SENSORS,
-    CHOSEN_SWITCHES,
-    CHOSEN_TEXT_SENSORS,
-    CHOSEN_WRITABLE_SENSORS,
-    CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT,
-    DOMAIN,
-    ERROR_UPDATE_COORDINATOR,
-    FLOAT_DICT,
-    SENSOR_UPDATE_COORDINATOR,
-    SWITCHES_DICT,
-    TEXT_DICT,
-    WRITABLE_DICT,
-    WRITABLE_UPDATE_COORDINATOR,
-)
+from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import HomeAssistant
 
 
 def _make_api_mock(float_dict, text_dict, writable_dict, switch_dict):

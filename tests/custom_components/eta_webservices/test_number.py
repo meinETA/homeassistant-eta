@@ -4,14 +4,14 @@ from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.eta_webservices.const import (
     ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION,
 )
 from custom_components.eta_webservices.number import EtaWritableNumberSensor
+from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -218,7 +218,7 @@ async def test_float_type_skips_final_round(make_sensor):
 async def test_ignore_decimal_restriction_uses_scale_factor(
     hass: HomeAssistant, make_sensor
 ):
-    """sensor listed in ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION → raw = round(value * scale_factor, 0)."""
+    """Sensor listed in ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION → raw = round(value * scale_factor, 0)."""
     unique_id = "my_special_sensor"
     config = _make_config(ignore_ids=[unique_id])
 
@@ -276,9 +276,8 @@ async def test_write_failure_raises_home_assistant_error(make_sensor):
     coordinator = _make_coordinator()
     sensor = make_sensor(coordinator=coordinator)
 
-    with _mock_write(sensor, returns=False):
-        with pytest.raises(HomeAssistantError):
-            await sensor.async_set_native_value(20.0)
+    with _mock_write(sensor, returns=False), pytest.raises(HomeAssistantError):
+        await sensor.async_set_native_value(20.0)
 
     coordinator.async_refresh.assert_not_awaited()
 
