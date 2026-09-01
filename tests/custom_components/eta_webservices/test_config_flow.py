@@ -1,15 +1,15 @@
 """Unit tests for config_flow helper logic."""
 
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import AsyncMock, Mock, MagicMock, patch
-from homeassistant.const import CONF_HOST, CONF_PORT
 
 from custom_components.eta_webservices.config_flow import (
+    EtaOptionsFlowHandler,
     _build_endpoint_selection_schema,
     _format_endpoint_label,
     _is_invalid_host_input,
     _sanitize_selected_entity_ids,
-    EtaOptionsFlowHandler,
 )
 from custom_components.eta_webservices.const import (
     ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION,
@@ -31,7 +31,7 @@ from custom_components.eta_webservices.const import (
     UPDATE_INTERVAL,
     WRITABLE_DICT,
 )
-
+from homeassistant.const import CONF_HOST, CONF_PORT
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -973,7 +973,9 @@ def test_build_endpoint_selection_schema_applies_defaults():
     defaults = {CHOSEN_FLOAT_SENSORS: ["f1"]}
     schema = _build_endpoint_selection_schema(data, defaults=defaults)
 
-    float_key = next(k for k in schema if hasattr(k, "schema") and k.schema == CHOSEN_FLOAT_SENSORS)
+    float_key = next(
+        k for k in schema if hasattr(k, "schema") and k.schema == CHOSEN_FLOAT_SENSORS
+    )
     assert float_key.default() == ["f1"]
 
 

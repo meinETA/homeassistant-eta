@@ -1,19 +1,11 @@
 """Unit tests for coordinator update interval configuration."""
 
 from datetime import timedelta
-
-import pytest
-from aiohttp import ClientSession
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from custom_components.eta_webservices.coordinator import (
-    ETAErrorUpdateCoordinator,
-    ETAPendingNodeCoordinator,
-    ETASensorUpdateCoordinator,
-    ETAWritableUpdateCoordinator,
-)
+from aiohttp import ClientSession
+import pytest
+
 from custom_components.eta_webservices.const import (
     CHOSEN_FLOAT_SENSORS,
     CHOSEN_PENDING_SENSORS,
@@ -32,7 +24,14 @@ from custom_components.eta_webservices.const import (
     UPDATE_INTERVAL,
     WRITABLE_DICT,
 )
-
+from custom_components.eta_webservices.coordinator import (
+    ETAErrorUpdateCoordinator,
+    ETAPendingNodeCoordinator,
+    ETASensorUpdateCoordinator,
+    ETAWritableUpdateCoordinator,
+)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST, CONF_PORT
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -173,7 +172,9 @@ async def test_sensor_coordinator_warns_when_update_exceeds_interval(
         await coordinator._async_update_data()
 
     mock_logger.warning.assert_called_once()
-    assert config[LAST_COORDINATOR_WARNING_TIMESTAMP] == COORDINATOR_WARNING_INTERVAL + 1.0
+    assert (
+        config[LAST_COORDINATOR_WARNING_TIMESTAMP] == COORDINATOR_WARNING_INTERVAL + 1.0
+    )
 
 
 async def test_sensor_coordinator_no_warn_when_update_within_interval(
@@ -222,16 +223,20 @@ async def test_sensor_coordinator_warns_again_after_warning_interval(
         # First call: fires warning, timestamp recorded as 1000.0.
         # Second call: COORDINATOR_WARNING_INTERVAL + 1 s have passed → fires again.
         mock_time.monotonic.side_effect = [
-            0.0, _INTERVAL + 10.0,  # first call
-            0.0, _INTERVAL + 10.0,  # second call
+            0.0,
+            _INTERVAL + 10.0,  # first call
+            0.0,
+            _INTERVAL + 10.0,  # second call
         ]
         # time.time() must exceed COORDINATOR_WARNING_INTERVAL on the first call
         # (since LAST_COORDINATOR_WARNING_TIMESTAMP defaults to 0).
         first_ts = float(COORDINATOR_WARNING_INTERVAL + 1)
         second_ts = first_ts + COORDINATOR_WARNING_INTERVAL + 1.0
         mock_time.time.side_effect = [
-            first_ts, first_ts,    # first call: check + record
-            second_ts, second_ts,  # second call: check + record
+            first_ts,
+            first_ts,  # first call: check + record
+            second_ts,
+            second_ts,  # second call: check + record
         ]
 
         await coordinator._async_update_data()
@@ -312,14 +317,18 @@ async def test_writable_coordinator_warns_again_after_warning_interval(
 
     with patch(_TIME_MODULE) as mock_time, patch(_LOGGER_MODULE) as mock_logger:
         mock_time.monotonic.side_effect = [
-            0.0, _INTERVAL + 10.0,
-            0.0, _INTERVAL + 10.0,
+            0.0,
+            _INTERVAL + 10.0,
+            0.0,
+            _INTERVAL + 10.0,
         ]
         first_ts = float(COORDINATOR_WARNING_INTERVAL + 1)
         second_ts = first_ts + COORDINATOR_WARNING_INTERVAL + 1.0
         mock_time.time.side_effect = [
-            first_ts, first_ts,
-            second_ts, second_ts,
+            first_ts,
+            first_ts,
+            second_ts,
+            second_ts,
         ]
 
         await coordinator._async_update_data()
@@ -336,7 +345,9 @@ async def test_writable_coordinator_warns_again_after_warning_interval(
 # -- ETASensorUpdateCoordinator ---------------------------------------------
 
 
-async def test_sensor_coordinator_skips_update_when_paused(mock_hass, mock_client_session):
+async def test_sensor_coordinator_skips_update_when_paused(
+    mock_hass, mock_client_session
+):
     """Returns {} immediately when PAUSE_COORDINATORS_START_TIMESTAMP is set and within window."""
     config = _interval_config()
     coordinator = ETASensorUpdateCoordinator(mock_hass, config)
@@ -353,7 +364,9 @@ async def test_sensor_coordinator_skips_update_when_paused(mock_hass, mock_clien
     coordinator._create_eta_client.assert_not_called()
 
 
-async def test_sensor_coordinator_resumes_when_pause_expires(mock_hass, mock_client_session):
+async def test_sensor_coordinator_resumes_when_pause_expires(
+    mock_hass, mock_client_session
+):
     """Proceeds normally once PAUSE_COORDINATORS_MAX_DURATION has elapsed."""
     config = _interval_config()
     coordinator = ETASensorUpdateCoordinator(mock_hass, config)
@@ -370,7 +383,9 @@ async def test_sensor_coordinator_resumes_when_pause_expires(mock_hass, mock_cli
     coordinator._create_eta_client.assert_called_once()
 
 
-async def test_sensor_coordinator_proceeds_when_no_pause_set(mock_hass, mock_client_session):
+async def test_sensor_coordinator_proceeds_when_no_pause_set(
+    mock_hass, mock_client_session
+):
     """Proceeds normally when PAUSE_COORDINATORS_START_TIMESTAMP is absent from config."""
     config = _interval_config()  # no pause key
     coordinator = ETASensorUpdateCoordinator(mock_hass, config)
@@ -386,7 +401,9 @@ async def test_sensor_coordinator_proceeds_when_no_pause_set(mock_hass, mock_cli
 # -- ETAWritableUpdateCoordinator -------------------------------------------
 
 
-async def test_writable_coordinator_skips_update_when_paused(mock_hass, mock_client_session):
+async def test_writable_coordinator_skips_update_when_paused(
+    mock_hass, mock_client_session
+):
     """Returns {} immediately when PAUSE_COORDINATORS_START_TIMESTAMP is set and within window."""
     coordinator = _make_writable_coordinator(mock_hass)
 
@@ -401,7 +418,9 @@ async def test_writable_coordinator_skips_update_when_paused(mock_hass, mock_cli
     coordinator._create_eta_client.assert_not_called()
 
 
-async def test_writable_coordinator_resumes_when_pause_expires(mock_hass, mock_client_session):
+async def test_writable_coordinator_resumes_when_pause_expires(
+    mock_hass, mock_client_session
+):
     """Proceeds normally once PAUSE_COORDINATORS_MAX_DURATION has elapsed."""
     coordinator = _make_writable_coordinator(mock_hass)
 
@@ -416,7 +435,9 @@ async def test_writable_coordinator_resumes_when_pause_expires(mock_hass, mock_c
     coordinator._create_eta_client.assert_called_once()
 
 
-async def test_writable_coordinator_proceeds_when_no_pause_set(mock_hass, mock_client_session):
+async def test_writable_coordinator_proceeds_when_no_pause_set(
+    mock_hass, mock_client_session
+):
     """Proceeds normally when PAUSE_COORDINATORS_START_TIMESTAMP is absent from config."""
     coordinator = _make_writable_coordinator(mock_hass)
 
@@ -443,7 +464,9 @@ def _make_pending_coordinator_with_sensors(mock_hass):
     return coordinator
 
 
-async def test_pending_coordinator_skips_update_when_paused(mock_hass, mock_client_session):
+async def test_pending_coordinator_skips_update_when_paused(
+    mock_hass, mock_client_session
+):
     """Returns False immediately when PAUSE_COORDINATORS_START_TIMESTAMP is set and within window."""
     coordinator = _make_pending_coordinator_with_sensors(mock_hass)
 
@@ -458,7 +481,9 @@ async def test_pending_coordinator_skips_update_when_paused(mock_hass, mock_clie
     coordinator._create_eta_client.assert_not_called()
 
 
-async def test_pending_coordinator_resumes_when_pause_expires(mock_hass, mock_client_session):
+async def test_pending_coordinator_resumes_when_pause_expires(
+    mock_hass, mock_client_session
+):
     """Proceeds normally once PAUSE_COORDINATORS_MAX_DURATION has elapsed."""
     coordinator = _make_pending_coordinator_with_sensors(mock_hass)
 
@@ -472,7 +497,9 @@ async def test_pending_coordinator_resumes_when_pause_expires(mock_hass, mock_cl
     coordinator._create_eta_client.assert_called_once()
 
 
-async def test_pending_coordinator_proceeds_when_no_pause_set(mock_hass, mock_client_session):
+async def test_pending_coordinator_proceeds_when_no_pause_set(
+    mock_hass, mock_client_session
+):
     """Proceeds normally when PAUSE_COORDINATORS_START_TIMESTAMP is absent from config."""
     coordinator = _make_pending_coordinator_with_sensors(mock_hass)
 
@@ -493,7 +520,9 @@ def _make_error_coordinator(mock_hass):
     return coordinator
 
 
-async def test_error_coordinator_skips_update_when_paused(mock_hass, mock_client_session):
+async def test_error_coordinator_skips_update_when_paused(
+    mock_hass, mock_client_session
+):
     """Returns [] immediately when PAUSE_COORDINATORS_START_TIMESTAMP is set and within window."""
     coordinator = _make_error_coordinator(mock_hass)
 
@@ -508,7 +537,9 @@ async def test_error_coordinator_skips_update_when_paused(mock_hass, mock_client
     coordinator._create_eta_client.assert_not_called()
 
 
-async def test_error_coordinator_resumes_when_pause_expires(mock_hass, mock_client_session):
+async def test_error_coordinator_resumes_when_pause_expires(
+    mock_hass, mock_client_session
+):
     """Proceeds normally once PAUSE_COORDINATORS_MAX_DURATION has elapsed."""
     coordinator = _make_error_coordinator(mock_hass)
 
@@ -522,7 +553,9 @@ async def test_error_coordinator_resumes_when_pause_expires(mock_hass, mock_clie
     coordinator._create_eta_client.assert_called_once()
 
 
-async def test_error_coordinator_proceeds_when_no_pause_set(mock_hass, mock_client_session):
+async def test_error_coordinator_proceeds_when_no_pause_set(
+    mock_hass, mock_client_session
+):
     """Proceeds normally when PAUSE_COORDINATORS_START_TIMESTAMP is absent from config."""
     coordinator = _make_error_coordinator(mock_hass)
 

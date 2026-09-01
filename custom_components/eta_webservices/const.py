@@ -73,5 +73,3 @@ DEFAULT_UPDATE_INTERVAL = 60  # seconds
 COORDINATOR_WARNING_INTERVAL = (
     30 * 60
 )  # seconds between coordinator performance warnings
-
-

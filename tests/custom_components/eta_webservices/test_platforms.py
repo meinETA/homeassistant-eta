@@ -1,25 +1,10 @@
 """Tests that verify all sensor types are handled across platforms."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 
-from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.core import HomeAssistant
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.eta_webservices.number import (
-    async_setup_entry as number_async_setup_entry,
-)
-from custom_components.eta_webservices.sensor import (
-    _coerce_numeric_value,
-    async_setup_entry as sensor_async_setup_entry,
-)
-from custom_components.eta_webservices.time import (
-    async_setup_entry as time_async_setup_entry,
-)
-from custom_components.eta_webservices.switch import (
-    async_setup_entry as switch_async_setup_entry,
-)
 from custom_components.eta_webservices.const import (
     ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION,
     CHOSEN_FLOAT_SENSORS,
@@ -36,6 +21,21 @@ from custom_components.eta_webservices.const import (
     WRITABLE_DICT,
     WRITABLE_UPDATE_COORDINATOR,
 )
+from custom_components.eta_webservices.number import (
+    async_setup_entry as number_async_setup_entry,
+)
+from custom_components.eta_webservices.sensor import (
+    _coerce_numeric_value,
+    async_setup_entry as sensor_async_setup_entry,
+)
+from custom_components.eta_webservices.switch import (
+    async_setup_entry as switch_async_setup_entry,
+)
+from custom_components.eta_webservices.time import (
+    async_setup_entry as time_async_setup_entry,
+)
+from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import HomeAssistant
 
 
 @pytest.mark.parametrize(

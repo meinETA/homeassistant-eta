@@ -106,7 +106,7 @@ class EtaAPI:
                         "API version check timed out, using compatibility discovery",
                         0.03,
                     )
-            except Exception:  # noqa: BLE001
+            except Exception:
                 _LOGGER.warning(
                     "ETA API version check failed, falling back to legacy discovery mode",
                     exc_info=True,

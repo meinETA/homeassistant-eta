@@ -126,6 +126,7 @@ ignore = [
   "PLR0911", # Too many return statements ({returns} > {max_returns})
   "PLR0912", # Too many branches ({branches} > {max_branches})
   "PLR0913", # Too many arguments to function call ({c_args} > {max_args})
+  "PLR0917", # Too many positional arguments; many HA constructors exceed this
   "PLR0915", # Too many statements ({statements} > {max_statements})
   "PLR2004", # Magic value used in comparison, consider replacing {value} with a constant variable
   "PLW1641", # __eq__ without __hash__
@@ -170,6 +171,33 @@ ignore = [
   "PLE0605",
 
   "FURB116",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test code is held to a lighter standard than the shipped integration.
+"tests/**" = [
+  "SLF001",   # tests legitimately reach into private members
+  "RET504",   # explicit assign-before-return aids test readability
+  "D205",     # docstring formatting is not enforced in tests
+  "PTH123",   # open() is fine in tests
+  "PLC0415",  # local imports are fine in tests
+  "PERF102",  # micro-perf lints are irrelevant in tests
+  "F841",     # unused locals sometimes document intent in tests
+  "B007",     # unused loop variables are common in tests
+]
+# The helper scripts under tests/helpers are standalone CLI tools.
+"tests/helpers/**" = [
+  "T201",     # they print to stdout by design
+  "LOG015", "G004", "G201",  # ad-hoc root logging is fine in scripts
+  "BLE001",   # broad excepts keep the tooling scripts robust
+  "D103",     # script functions need no docstrings
+  "TRY300", "TRY301",
+  "PGH003",
+  "S314",     # local XML parsing of trusted fixture data
+  "PLC0206",
+  "ASYNC250",
+  "SIM201",
+  "PLW0603",
 ]
 
 [tool.ruff.lint.flake8-import-conventions.extend-aliases]

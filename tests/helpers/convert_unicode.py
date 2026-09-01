@@ -2,10 +2,10 @@
 """Convert unicode escape sequences to actual unicode characters in JSON files."""
 
 import argparse
-import json
-import sys
 from datetime import datetime
+import json
 from pathlib import Path
+import sys
 
 
 def create_backup(path: Path) -> Path:
@@ -46,7 +46,7 @@ def convert_unicode_escapes(input_path: Path, create_backup_flag: bool = True) -
         json.dump(data, f, indent=2, ensure_ascii=False)
         f.write("\n")
 
-    print(f"  ✓ Converted unicode escapes to characters")
+    print("  ✓ Converted unicode escapes to characters")
 
 
 def main():

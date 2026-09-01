@@ -1,12 +1,13 @@
 """Tests for the ETA API module."""
 
 import asyncio
-import pytest
 from unittest.mock import AsyncMock
-from aiohttp import ClientSession, ClientError, ClientResponseError
 
-from custom_components.eta_webservices.api import EtaAPI
+from aiohttp import ClientError, ClientResponseError, ClientSession
+import pytest
+
 from custom_components.eta_webservices._api.api_client import APIClient
+from custom_components.eta_webservices.api import EtaAPI
 
 
 @pytest.mark.asyncio
@@ -471,8 +472,7 @@ async def test_get_all_sensors_v12_skips_duplicates(load_fixture):
             response = AsyncMock()
             response.text = AsyncMock(return_value=menu_xml)
             return response
-        else:
-            return create_mock_response(suffix)
+        return create_mock_response(suffix)
 
     api._http.get_request = mock_get_request
 
@@ -1520,7 +1520,7 @@ async def test_get_all_data_fetches_multiple_sensors(load_fixture):
     assert isinstance(result, dict), "Should return a dictionary"
     assert len(result) > 0, "Should have results"
     # Check that URIs are in the results
-    for uri in sensor_list.keys():
+    for uri in sensor_list:
         if uri in result:
             assert isinstance(result[uri], (float, int, str)), (
                 f"Result for {uri} should be a value"
@@ -2317,7 +2317,9 @@ async def test_api_client_get_request_enforces_semaphore_limit():
 
     mock_session.get = slow_get
 
-    client = APIClient(mock_session, "192.168.0.1", 8080, max_concurrent_requests=max_concurrent)
+    client = APIClient(
+        mock_session, "192.168.0.1", 8080, max_concurrent_requests=max_concurrent
+    )
 
     tasks = [client.get_request(f"/user/var/{i}") for i in range(max_concurrent * 2)]
     await asyncio.gather(*tasks)
@@ -2352,7 +2354,9 @@ async def test_api_client_post_request_enforces_semaphore_limit():
 
     mock_session.post = slow_post
 
-    client = APIClient(mock_session, "192.168.0.1", 8080, max_concurrent_requests=max_concurrent)
+    client = APIClient(
+        mock_session, "192.168.0.1", 8080, max_concurrent_requests=max_concurrent
+    )
 
     tasks = [
         client.post_request(f"/user/var/{i}", {"value": i})
@@ -2399,12 +2403,14 @@ async def test_api_client_get_and_post_share_semaphore():
     mock_session.get = slow_get
     mock_session.post = slow_post
 
-    client = APIClient(mock_session, "192.168.0.1", 8080, max_concurrent_requests=max_concurrent)
-
-    tasks = (
-        [client.get_request(f"/user/var/{i}") for i in range(max_concurrent)]
-        + [client.post_request(f"/user/var/{i}", {"value": i}) for i in range(max_concurrent)]
+    client = APIClient(
+        mock_session, "192.168.0.1", 8080, max_concurrent_requests=max_concurrent
     )
+
+    tasks = [client.get_request(f"/user/var/{i}") for i in range(max_concurrent)] + [
+        client.post_request(f"/user/var/{i}", {"value": i})
+        for i in range(max_concurrent)
+    ]
     await asyncio.gather(*tasks)
 
     assert observed_max <= max_concurrent, (

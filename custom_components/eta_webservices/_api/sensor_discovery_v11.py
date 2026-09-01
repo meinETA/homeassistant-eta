@@ -254,7 +254,7 @@ class SensorDiscoveryV11(SensorDiscoveryBase):
                 else:
                     _LOGGER.debug("Not adding endpoint %s: Unknown type", uri)
 
-            except Exception:  # noqa: BLE001
+            except Exception:
                 _LOGGER.debug("Invalid endpoint %s", uri, exc_info=True)
 
         valid_endpoints = (

@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+
 import pytest
 
 
@@ -14,9 +15,11 @@ def fixture_data_dir():
 @pytest.fixture
 def load_fixture(fixture_data_dir):
     """Load fixture data from JSON files."""
+
     def _load(filename: str) -> dict:
         """Load and parse JSON fixture file."""
         fixture_path = fixture_data_dir / filename
-        with open(fixture_path, "r") as f:
+        with open(fixture_path) as f:
             return json.load(f)
+
     return _load
