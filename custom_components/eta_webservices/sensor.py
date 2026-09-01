@@ -1,12 +1,4 @@
-"""Sensor platform for the ETA sensor integration in Home Assistant.
-
-Help Links:
- Entity Source: https://github.com/home-assistant/core/blob/dev/homeassistant/helpers/entity.py
- SensorEntity derives from Entity https://github.com/home-assistant/core/blob/dev/homeassistant/components/sensor/__init__.py
-
-
-author nigl, Tidone
-"""
+"""Sensor platform for the ETA sensor integration in Home Assistant."""
 
 from __future__ import annotations
 

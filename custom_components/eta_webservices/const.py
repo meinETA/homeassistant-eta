@@ -2,9 +2,7 @@
 
 from homeassistant.components import calendar
 
-NAME = "eta_webservices"
 DOMAIN = "eta_webservices"
-ISSUE_URL = "https://github.com/meinETA/homeassistant-eta/issues"
 
 
 FLOAT_DICT = "FLOAT_DICT"
@@ -22,8 +20,6 @@ FORCE_LEGACY_MODE = "force_legacy_mode"
 ENABLE_DEBUG_LOGGING = "enable_debug_logging"
 AUTO_SELECT_ALL_ENTITIES = "auto_select_all_entities"
 
-OPTIONS_UPDATE_SENSOR_VALUES = "update_sensor_values"
-OPTIONS_ENUMERATE_NEW_ENDPOINTS = "enumerate_new_endpoints"
 OPTIONS_UPDATE_ACTION = "options_update_action"
 OPTIONS_ACTION_PARALLEL_ONLY = "update_parallel_requests"
 OPTIONS_ACTION_UPDATE_SELECTED = "update_selected_entities"
@@ -71,7 +67,6 @@ PAUSE_COORDINATORS_START_TIMESTAMP = "pause_coordinators_start_timestamp"
 PAUSE_COORDINATORS_MAX_DURATION = 10 * 60  # seconds
 
 # Defaults
-DEFAULT_NAME = DOMAIN
 REQUEST_TIMEOUT = 60
 DEFAULT_MAX_PARALLEL_REQUESTS = 5
 DEFAULT_UPDATE_INTERVAL = 60  # seconds
@@ -80,11 +75,3 @@ COORDINATOR_WARNING_INTERVAL = (
 )  # seconds between coordinator performance warnings
 
 
-STARTUP_MESSAGE = f"""
--------------------------------------------------------------------
-{NAME}
-This is a custom integration!
-If you have any issues with this you need to open an issue here:
-{ISSUE_URL}
--------------------------------------------------------------------
-"""
