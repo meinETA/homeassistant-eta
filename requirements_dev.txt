@@ -1,4 +1,0 @@
-homeassistant
-xmltodict
-aiohttp
-packaging
