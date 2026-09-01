@@ -4,10 +4,10 @@
   "codeowners": ["@nigl", "@Tidone", "@christofpichler"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/Tidone/homeassistant_eta_integration",
+  "documentation": "https://github.com/meinETA/homeassistant-eta",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/Tidone/homeassistant_eta_integration/issues",
+  "issue_tracker": "https://github.com/meinETA/homeassistant-eta/issues",
   "requirements": ["xmltodict", "packaging"],
   "version": "1.4.2"
 }
