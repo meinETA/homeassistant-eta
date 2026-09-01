@@ -946,7 +946,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
         for category_key in [FLOAT_DICT, SWITCHES_DICT, TEXT_DICT, WRITABLE_DICT]:
             for entity in list(self.data[category_key].keys()):
                 if self.data[category_key][entity]["url"] not in all_data:
-                    _LOGGER.exception(
+                    _LOGGER.error(
                         "Exception while updating the value for endpoint '%s' (%s)",
                         self.data[category_key][entity]["friendly_name"],
                         self.data[category_key][entity]["url"],
