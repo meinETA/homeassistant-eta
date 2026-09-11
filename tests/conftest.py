@@ -22,10 +22,11 @@ def load_fixture(request, fixture_data_dir):
     """
 
     subdir = getattr(request, "param", "")
+
     def _load(filename: str) -> dict:
         """Load and parse JSON fixture file."""
         fixture_path = fixture_data_dir / subdir / filename
-        with open(fixture_path, "r") as f:
+        with open(fixture_path) as f:
             return json.load(f)
 
     return _load

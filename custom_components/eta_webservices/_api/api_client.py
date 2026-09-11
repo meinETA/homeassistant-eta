@@ -3,7 +3,6 @@
 import asyncio
 from datetime import datetime
 import logging
-from typing import Any
 
 from aiohttp import ClientSession
 import xmltodict

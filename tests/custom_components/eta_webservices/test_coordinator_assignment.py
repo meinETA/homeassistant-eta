@@ -5,6 +5,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.eta_webservices.binary_sensor import (
+    async_setup_entry as binary_sensor_async_setup_entry,
+)
 from custom_components.eta_webservices.const import (
     ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION,
     CHOSEN_FLOAT_SENSORS,
@@ -32,9 +35,6 @@ from custom_components.eta_webservices.number import (
 )
 from custom_components.eta_webservices.sensor import (
     async_setup_entry as sensor_async_setup_entry,
-)
-from custom_components.eta_webservices.binary_sensor import (
-    async_setup_entry as binary_sensor_async_setup_entry,
 )
 from custom_components.eta_webservices.switch import (
     async_setup_entry as switch_async_setup_entry,

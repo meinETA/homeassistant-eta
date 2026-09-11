@@ -93,6 +93,28 @@ WRITABLE_SENSOR_UNITS = [
     CUSTOM_UNIT_UNITLESS,
 ]
 
+# valid advTextOffset values to detect an endpoint as a switch
+# we have to use a whitelist, and can't just use the number of validValues because some endpoints
+# have just two valid values, but aren't switches at all
+# for example the endopint `Warmwasserspeicher > Solarladung bis` has the values "Oben (2145)" and "Unten (2146)", but isn't a switch
+VALID_SWITCH_OFFSET_VALUES = [
+    1800,  # Nein/Ja
+    1802,  # Aus/Ein
+    1070,  # Nein/Ja, Notbetrieb
+    1040,  # Aus/Ein, Diagnose
+    950,  # Aus/Ein, Anforderung
+]
+
+# valid advTextOffset values to detect an endpoint as a switch, for v11
+# (1040 is not always a switch with exactly 2 valid values, so it is excluded here
+# because we have no way to determine if it is really a switch on v11)
+VALID_SWITCH_OFFSET_VALUES_V11 = [
+    1800,  # Nein/Ja
+    1802,  # Aus/Ein
+    1070,  # Nein/Ja, Notbetrieb
+    950,  # Aus/Ein, Anforderung
+]
+
 DEFAULT_VALID_WRITABLE_VALUES = {
     "%": ETAValidWritableValues(
         scaled_min_value=-100,

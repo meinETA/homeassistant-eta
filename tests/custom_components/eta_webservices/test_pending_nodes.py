@@ -117,7 +117,13 @@ async def test_pending_node_goes_to_pending_dict(load_fixture):
     api._http.get_request = mock_get_request
 
     # Mock get_data_plus_raw: the var endpoint returns ("---", "") — still invalid.
-    api._http.get_data_plus_raw = AsyncMock(return_value=("---", "", {"@strValue": "---", "@unit": ""}))
+    api._http.get_data_plus_raw = AsyncMock(
+        return_value=(
+            "---",
+            "",
+            {"@strValue": "---", "@unit": "", "@advTextOffset": "0"},
+        )
+    )
 
     float_dict: dict = {}
     switches_dict: dict = {}
@@ -182,7 +188,9 @@ async def test_valid_node_does_not_go_to_pending_dict():
 
     api._http.get_request = mock_get_request
     # get_data_plus_raw is called because unit="%" → float sensor
-    api._http.get_data_plus_raw = AsyncMock(return_value=(20.64, "%", {"@strValue": "20,6", "@unit": "%"}))
+    api._http.get_data_plus_raw = AsyncMock(
+        return_value=(20.64, "%", {"@strValue": "20,6", "@unit": "%"})
+    )
 
     float_dict: dict = {}
     switches_dict: dict = {}
