@@ -6,6 +6,7 @@ import logging
 from .sensor_discovery_base import SensorDiscoveryBase
 from .types import (
     DEFAULT_VALID_WRITABLE_VALUES,
+    VALID_SWITCH_OFFSET_VALUES_V11,
     WRITABLE_SENSOR_UNITS,
     ETAEndpoint,
     ETAValidSwitchValues,
@@ -17,19 +18,22 @@ _LOGGER = logging.getLogger(__name__)
 class SensorDiscoveryV11(SensorDiscoveryBase):
     """ETA API v1.1 specific sensor discovery implementation."""
 
-    def _is_switch(
-        self, endpoint_info: ETAEndpoint, raw_value: str | None = None
-    ) -> bool:
+    def _is_switch(self, endpoint_info: ETAEndpoint, text_offset: str) -> bool:
         """Check if endpoint is a switch (v1.1 method)."""
-        if endpoint_info["unit"] == "" and raw_value in ("1802", "1803"):
+        if (
+            endpoint_info["unit"] == ""
+            and text_offset.isdecimal()
+            and int(text_offset) in VALID_SWITCH_OFFSET_VALUES_V11
+        ):
             return True
         return False
 
-    def _parse_switch_values(self, endpoint_info: ETAEndpoint):
-        """Parse switch values (v1.1 hardcoded values)."""
+    def _parse_switch_values(self, endpoint_info: ETAEndpoint, text_offset: str):
+        """Parse switch values (v1.1 method)."""
         endpoint_info["valid_values"] = ETAValidSwitchValues(
-            on_value=1803, off_value=1802
+            on_value=int(text_offset) + 1, off_value=int(text_offset)
         )
+        # we have to assume the sensor is writable because we have no way of getting it from the API
         endpoint_info["is_writable"] = True
 
     def _is_writable(self, endpoint_info: ETAEndpoint) -> bool:
@@ -253,10 +257,12 @@ class SensorDiscoveryV11(SensorDiscoveryBase):
                         float_dict[unique_key] = endpoint_info
                     else:
                         _LOGGER.debug("Skipping duplicate float sensor %s", unique_key)
-                elif self._is_switch(endpoint_info, raw_dict["#text"]):
+                elif self._is_switch(endpoint_info, raw_dict["@advTextOffset"]):
                     _LOGGER.debug("Adding %s as switch", uri)
                     if unique_key not in switches_dict:
-                        self._parse_switch_values(endpoint_info)
+                        self._parse_switch_values(
+                            endpoint_info, raw_dict["@advTextOffset"]
+                        )
                         switches_dict[unique_key] = endpoint_info
                     else:
                         _LOGGER.debug("Skipping duplicate switch %s", unique_key)

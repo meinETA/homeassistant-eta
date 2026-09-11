@@ -11,6 +11,7 @@ the full error list from the coordinator rather than a value keyed by entity —
 
 from unittest.mock import MagicMock, patch
 
+from custom_components.eta_webservices.binary_sensor import EtaBinarySensor
 from custom_components.eta_webservices.const import (
     ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION,
     CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT,
@@ -22,7 +23,6 @@ from custom_components.eta_webservices.sensor import (
     EtaTextSensor,
     EtaTimeslotSensor,
 )
-from custom_components.eta_webservices.binary_sensor import EtaBinarySensor
 from custom_components.eta_webservices.switch import EtaSwitch
 from custom_components.eta_webservices.time import EtaTime
 from homeassistant.const import CONF_HOST, CONF_PORT
@@ -253,7 +253,9 @@ def test_eta_writable_number_sensor_clears_value_when_key_missing(hass: HomeAssi
     _assert_clears_native_value(entity, coordinator, {_OTHER_URL: 0.0})
 
 
-def test_eta_writable_number_sensor_preserves_value_when_data_empty(hass: HomeAssistant):
+def test_eta_writable_number_sensor_preserves_value_when_data_empty(
+    hass: HomeAssistant,
+):
     """EtaWritableNumberSensor retains its last value when coordinator.data is empty."""
     coordinator = _make_writable_coordinator(42.0)
     with patch("custom_components.eta_webservices.entity.async_get_clientsession"):

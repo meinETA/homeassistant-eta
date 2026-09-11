@@ -16,7 +16,13 @@ from ..const import (  # noqa: TID252
     CUSTOM_UNITS,
 )
 from .sensor_discovery_base import SensorDiscoveryBase
-from .types import WRITABLE_SENSOR_UNITS, ETAEndpoint, ETAValidWritableValues
+from .types import (
+    VALID_SWITCH_OFFSET_VALUES,
+    WRITABLE_SENSOR_UNITS,
+    ETAEndpoint,
+    ETAValidSwitchValues,
+    ETAValidWritableValues,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,36 +30,34 @@ _LOGGER = logging.getLogger(__name__)
 class SensorDiscoveryV12(SensorDiscoveryBase):
     """ETA API v1.2 specific sensor discovery implementation."""
 
-    def _is_switch(
-        self, endpoint_info: ETAEndpoint, raw_value: str | None = None
-    ) -> bool:
+    def _is_switch(self, endpoint_info: ETAEndpoint, text_offset: str) -> bool:
         """Check if endpoint is a switch (v1.2 method)."""
         valid_values = endpoint_info["valid_values"]
         if valid_values is None:
             return False
         if len(valid_values) != 2:
+            # we have to check for exactly 2 entries in the valid values because some potential switch endpoints (advTextOffset = 1040)
+            # may have more than 2 valid values, and are therefore not switches
             return False
-        if not all(
-            k in ("Ein", "Aus", "On", "Off", "Ja", "Nein", "Yes", "No")
-            for k in valid_values
-        ):
-            return False
-        return True
-
-    def _parse_switch_values(self, endpoint_info: ETAEndpoint):
-        """Parse switch values (v1.2 method from validValues)."""
-        valid_values = {"on_value": 0, "off_value": 0}
         if (
-            endpoint_info["valid_values"] is None
-            or type(endpoint_info["valid_values"]) is not dict
+            # check that the advTextOffset is in the list of valid offsets, and that the valid values are either the offset (=off_value) or offset+1 (=on_value)
+            text_offset.isdecimal()
+            and int(text_offset) in VALID_SWITCH_OFFSET_VALUES
+            and all(
+                v in VALID_SWITCH_OFFSET_VALUES or v - 1 in VALID_SWITCH_OFFSET_VALUES
+                for v in valid_values.values()
+            )
         ):
-            return
-        for key in endpoint_info["valid_values"]:
-            if key in ("Ein", "On", "Ja", "Yes"):
-                valid_values["on_value"] = endpoint_info["valid_values"][key]
-            elif key in ("Aus", "Off", "Nein", "No"):
-                valid_values["off_value"] = endpoint_info["valid_values"][key]
-        endpoint_info["valid_values"] = valid_values
+            return True
+        return False
+
+    def _parse_switch_values(self, endpoint_info: ETAEndpoint, text_offset: str):
+        """Parse switch values (v1.2 method from validValues)."""
+        # we already checked that the valid values are in the expected range above,
+        # so we can use advTextOffset to populate the dict
+        endpoint_info["valid_values"] = ETAValidSwitchValues(
+            on_value=int(text_offset) + 1, off_value=int(text_offset)
+        )
 
     def _is_writable(self, endpoint_info: ETAEndpoint) -> bool:
         """Check if endpoint is writable (v1.2 method)."""
@@ -391,7 +395,10 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
 
         # is_invalid is determined based on the raw string value from the var endpoint
         # the value `xxx` is hardcoded in the ETA firmware to indicate offline ETA CAN nodes, or nodes which provide no data
-
+        # These endpoints may become valid later, but they use placeholder metadata (unit, type, etc.) until then, which we currently can't handle.
+        # Our pending handler only handles cases where the metadata are valid, and only the data itself is invalid at the moment.
+        # And since it seems that these endpoints will only become valid after a user intervention (setup on the ETA unit itself),
+        # the user will have to run the sensor discovery process again if they want to use the sensor.
         return ETAEndpoint(
             valid_values=valid_values,
             friendly_name=f"{fub} > {data['@fullName']}",
@@ -654,7 +661,11 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
         # so they still reach Phase 4 and can be classified as pending.
         for uri, raw in raw_varinfo.items():
             if uri not in var_data:
-                var_data[uri] = ("---", raw.get("@unit", ""), {"@strValue": "---"})
+                var_data[uri] = (
+                    "---",
+                    raw.get("@unit", ""),
+                    {"@strValue": "---", "@advTextOffset": "0"},
+                )
 
         # Phase 4: Parse raw varinfo into ETAEndpoint objects and apply var data
         self._emit_progress("Parsing endpoint metadata", 0.85)
@@ -666,7 +677,7 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
                 endpoint_infos[uri] = self._parse_varinfo(
                     raw, fub, uri, var_data_entry=var_data[uri]
                 )
-            except Exception:  # noqa: BLE001
+            except Exception:
                 _LOGGER.debug("Failed to parse varinfo for %s", uri, exc_info=True)
 
         # Phase 5: Sanitize duplicate nodes using the pre-fetched var data
@@ -683,6 +694,7 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
                 continue
 
             endpoint_info = endpoint_infos[uri]
+            _, _, raw_var_data = var_data[uri]
 
             if endpoint_info["is_invalid"]:
                 _LOGGER.debug(
@@ -724,7 +736,7 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
                         )
                     else:
                         float_dict[unique_key] = endpoint_info
-                elif self._is_switch(endpoint_info):
+                elif self._is_switch(endpoint_info, raw_var_data["@advTextOffset"]):
                     _LOGGER.debug("Adding %s as switch", uri)
                     if unique_key in switches_dict:
                         _LOGGER.debug(
@@ -734,7 +746,9 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
                             switches_dict[unique_key]["url"],
                         )
                     else:
-                        self._parse_switch_values(endpoint_info)
+                        self._parse_switch_values(
+                            endpoint_info, raw_var_data["@advTextOffset"]
+                        )
                         switches_dict[unique_key] = endpoint_info
                 elif self._is_text_sensor(endpoint_info):
                     _LOGGER.debug("Adding %s as text sensor", uri)

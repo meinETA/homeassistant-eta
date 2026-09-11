@@ -54,13 +54,11 @@ class SensorDiscoveryBase(ABC):
     # Abstract methods (must be implemented by subclasses)
 
     @abstractmethod
-    def _is_switch(
-        self, endpoint_info: ETAEndpoint, raw_value: str | None = None
-    ) -> bool:
+    def _is_switch(self, endpoint_info: ETAEndpoint, text_offset: str) -> bool:
         """Check if endpoint is a switch.
 
         :param endpoint_info: Endpoint metadata
-        :param raw_value: Optional raw value (used by v1.1)
+        :param text_offset: 'advTextOffset' value
         :return: True if switch
         """
 
@@ -73,10 +71,11 @@ class SensorDiscoveryBase(ABC):
         """
 
     @abstractmethod
-    def _parse_switch_values(self, endpoint_info: ETAEndpoint):
+    def _parse_switch_values(self, endpoint_info: ETAEndpoint, text_offset: str):
         """Parse and populate switch valid values.
 
         :param endpoint_info: Endpoint metadata (modified in place)
+        :param text_offset: 'advTextOffset' value
         """
 
     @abstractmethod

@@ -106,7 +106,13 @@ class SensorUpdater:
         """
         updated = {}
 
-        for category in ["float_dict", "switches_dict", "text_dict", "writable_dict", "pending_dict"]:
+        for category in [
+            "float_dict",
+            "switches_dict",
+            "text_dict",
+            "writable_dict",
+            "pending_dict",
+        ]:
             updated[category] = self._update_category(
                 category, discovered[category], existing[category]
             )

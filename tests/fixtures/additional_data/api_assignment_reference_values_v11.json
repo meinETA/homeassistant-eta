@@ -5027,6 +5027,45 @@
     }
   },
   "switches_dict": {
+    "eta_192_168_0_25__fwm_eingänge_durchflusssensor_notbetrieb_ohne_durchflusssensor": {
+      "url": "/79/10531/0/0/14834",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "FWM > Eingänge > Durchflusssensor > Notbetrieb ohne Durchflusssensor",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__fwm_ausgänge_pufferpumpe_anforderung": {
+      "url": "/79/10531/0/11280/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "FWM > Ausgänge > Pufferpumpe > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Aus",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__fwm_ausgänge_beimischpumpe_anforderung": {
+      "url": "/79/10531/0/11270/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "FWM > Ausgänge > Beimischpumpe > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Aus",
+      "is_writable": true,
+      "is_invalid": false
+    },
     "eta_192_168_0_25__fwm_warmwasser_bereitschaftszeiten": {
       "url": "/79/10531/12318/0/0",
       "valid_values": {
@@ -5050,6 +5089,97 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Aus",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__fwm_warmwasser_automatische_entlüftung": {
+      "url": "/79/10531/0/0/13018",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "FWM > Warmwasser > automatische Entlüftung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Ja",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__fwm_warmwasser_notbetrieb_nur_mit_pufferpumpe": {
+      "url": "/79/10531/0/0/13017",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "FWM > Warmwasser > Notbetrieb nur mit Pufferpumpe",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__fwm_sonstiges_ein/aus_taste_anzeigen": {
+      "url": "/79/10531/0/0/13987",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "FWM > Sonstiges > Ein/Aus Taste anzeigen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__puffer_einstellungen_laden_mit_anderen_verbrauchern": {
+      "url": "/264/10601/0/0/12667",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Puffer > Einstellungen > Laden mit anderen Verbrauchern",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__puffer_einstellungen_puffer_aus_puffer_immer_fertig_laden": {
+      "url": "/264/10601/0/0/15194",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Puffer > Einstellungen > Puffer aus > Puffer immer fertig laden",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__puffer_puffer_erzeuger_kessel/puffer_starten_nach_zusätzlichen_kriterien_starten_nach_leistung": {
+      "url": "/264/10601/0/0/13447",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Puffer > Puffer > Erzeuger Kessel/Puffer > Starten nach zusätzlichen Kriterien > Starten nach Leistung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__puffer_puffer_erzeuger_kessel/puffer_starten_nach_zusätzlichen_kriterien_extra_laden_zeitprogramm_aktivieren?": {
+      "url": "/264/10601/0/0/13010",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Puffer > Puffer > Erzeuger Kessel/Puffer > Starten nach zusätzlichen Kriterien > Extra laden > Zeitprogramm aktivieren?",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
       "is_writable": true,
       "is_invalid": false
     },
@@ -5092,6 +5222,45 @@
       "is_writable": true,
       "is_invalid": false
     },
+    "eta_192_168_0_25__puffer_puffer_erzeuger_kessel/puffer_leistungsregelung_ladezustand_soll_extrapol": {
+      "url": "/264/10601/12507/0/1056",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Puffer > Puffer > Erzeuger Kessel/Puffer > Leistungsregelung > Ladezustand Soll > Extrapol",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__puffer_puffer_verbraucherniveaus_verbraucher_1_(oben)_anforderung": {
+      "url": "/264/10601/0/0/13221",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Puffer > Puffer > Verbraucherniveaus > Verbraucher 1 (oben) > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Ja",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__puffer_puffer_verbraucherniveaus_verbraucher_2_anforderung": {
+      "url": "/264/10601/0/0/13202",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Puffer > Puffer > Verbraucherniveaus > Verbraucher 2 > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
     "eta_192_168_0_25__puffer_puffer_warmwasserbereich_warmwasser_sofort_laden": {
       "url": "/264/10601/0/0/12134",
       "valid_values": {
@@ -5115,6 +5284,58 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Aus",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_eingänge_aschebox": {
+      "url": "/264/10891/0/11034/0",
+      "valid_values": {
+        "on_value": 1071,
+        "off_value": 1070
+      },
+      "friendly_name": "Kessel > Eingänge > Aschebox",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Ja",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_eingänge_schalter_wt-reinigung": {
+      "url": "/264/10891/0/11072/0",
+      "valid_values": {
+        "on_value": 1071,
+        "off_value": 1070
+      },
+      "friendly_name": "Kessel > Eingänge > Schalter WT-Reinigung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Ja",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_eingänge_restsauerstoff_anforderung": {
+      "url": "/264/10891/0/11108/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Kessel > Eingänge > Restsauerstoff > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Ein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_eingänge_restsauerstoff_notbetrieb": {
+      "url": "/264/10891/0/11108/2400",
+      "valid_values": {
+        "on_value": 1071,
+        "off_value": 1070
+      },
+      "friendly_name": "Kessel > Eingänge > Restsauerstoff > Notbetrieb",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
       "is_writable": true,
       "is_invalid": false
     },
@@ -5157,6 +5378,253 @@
       "is_writable": true,
       "is_invalid": false
     },
+    "eta_192_168_0_25__kessel_eingänge_kesseldruck_kesseldruck_notbetrieb": {
+      "url": "/264/10891/0/11135/2400",
+      "valid_values": {
+        "on_value": 1071,
+        "off_value": 1070
+      },
+      "friendly_name": "Kessel > Eingänge > Kesseldruck > Kesseldruck > Notbetrieb",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_eingänge_messblende_messblende_notbetrieb": {
+      "url": "/264/10891/0/11134/2400",
+      "valid_values": {
+        "on_value": 1071,
+        "off_value": 1070
+      },
+      "friendly_name": "Kessel > Eingänge > Messblende > Messblende > Notbetrieb",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_ausgänge_wärmetauscher_reinigung_anforderung": {
+      "url": "/264/10891/0/11043/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Kessel > Ausgänge > Wärmetauscher Reinigung > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Aus",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_ausgänge_zündung_anforderung": {
+      "url": "/264/10891/0/11041/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Kessel > Ausgänge > Zündung > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Aus",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_ausgänge_zündung_notbetrieb": {
+      "url": "/264/10891/0/0/13495",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Ausgänge > Zündung > Notbetrieb",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_ausgänge_saugturbine_anforderung": {
+      "url": "/264/10891/0/11042/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Kessel > Ausgänge > Saugturbine > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Aus",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_ausgänge_abgasgebläse_abgasgebläse_anforderung": {
+      "url": "/264/10891/0/11114/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Kessel > Ausgänge > Abgasgebläse > Abgasgebläse > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Ein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_ausgänge_abgasgebläse_abgasgebläse_zustand": {
+      "url": "/264/10891/0/11114/2002",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Kessel > Ausgänge > Abgasgebläse > Abgasgebläse > Zustand",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Ein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_ausgänge_abgasgebläse_notbetrieb": {
+      "url": "/264/10891/0/0/2400",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Ausgänge > Abgasgebläse > Notbetrieb",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_ausgänge_abgasgebläse_versorgung_abgasgebläse_anforderung": {
+      "url": "/264/10891/0/11497/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Kessel > Ausgänge > Abgasgebläse > Versorgung Abgasgebläse > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Ein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_ausgänge_kesselpumpe_anforderung": {
+      "url": "/264/10891/0/11123/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Kessel > Ausgänge > Kesselpumpe > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Ein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_ausgänge_rücklaufmischer_anforderung": {
+      "url": "/264/10891/0/11163/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Kessel > Ausgänge > Rücklaufmischer > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Ein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_ausgänge_luftschieber_anforderung": {
+      "url": "/264/10891/0/11115/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Kessel > Ausgänge > Luftschieber > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Ein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_zählerstände_volllaststunden_seit_reinigung_zähler_rücksetzen_?": {
+      "url": "/264/10891/0/0/15060",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Zählerstände > Volllaststunden seit Reinigung > Zähler rücksetzen ?",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_zählerstände_volllaststunden_seit_wartung_zähler_rücksetzen_?": {
+      "url": "/264/10891/0/0/12257",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Zählerstände > Volllaststunden seit Wartung > Zähler rücksetzen ?",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_einstellungen_brenner_verriegeln": {
+      "url": "/264/10891/0/0/12651",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Kessel > Einstellungen > Brenner verriegeln",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_restsauerstoff_o2_soll_extrapol": {
+      "url": "/264/10891/12004/0/1056",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Kessel > Restsauerstoff > O2 Soll > Extrapol",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_emissionsmessung_messung_deaktivieren": {
+      "url": "/264/10891/0/0/13277",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Kessel > Emissionsmessung > Messung deaktivieren",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_pelletsbehälter_pelletsbehälter_auffüllen": {
+      "url": "/264/10891/0/0/12071",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Kessel > Pelletsbehälter > Pelletsbehälter auffüllen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
     "eta_192_168_0_25__kessel_sonstiges_ein/aus_taste": {
       "url": "/264/10891/0/0/12080",
       "valid_values": {
@@ -5177,6 +5645,45 @@
         "off_value": 1802
       },
       "friendly_name": "Kessel > Sonstiges > Entaschentaste",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Aus",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__silo_ausgänge_austragschnecke_anforderung": {
+      "url": "/264/10201/0/11029/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Silo > Ausgänge > Austragschnecke > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Aus",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__heizkreis_ausgänge_heizkreismischer_anforderung": {
+      "url": "/264/10101/0/11125/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Heizkreis > Ausgänge > Heizkreismischer > Anforderung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Schließen",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__heizkreis_ausgänge_heizkreispumpe_anforderung": {
+      "url": "/264/10101/0/11124/2001",
+      "valid_values": {
+        "on_value": 951,
+        "off_value": 950
+      },
+      "friendly_name": "Heizkreis > Ausgänge > Heizkreispumpe > Anforderung",
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Aus",
@@ -5206,6 +5713,32 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Aus",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__heizkreis_heizkreis_vorrang_warmwasser": {
+      "url": "/264/10101/0/0/12178",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Heizkreis > Heizkreis > Vorrang Warmwasser",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__heizkreis_heizkreis_solar_abschöpfen": {
+      "url": "/264/10101/0/0/12652",
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Heizkreis > Heizkreis > Solar abschöpfen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "value": "Nein",
       "is_writable": true,
       "is_invalid": false
     },
@@ -5312,16 +5845,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__fwm_eingänge_durchflusssensor_notbetrieb_ohne_durchflusssensor": {
-      "url": "/79/10531/0/0/14834",
-      "valid_values": null,
-      "friendly_name": "FWM > Eingänge > Durchflusssensor > Notbetrieb ohne Durchflusssensor",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__fwm_eingänge_warmwasser_zustand": {
       "url": "/79/10531/0/11148/2002",
       "valid_values": null,
@@ -5382,16 +5905,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__fwm_ausgänge_pufferpumpe_anforderung": {
-      "url": "/79/10531/0/11280/2001",
-      "valid_values": null,
-      "friendly_name": "FWM > Ausgänge > Pufferpumpe > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Aus",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__fwm_ausgänge_pufferpumpe_zustand": {
       "url": "/79/10531/0/11280/2002",
       "valid_values": null,
@@ -5409,16 +5922,6 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Heizungspumpe (siehe Infotaste!)",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__fwm_ausgänge_beimischpumpe_anforderung": {
-      "url": "/79/10531/0/11270/2001",
-      "valid_values": null,
-      "friendly_name": "FWM > Ausgänge > Beimischpumpe > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Aus",
       "is_writable": false,
       "is_invalid": false
     },
@@ -5462,16 +5965,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__fwm_warmwasser_automatische_entlüftung": {
-      "url": "/79/10531/0/0/13018",
-      "valid_values": null,
-      "friendly_name": "FWM > Warmwasser > automatische Entlüftung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Ja",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__fwm_warmwasser_automatische_entlüftung_entlüftungszähler": {
       "url": "/79/10531/0/0/13019",
       "valid_values": null,
@@ -5482,16 +5975,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__fwm_warmwasser_notbetrieb_nur_mit_pufferpumpe": {
-      "url": "/79/10531/0/0/13017",
-      "valid_values": null,
-      "friendly_name": "FWM > Warmwasser > Notbetrieb nur mit Pufferpumpe",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__fwm_sonstiges_ergänzung": {
       "url": "/79/10531/0/0/19391",
       "valid_values": null,
@@ -5499,16 +5982,6 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "0_4130",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__fwm_sonstiges_ein/aus_taste_anzeigen": {
-      "url": "/79/10531/0/0/13987",
-      "valid_values": null,
-      "friendly_name": "FWM > Sonstiges > Ein/Aus Taste anzeigen",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
       "is_writable": false,
       "is_invalid": false
     },
@@ -5592,26 +6065,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__puffer_einstellungen_laden_mit_anderen_verbrauchern": {
-      "url": "/264/10601/0/0/12667",
-      "valid_values": null,
-      "friendly_name": "Puffer > Einstellungen > Laden mit anderen Verbrauchern",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__puffer_einstellungen_puffer_aus_puffer_immer_fertig_laden": {
-      "url": "/264/10601/0/0/15194",
-      "valid_values": null,
-      "friendly_name": "Puffer > Einstellungen > Puffer aus > Puffer immer fertig laden",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__puffer_puffer": {
       "url": "/264/10601/0/0/19403",
       "valid_values": null,
@@ -5622,16 +6075,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__puffer_puffer_erzeuger_kessel/puffer_starten_nach_zusätzlichen_kriterien_starten_nach_leistung": {
-      "url": "/264/10601/0/0/13447",
-      "valid_values": null,
-      "friendly_name": "Puffer > Puffer > Erzeuger Kessel/Puffer > Starten nach zusätzlichen Kriterien > Starten nach Leistung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__puffer_puffer_erzeuger_kessel/puffer_starten_nach_zusätzlichen_kriterien_extra_laden": {
       "url": "/264/10601/0/0/13026",
       "valid_values": null,
@@ -5639,16 +6082,6 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Aus",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__puffer_puffer_erzeuger_kessel/puffer_starten_nach_zusätzlichen_kriterien_extra_laden_zeitprogramm_aktivieren?": {
-      "url": "/264/10601/0/0/13010",
-      "valid_values": null,
-      "friendly_name": "Puffer > Puffer > Erzeuger Kessel/Puffer > Starten nach zusätzlichen Kriterien > Extra laden > Zeitprogramm aktivieren?",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
       "is_writable": false,
       "is_invalid": false
     },
@@ -5862,16 +6295,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__puffer_puffer_erzeuger_kessel/puffer_leistungsregelung_ladezustand_soll_extrapol": {
-      "url": "/264/10601/12507/0/1056",
-      "valid_values": null,
-      "friendly_name": "Puffer > Puffer > Erzeuger Kessel/Puffer > Leistungsregelung > Ladezustand Soll > Extrapol",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__puffer_puffer_verbraucherniveaus_verbraucher_1_(oben)": {
       "url": "/264/10601/0/0/13145",
       "valid_values": null,
@@ -5882,16 +6305,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__puffer_puffer_verbraucherniveaus_verbraucher_1_(oben)_anforderung": {
-      "url": "/264/10601/0/0/13221",
-      "valid_values": null,
-      "friendly_name": "Puffer > Puffer > Verbraucherniveaus > Verbraucher 1 (oben) > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Ja",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__puffer_puffer_verbraucherniveaus_verbraucher_2": {
       "url": "/264/10601/0/0/13223",
       "valid_values": null,
@@ -5899,16 +6312,6 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Aus",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__puffer_puffer_verbraucherniveaus_verbraucher_2_anforderung": {
-      "url": "/264/10601/0/0/13202",
-      "valid_values": null,
-      "friendly_name": "Puffer > Puffer > Verbraucherniveaus > Verbraucher 2 > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
       "is_writable": false,
       "is_invalid": false
     },
@@ -5962,16 +6365,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__kessel_eingänge_aschebox": {
-      "url": "/264/10891/0/11034/0",
-      "valid_values": null,
-      "friendly_name": "Kessel > Eingänge > Aschebox",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Ja",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__kessel_eingänge_rost": {
       "url": "/264/10891/0/11317/0",
       "valid_values": null,
@@ -5992,30 +6385,10 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__kessel_eingänge_schalter_wt-reinigung": {
-      "url": "/264/10891/0/11072/0",
-      "valid_values": null,
-      "friendly_name": "Kessel > Eingänge > Schalter WT-Reinigung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Ja",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__kessel_eingänge_restsauerstoff_zustand": {
       "url": "/264/10891/0/11108/2002",
       "valid_values": null,
       "friendly_name": "Kessel > Eingänge > Restsauerstoff > Zustand",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Ein",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_eingänge_restsauerstoff_anforderung": {
-      "url": "/264/10891/0/11108/2001",
-      "valid_values": null,
-      "friendly_name": "Kessel > Eingänge > Restsauerstoff > Anforderung",
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Ein",
@@ -6029,16 +6402,6 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "HuS 118",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_eingänge_restsauerstoff_notbetrieb": {
-      "url": "/264/10891/0/11108/2400",
-      "valid_values": null,
-      "friendly_name": "Kessel > Eingänge > Restsauerstoff > Notbetrieb",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
       "is_writable": false,
       "is_invalid": false
     },
@@ -6102,26 +6465,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__kessel_eingänge_kesseldruck_kesseldruck_notbetrieb": {
-      "url": "/264/10891/0/11135/2400",
-      "valid_values": null,
-      "friendly_name": "Kessel > Eingänge > Kesseldruck > Kesseldruck > Notbetrieb",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_eingänge_messblende_messblende_notbetrieb": {
-      "url": "/264/10891/0/11134/2400",
-      "valid_values": null,
-      "friendly_name": "Kessel > Eingänge > Messblende > Messblende > Notbetrieb",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__kessel_ausgänge_stokerschnecke_stoker_anforderung": {
       "url": "/264/10891/0/11691/2001",
       "valid_values": null,
@@ -6172,30 +6515,10 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__kessel_ausgänge_wärmetauscher_reinigung_anforderung": {
-      "url": "/264/10891/0/11043/2001",
-      "valid_values": null,
-      "friendly_name": "Kessel > Ausgänge > Wärmetauscher Reinigung > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Aus",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__kessel_ausgänge_zündung": {
       "url": "/264/10891/0/11041/0",
       "valid_values": null,
       "friendly_name": "Kessel > Ausgänge > Zündung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Aus",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_ausgänge_zündung_anforderung": {
-      "url": "/264/10891/0/11041/2001",
-      "valid_values": null,
-      "friendly_name": "Kessel > Ausgänge > Zündung > Anforderung",
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Aus",
@@ -6212,16 +6535,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__kessel_ausgänge_zündung_notbetrieb": {
-      "url": "/264/10891/0/0/13495",
-      "valid_values": null,
-      "friendly_name": "Kessel > Ausgänge > Zündung > Notbetrieb",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__kessel_ausgänge_saugturbine": {
       "url": "/264/10891/0/11042/0",
       "valid_values": null,
@@ -6229,36 +6542,6 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Aus",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_ausgänge_saugturbine_anforderung": {
-      "url": "/264/10891/0/11042/2001",
-      "valid_values": null,
-      "friendly_name": "Kessel > Ausgänge > Saugturbine > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Aus",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_ausgänge_abgasgebläse_abgasgebläse_anforderung": {
-      "url": "/264/10891/0/11114/2001",
-      "valid_values": null,
-      "friendly_name": "Kessel > Ausgänge > Abgasgebläse > Abgasgebläse > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Ein",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_ausgänge_abgasgebläse_abgasgebläse_zustand": {
-      "url": "/264/10891/0/11114/2002",
-      "valid_values": null,
-      "friendly_name": "Kessel > Ausgänge > Abgasgebläse > Abgasgebläse > Zustand",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Ein",
       "is_writable": false,
       "is_invalid": false
     },
@@ -6272,40 +6555,10 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__kessel_ausgänge_abgasgebläse_notbetrieb": {
-      "url": "/264/10891/0/0/2400",
-      "valid_values": null,
-      "friendly_name": "Kessel > Ausgänge > Abgasgebläse > Notbetrieb",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__kessel_ausgänge_abgasgebläse_versorgung_abgasgebläse": {
       "url": "/264/10891/0/11497/0",
       "valid_values": null,
       "friendly_name": "Kessel > Ausgänge > Abgasgebläse > Versorgung Abgasgebläse",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Ein",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_ausgänge_abgasgebläse_versorgung_abgasgebläse_anforderung": {
-      "url": "/264/10891/0/11497/2001",
-      "valid_values": null,
-      "friendly_name": "Kessel > Ausgänge > Abgasgebläse > Versorgung Abgasgebläse > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Ein",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_ausgänge_kesselpumpe_anforderung": {
-      "url": "/264/10891/0/11123/2001",
-      "valid_values": null,
-      "friendly_name": "Kessel > Ausgänge > Kesselpumpe > Anforderung",
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Ein",
@@ -6332,16 +6585,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__kessel_ausgänge_rücklaufmischer_anforderung": {
-      "url": "/264/10891/0/11163/2001",
-      "valid_values": null,
-      "friendly_name": "Kessel > Ausgänge > Rücklaufmischer > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Ein",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__kessel_ausgänge_rücklaufmischer_zustand": {
       "url": "/264/10891/0/11163/2002",
       "valid_values": null,
@@ -6349,16 +6592,6 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Halt",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_ausgänge_luftschieber_anforderung": {
-      "url": "/264/10891/0/11115/2001",
-      "valid_values": null,
-      "friendly_name": "Kessel > Ausgänge > Luftschieber > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Ein",
       "is_writable": false,
       "is_invalid": false
     },
@@ -6389,26 +6622,6 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "29.08.2023 14:18:48",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_zählerstände_volllaststunden_seit_reinigung_zähler_rücksetzen_?": {
-      "url": "/264/10891/0/0/15060",
-      "valid_values": null,
-      "friendly_name": "Kessel > Zählerstände > Volllaststunden seit Reinigung > Zähler rücksetzen ?",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_zählerstände_volllaststunden_seit_wartung_zähler_rücksetzen_?": {
-      "url": "/264/10891/0/0/12257",
-      "valid_values": null,
-      "friendly_name": "Kessel > Zählerstände > Volllaststunden seit Wartung > Zähler rücksetzen ?",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
       "is_writable": false,
       "is_invalid": false
     },
@@ -6492,16 +6705,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__kessel_kessel_einstellungen_brenner_verriegeln": {
-      "url": "/264/10891/0/0/12651",
-      "valid_values": null,
-      "friendly_name": "Kessel > Kessel > Einstellungen > Brenner verriegeln",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__kessel_kessel_kessel_kessel_soll_anhebung_aufgrund_hoher_leistungsanforderung": {
       "url": "/264/10891/0/0/13954",
       "valid_values": null,
@@ -6559,16 +6762,6 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Kessel warm halten",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_kessel_restsauerstoff_o2_soll_extrapol": {
-      "url": "/264/10891/12004/0/1056",
-      "valid_values": null,
-      "friendly_name": "Kessel > Kessel > Restsauerstoff > O2 Soll > Extrapol",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
       "is_writable": false,
       "is_invalid": false
     },
@@ -6642,16 +6835,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__kessel_kessel_emissionsmessung_messung_deaktivieren": {
-      "url": "/264/10891/0/0/13277",
-      "valid_values": null,
-      "friendly_name": "Kessel > Kessel > Emissionsmessung > Messung deaktivieren",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__kessel_kessel_pelletsbehälter": {
       "url": "/264/10891/0/0/12005",
       "valid_values": null,
@@ -6659,16 +6842,6 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Nicht voll",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__kessel_kessel_pelletsbehälter_pelletsbehälter_auffüllen": {
-      "url": "/264/10891/0/0/12071",
-      "valid_values": null,
-      "friendly_name": "Kessel > Kessel > Pelletsbehälter > Pelletsbehälter auffüllen",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
       "is_writable": false,
       "is_invalid": false
     },
@@ -7202,16 +7375,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__silo_ausgänge_austragschnecke_anforderung": {
-      "url": "/264/10201/0/11029/2001",
-      "valid_values": null,
-      "friendly_name": "Silo > Ausgänge > Austragschnecke > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Aus",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__silo_ausgänge_austragschnecke_zustand": {
       "url": "/264/10201/0/11029/2002",
       "valid_values": null,
@@ -7282,16 +7445,6 @@
       "is_writable": false,
       "is_invalid": false
     },
-    "eta_192_168_0_25__heizkreis_ausgänge_heizkreismischer_anforderung": {
-      "url": "/264/10101/0/11125/2001",
-      "valid_values": null,
-      "friendly_name": "Heizkreis > Ausgänge > Heizkreismischer > Anforderung",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Schließen",
-      "is_writable": false,
-      "is_invalid": false
-    },
     "eta_192_168_0_25__heizkreis_ausgänge_heizkreismischer_zustand": {
       "url": "/264/10101/0/11125/2002",
       "valid_values": null,
@@ -7306,16 +7459,6 @@
       "url": "/264/10101/0/11124/0",
       "valid_values": null,
       "friendly_name": "Heizkreis > Ausgänge > Heizkreispumpe",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Aus",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__heizkreis_ausgänge_heizkreispumpe_anforderung": {
-      "url": "/264/10101/0/11124/2001",
-      "valid_values": null,
-      "friendly_name": "Heizkreis > Ausgänge > Heizkreispumpe > Anforderung",
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Aus",
@@ -7559,26 +7702,6 @@
       "unit": "",
       "endpoint_type": "TEXT",
       "value": "Aus",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__heizkreis_heizkreis_vorrang_warmwasser": {
-      "url": "/264/10101/0/0/12178",
-      "valid_values": null,
-      "friendly_name": "Heizkreis > Heizkreis > Vorrang Warmwasser",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
-      "is_writable": false,
-      "is_invalid": false
-    },
-    "eta_192_168_0_25__heizkreis_heizkreis_solar_abschöpfen": {
-      "url": "/264/10101/0/0/12652",
-      "valid_values": null,
-      "friendly_name": "Heizkreis > Heizkreis > Solar abschöpfen",
-      "unit": "",
-      "endpoint_type": "TEXT",
-      "value": "Nein",
       "is_writable": false,
       "is_invalid": false
     },
