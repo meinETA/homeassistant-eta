@@ -27,6 +27,9 @@ OPTIONS_UPDATE_ACTION = "options_update_action"
 OPTIONS_ACTION_PARALLEL_ONLY = "update_parallel_requests"
 OPTIONS_ACTION_UPDATE_SELECTED = "update_selected_entities"
 OPTIONS_ACTION_REDISCOVER_AND_UPDATE = "rediscover_and_update_entities"
+OPTIONS_ACTION_RENAME_ENTITIES = "rename_entities_to_named_scheme"
+# Old stable id, staged by the opt-in migration; consumed once in async_setup_entry.
+RENAME_PENDING_FROM = "rename_pending_from"
 ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION = (
     "ignore_decimal_places_restriction_for_writable_entities"
 )

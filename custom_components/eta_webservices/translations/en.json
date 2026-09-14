@@ -41,7 +41,8 @@
     },
     "options": {
         "abort": {
-            "integration_busy": "The integration is still starting up or reloading. Please wait a moment and try configuring it again."
+            "integration_busy": "The integration is still starting up or reloading. Please wait a moment and try configuring it again.",
+            "already_named_scheme": "This installation already uses the name-based (v2) scheme. The one-time migration can only be run on an installation coming from the old (v1) scheme."
         },
         "progress": {
             "prepare_entities": "Preparing entity data in the background. This can take several minutes on large systems. Home Assistant will continue automatically as soon as the process is finished."
@@ -49,9 +50,16 @@
         "step": {
             "init": {
                 "title": "Options",
-                "description": "**Update API & polling settings**: the request limit and update interval are changed.\n**Update selected entities**: update the list of entities added to Home Assistant.\n**Rediscover available entities and update selected entities**: refreshes the entity list and then lets you adjust your selection.",
+                "description": "**Update API & polling settings**: the request limit and update interval are changed.\n\n**Update selected entities**: update the list of entities added to Home Assistant.\n\n**Rediscover available entities and update selected entities**: refreshes the entity list and then lets you adjust your selection.\n\n**Migrate to the name-based scheme (v2)**: one-time migration of an existing installation from IP-based entity ids (`sensor.eta_[ip]_…`) to name-based ones (`sensor.[name]_…`). Only for installations coming from v1.",
                 "data": {
                     "options_update_action": "Action"
+                }
+            },
+            "rename_entities": {
+                "title": "Migrate to the name-based scheme",
+                "description": "This migrates all entity ids of this installation from `sensor.eta_[ip]_…` to `sensor.[name]_…`.\n\nℹ️ **The history is preserved.**",
+                "data": {
+                    "name": "Name (entity id prefix)"
                 }
             },
             "parallel_requests": {
@@ -86,7 +94,8 @@
             "legacy_mode_selected": "Using legacy API mode. Some entities may not be detected, or may be detected in the wrong category.",
             "endpoint_discovery_failed": "Rediscovering available entities failed. Please try again and check the logs if the problem persists.",
             "value_update_error": "At least one endpoint could not be updated. You may have to update the list of available sensors.",
-            "unavailable_sensors": "One or more selected sensors are not available any more or have been moved to a different category. Please check the lists of selected sensors for any missing or wrong sensors. You can find a list of affected sensors in the logs."
+            "unavailable_sensors": "One or more selected sensors are not available any more or have been moved to a different category. Please check the lists of selected sensors for any missing or wrong sensors. You can find a list of affected sensors in the logs.",
+            "migration_warning": "Warning: the entity ids will change. All automations, scripts, templates and dashboards that reference the old entity ids must be updated manually afterwards. The history is preserved."
         }
     },
     "entity": {
@@ -114,7 +123,8 @@
             "options": {
                 "update_parallel_requests": "Update API & polling settings",
                 "update_selected_entities": "Update selected entities",
-                "rediscover_and_update_entities": "Rediscover available entities and update selected entities"
+                "rediscover_and_update_entities": "Rediscover available entities and update selected entities",
+                "rename_entities_to_named_scheme": "Migrate to the name-based scheme (v2)"
             }
         }
     },
