@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from custom_components.eta_webservices import async_migrate_entry
+from custom_components.eta_webservices import _apply_pending_rename, async_migrate_entry
 from custom_components.eta_webservices.const import (
     CHOSEN_FLOAT_SENSORS,
     CHOSEN_PENDING_SENSORS,
@@ -18,6 +18,8 @@ from custom_components.eta_webservices.const import (
     FLOAT_DICT,
     FORCE_LEGACY_MODE,
     PENDING_DICT,
+    RENAME_PENDING_FROM,
+    STABLE_ID,
     SWITCHES_DICT,
     TEXT_DICT,
     WRITABLE_DICT,
@@ -757,3 +759,196 @@ async def test_migration_v7_to_v8_timeslot_without_writable_not_disabled():
         if "disabled_by" in call.kwargs
     ]
     assert disabled == []
+
+
+@pytest.mark.asyncio
+async def test_migrate_to_v9_rewrites_unique_ids_to_url_scheme():
+    """v9 re-keys dicts + chosen lists from the IP-name scheme to the IP-url
+    scheme and rewrites the matching entity registry unique_ids.
+    """
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config_entries = MagicMock()
+    hass.config_entries.async_update_entry = Mock()
+
+    config_entry = MagicMock(spec=ConfigEntry)
+    config_entry.version = 8
+    config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
+
+    old_float = "eta_192_168_0_25_kessel_kesseltemperatur"
+    old_writable = "eta_192_168_0_25_kessel_soll_writable"
+    config_entry.data = {
+        FLOAT_DICT: {old_float: {"url": "/120/10101/0/0/12080", "unit": "°C"}},
+        SWITCHES_DICT: {},
+        TEXT_DICT: {},
+        WRITABLE_DICT: {old_writable: {"url": "/120/10101/0/0/12081", "unit": "°C"}},
+        PENDING_DICT: {},
+        CHOSEN_FLOAT_SENSORS: [old_float],
+        CHOSEN_SWITCHES: [],
+        CHOSEN_TEXT_SENSORS: [],
+        CHOSEN_WRITABLE_SENSORS: [old_writable],
+        CHOSEN_PENDING_SENSORS: [],
+        FORCE_LEGACY_MODE: False,
+        "host": "192.168.0.25",
+        "port": "8080",
+    }
+
+    entities = [
+        _make_entity_entry(old_float, "sensor.eta_192_168_0_25_kesseltemperatur"),
+        _make_entity_entry(old_writable, "number.eta_192_168_0_25_soll"),
+    ]
+    mock_registry = MagicMock()
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=entities,
+        ),
+    ):
+        result = await async_migrate_entry(hass, config_entry)
+
+    assert result is True
+    new_data = hass.config_entries.async_update_entry.call_args.kwargs["data"]
+
+    # stable_id frozen from the IP.
+    assert new_data[STABLE_ID] == "192_168_0_25"
+
+    new_float = _v9_key("/120/10101/0/0/12080")
+    new_writable = _v9_key("/120/10101/0/0/12081", writable=True)
+
+    # Dicts and chosen lists re-keyed to the url scheme.
+    assert new_float in new_data[FLOAT_DICT]
+    assert old_float not in new_data[FLOAT_DICT]
+    assert new_writable in new_data[WRITABLE_DICT]
+    assert new_data[CHOSEN_FLOAT_SENSORS] == [new_float]
+    assert new_data[CHOSEN_WRITABLE_SENSORS] == [new_writable]
+
+    # Registry unique_ids rewritten to match.
+    rewrites = {
+        (call.args[0], call.kwargs["new_unique_id"])
+        for call in mock_registry.async_update_entity.call_args_list
+        if "new_unique_id" in call.kwargs
+    }
+    assert ("sensor.eta_192_168_0_25_kesseltemperatur", new_float) in rewrites
+    assert ("number.eta_192_168_0_25_soll", new_writable) in rewrites
+
+
+@pytest.mark.asyncio
+async def test_migrate_to_v9_keeps_entries_without_url():
+    """An entry without a url yields no stable key and is kept under its old key."""
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config_entries = MagicMock()
+    hass.config_entries.async_update_entry = Mock()
+
+    config_entry = MagicMock(spec=ConfigEntry)
+    config_entry.version = 8
+    config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
+
+    old_key = "eta_192_168_0_25_legacy_no_url"
+    config_entry.data = {
+        FLOAT_DICT: {old_key: {"unit": "°C"}},
+        SWITCHES_DICT: {},
+        TEXT_DICT: {},
+        WRITABLE_DICT: {},
+        PENDING_DICT: {},
+        CHOSEN_FLOAT_SENSORS: [old_key],
+        CHOSEN_SWITCHES: [],
+        CHOSEN_TEXT_SENSORS: [],
+        CHOSEN_WRITABLE_SENSORS: [],
+        CHOSEN_PENDING_SENSORS: [],
+        FORCE_LEGACY_MODE: False,
+        "host": "192.168.0.25",
+        "port": "8080",
+    }
+
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=[],
+        ),
+    ):
+        result = await async_migrate_entry(hass, config_entry)
+
+    assert result is True
+    new_data = hass.config_entries.async_update_entry.call_args.kwargs["data"]
+    assert old_key in new_data[FLOAT_DICT]
+    assert new_data[CHOSEN_FLOAT_SENSORS] == [old_key]
+
+
+def test_apply_pending_rename_rewrites_unique_and_entity_id():
+    """The opt-in migration swaps the old stable-id prefix for the new one on
+    both the unique_id and the entity_id, then clears the marker.
+    """
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config_entries = MagicMock()
+    hass.config_entries.async_update_entry = Mock()
+
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = {
+        RENAME_PENDING_FROM: "192_168_0_25",
+        STABLE_ID: "haus",
+    }
+
+    ent = _make_entity_entry(
+        "eta_192_168_0_25_120_10101_0_0_12080",
+        "sensor.eta_192_168_0_25_kesseltemperatur",
+    )
+    mock_registry = MagicMock()
+    mock_registry.async_get.return_value = None  # no entity_id collision
+
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=[ent],
+        ),
+    ):
+        _apply_pending_rename(hass, entry)
+
+    call = mock_registry.async_update_entity.call_args
+    assert call.args[0] == "sensor.eta_192_168_0_25_kesseltemperatur"
+    assert call.kwargs["new_unique_id"] == "eta_haus_120_10101_0_0_12080"
+    assert call.kwargs["new_entity_id"] == "sensor.haus_kesseltemperatur"
+
+    # Marker removed from the persisted data.
+    updated = hass.config_entries.async_update_entry.call_args.kwargs["data"]
+    assert RENAME_PENDING_FROM not in updated
+
+
+def test_apply_pending_rename_noop_without_marker():
+    """Without the marker the opt-in migration is a no-op."""
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config_entries = MagicMock()
+    hass.config_entries.async_update_entry = Mock()
+
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = {STABLE_ID: "haus"}
+
+    mock_registry = MagicMock()
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=[],
+        ),
+    ):
+        _apply_pending_rename(hass, entry)
+
+    mock_registry.async_update_entity.assert_not_called()
+    hass.config_entries.async_update_entry.assert_not_called()
