@@ -5,6 +5,7 @@
                 "title": "ETA Verbindung",
                 "description": "Gib Host und Port deines ETA-Geräts ein. Die erste Suche nach verfügbaren Endpunkten kann bei großen Anlagen mehrere Minuten dauern.\n\nAktiviere den alten API-Modus nur dann, wenn es Probleme mit der neueren ETA-API gibt.",
                 "data": {
+                    "name": "Name (für die Entity-IDs)",
                     "host": "Host",
                     "port": "Port",
                     "force_legacy_mode": "Erzwinge die alte API Version",

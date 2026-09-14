@@ -704,12 +704,21 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
                 continue
 
             try:
-                unique_key = (
-                    "eta_"
-                    + self._http.host.replace(".", "_")
-                    + "_"
-                    + key.lower().replace(" ", "_")
-                )
+                if self._stable_id:
+                    # Stable id + node url (IP-/language-independent).
+                    unique_key = (
+                        "eta_"
+                        + self._stable_id
+                        + "_"
+                        + uri.strip("/").replace("/", "_")
+                    )
+                else:
+                    unique_key = (
+                        "eta_"
+                        + self._http.host.replace(".", "_")
+                        + "_"
+                        + key.lower().replace(" ", "_")
+                    )
 
                 if self._is_writable(endpoint_info):
                     _LOGGER.debug("Adding %s as writable sensor", uri)

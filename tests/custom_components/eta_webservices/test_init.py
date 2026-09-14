@@ -26,6 +26,48 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 
+def _v9_key(url, writable=False, host="192.168.0.25"):
+    """Return the url-based unique_id migrate_to_v9 assigns to an entry."""
+    key = f"eta_{host.replace('.', '_')}_{url.strip('/').replace('/', '_')}"
+    return key + "_writable" if writable else key
+
+
+def _remap_data_to_v9(data, host="192.168.0.25"):
+    """Rewrite dict keys + chosen lists to the v9 scheme, mirroring migrate_to_v9.
+
+    Lets the pre-v9 key-based expectations in these tests match the url-based
+    unique_ids the full migration now produces.
+    """
+    stable_id = host.replace(".", "_")
+
+    def rebuild(dict_name, chosen_name, writable):
+        local_map = {}
+        old_dict = data.get(dict_name, {})
+        if isinstance(old_dict, dict):
+            rebuilt = {}
+            for old_key, endpoint in old_dict.items():
+                url = endpoint.get("url", "") if isinstance(endpoint, dict) else ""
+                if not url:
+                    rebuilt[old_key] = endpoint
+                    continue
+                new_key = f"eta_{stable_id}_{url.strip('/').replace('/', '_')}"
+                if writable:
+                    new_key += "_writable"
+                local_map[old_key] = new_key
+                rebuilt[new_key] = endpoint
+            data[dict_name] = rebuilt
+        old_list = data.get(chosen_name, [])
+        if isinstance(old_list, list):
+            data[chosen_name] = [local_map.get(i, i) for i in old_list]
+
+    rebuild(FLOAT_DICT, CHOSEN_FLOAT_SENSORS, False)
+    rebuild(SWITCHES_DICT, CHOSEN_SWITCHES, False)
+    rebuild(TEXT_DICT, CHOSEN_TEXT_SENSORS, False)
+    rebuild(PENDING_DICT, CHOSEN_PENDING_SENSORS, False)
+    rebuild(WRITABLE_DICT, CHOSEN_WRITABLE_SENSORS, True)
+    return data
+
+
 @pytest.mark.asyncio
 async def test_async_migrate_entry_v5_to_v6(load_fixture):
     """Test migration from version 5 to 6 with real fixture data.
@@ -99,6 +141,8 @@ async def test_async_migrate_entry_v5_to_v6(load_fixture):
 
     # Merge original options into original data for comparison
     original_data.update(original_options)
+    # v9 rewrites unique_ids to the url-based scheme; align expectations.
+    _remap_data_to_v9(original_data)
 
     # Get the data that was passed to async_update_entry
     hass.config_entries.async_update_entry.assert_called_once()
@@ -283,11 +327,12 @@ async def test_migration_v6_to_v7_adds_pending_fields():
         "CHOSEN_PENDING_SENSORS must be empty after migration"
     )
 
-    # Existing sensors must be untouched.
-    assert float_sensor_key in new_data[FLOAT_DICT], (
+    # Existing sensors must survive migration (v9 rewrites the key to url-based).
+    new_key = _v9_key(float_sensor["url"])
+    assert new_key in new_data[FLOAT_DICT], (
         "Existing float sensor must survive migration"
     )
-    assert new_data[CHOSEN_FLOAT_SENSORS] == [float_sensor_key], (
+    assert new_data[CHOSEN_FLOAT_SENSORS] == [new_key], (
         "Existing chosen float sensors must survive migration"
     )
 
@@ -361,10 +406,11 @@ async def test_migration_v6_to_v7_with_options():
     assert CHOSEN_PENDING_SENSORS in new_data
     assert new_data[CHOSEN_PENDING_SENSORS] == []
     # The migration merges options into data, so the options-overridden
-    # CHOSEN_FLOAT_SENSORS=[float_sensor_key] wins over data's empty list.
-    assert new_data[CHOSEN_FLOAT_SENSORS] == [float_sensor_key]
+    # CHOSEN_FLOAT_SENSORS wins over data's empty list (v9 key is url-based).
+    new_key = _v9_key(float_sensor["url"])
+    assert new_data[CHOSEN_FLOAT_SENSORS] == [new_key]
     # The float sensor from data must still be present
-    assert float_sensor_key in new_data[FLOAT_DICT]
+    assert new_key in new_data[FLOAT_DICT]
 
     assert new_options == {}, "Options should be empty after migration"
 
@@ -445,21 +491,22 @@ async def test_async_migrate_entry_v1_to_v7():
     assert new_data[PENDING_DICT] == {}
     assert new_data[CHOSEN_PENDING_SENSORS] == []
 
+    # v9 rewrites unique_ids to the url-based scheme.
+    normal_key = _v9_key("/uri/normal")
+    custom_key = _v9_key("/uri/custom")
+
     # migrate_to_v6: custom-unit sensor must leave FLOAT_DICT.
-    assert "sensor_normal" in new_data[FLOAT_DICT]
-    assert "sensor_custom" not in new_data[FLOAT_DICT]
+    assert normal_key in new_data[FLOAT_DICT]
+    assert custom_key not in new_data[FLOAT_DICT]
 
     # migrate_to_v6: custom-unit sensor must arrive in TEXT_DICT.
-    assert "sensor_custom" in new_data[TEXT_DICT]
-    assert (
-        new_data[TEXT_DICT]["sensor_custom"]["unit"]
-        == CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT
-    )
+    assert custom_key in new_data[TEXT_DICT]
+    assert new_data[TEXT_DICT][custom_key]["unit"] == CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT
 
     # migrate_to_v6: CHOSEN_FLOAT_SENSORS updated, CHOSEN_TEXT_SENSORS updated.
-    assert "sensor_normal" in new_data[CHOSEN_FLOAT_SENSORS]
-    assert "sensor_custom" not in new_data[CHOSEN_FLOAT_SENSORS]
-    assert "sensor_custom" in new_data[CHOSEN_TEXT_SENSORS]
+    assert normal_key in new_data[CHOSEN_FLOAT_SENSORS]
+    assert custom_key not in new_data[CHOSEN_FLOAT_SENSORS]
+    assert custom_key in new_data[CHOSEN_TEXT_SENSORS]
 
     # Connection fields must be preserved.
     assert new_data["host"] == "192.168.0.25"
@@ -611,15 +658,17 @@ async def test_migration_v7_to_v8_disables_timeslot_with_writable_counterpart():
     )
 
     # Only the two entries with writable counterparts must have been disabled.
+    # (v9 also rewrites unique_ids via new_unique_id=; count only the disables.)
     disabled_entity_ids = {
         call.kwargs["entity_id"] if "entity_id" in call.kwargs else call.args[0]
         for call in mock_registry.async_update_entity.call_args_list
+        if "disabled_by" in call.kwargs
     }
     assert "sensor.ts_monday" in disabled_entity_ids
     assert "sensor.ts_tuesday" in disabled_entity_ids
     assert "sensor.ts_wednesday" not in disabled_entity_ids
     assert "sensor.text_status" not in disabled_entity_ids
-    assert mock_registry.async_update_entity.call_count == 2
+    assert len(disabled_entity_ids) == 2
 
 
 @pytest.mark.asyncio
@@ -701,4 +750,10 @@ async def test_migration_v7_to_v8_timeslot_without_writable_not_disabled():
         result = await async_migrate_entry(hass, config_entry)
 
     assert result is True
-    mock_registry.async_update_entity.assert_not_called()
+    # v9 may rewrite the unique_id, but nothing must be disabled here.
+    disabled = [
+        call
+        for call in mock_registry.async_update_entity.call_args_list
+        if "disabled_by" in call.kwargs
+    ]
+    assert disabled == []
