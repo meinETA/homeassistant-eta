@@ -30,7 +30,7 @@ async def test_get_all_sensors_falls_back_to_v11_on_version_check_timeout(
     class FakeDiscoveryV11:
         """Fake v1.1 discovery implementation."""
 
-        def __init__(self, http_client, progress_callback=None) -> None:
+        def __init__(self, http_client, progress_callback=None, stable_id=None) -> None:
             self._progress_callback = progress_callback
 
         async def get_all_sensors(
@@ -43,7 +43,7 @@ async def test_get_all_sensors_falls_back_to_v11_on_version_check_timeout(
     class FakeDiscoveryV12:
         """Fake v1.2 discovery implementation."""
 
-        def __init__(self, http_client, progress_callback=None) -> None:
+        def __init__(self, http_client, progress_callback=None, stable_id=None) -> None:
             self._progress_callback = progress_callback
 
         async def get_all_sensors(
@@ -92,7 +92,7 @@ async def test_get_all_sensors_reports_progress_for_v12_route(monkeypatch):
     class FakeDiscoveryV12:
         """Fake v1.2 discovery implementation."""
 
-        def __init__(self, http_client, progress_callback=None) -> None:
+        def __init__(self, http_client, progress_callback=None, stable_id=None) -> None:
             self._progress_callback = progress_callback
 
         async def get_all_sensors(
@@ -105,7 +105,7 @@ async def test_get_all_sensors_reports_progress_for_v12_route(monkeypatch):
     class FakeDiscoveryV11:
         """Fake v1.1 discovery implementation."""
 
-        def __init__(self, http_client, progress_callback=None) -> None:
+        def __init__(self, http_client, progress_callback=None, stable_id=None) -> None:
             self._progress_callback = progress_callback
 
         async def get_all_sensors(

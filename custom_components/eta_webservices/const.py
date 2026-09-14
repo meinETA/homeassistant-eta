@@ -16,6 +16,9 @@ CHOSEN_TEXT_SENSORS = "chosen_text_sensors"
 CHOSEN_WRITABLE_SENSORS = "chosen_writable_sensors"
 CHOSEN_PENDING_SENSORS = "chosen_pending_sensors"
 
+# Frozen per-entry id; anchor of entity unique_ids (independent of IP + node names).
+STABLE_ID = "stable_id"
+
 FORCE_LEGACY_MODE = "force_legacy_mode"
 ENABLE_DEBUG_LOGGING = "enable_debug_logging"
 AUTO_SELECT_ALL_ENTITIES = "auto_select_all_entities"

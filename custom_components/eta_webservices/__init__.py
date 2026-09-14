@@ -5,13 +5,14 @@ import logging
 from typing import Any
 
 from homeassistant import config_entries, core
-from homeassistant.const import Platform
+from homeassistant.const import CONF_HOST, Platform
 from homeassistant.helpers import entity_registry as er
 
 from .config_flow import EtaFlowHandler
 from .const import (
     CHOSEN_FLOAT_SENSORS,
     CHOSEN_PENDING_SENSORS,
+    CHOSEN_SWITCHES,
     CHOSEN_TEXT_SENSORS,
     CHOSEN_WRITABLE_SENSORS,
     CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT,
@@ -28,6 +29,8 @@ from .const import (
     PENDING_UPDATE_COORDINATOR,
     REQUEST_SEMAPHORE,
     SENSOR_UPDATE_COORDINATOR,
+    STABLE_ID,
+    SWITCHES_DICT,
     TEXT_DICT,
     UPDATE_INTERVAL,
     WRITABLE_DICT,
@@ -104,7 +107,7 @@ async def async_setup_entry(
     return True
 
 
-async def async_migrate_entry(  # noqa: D103
+async def async_migrate_entry(  # noqa: C901, D103
     hass: core.HomeAssistant, config_entry: config_entries.ConfigEntry
 ):
     # Move all sensors with the custom CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT unit
@@ -169,6 +172,78 @@ async def async_migrate_entry(  # noqa: D103
                 disabled_by=er.RegistryEntryDisabler.INTEGRATION,
             )
 
+    def migrate_to_v9(new_data: dict[str, Any]):
+        # Stable identity: unique_ids from "IP + translated name" -> "stable id +
+        # node url"; entity_id is kept, so history/automations survive. No user
+        # name yet, so freeze the current IP as the id (konzept-v2) - this also
+        # matches the host-based diagnostic entities, which need no extra rewrite.
+        stable_id = str(new_data.get(CONF_HOST, "")).replace(".", "_")
+        new_data[STABLE_ID] = stable_id
+
+        # Remap each chosen-list against its OWN dict only. A shared map is
+        # unsafe: two same-named nodes share a key across dicts, so the last
+        # rebuild clobbers it -> chosen points at the wrong dict (KeyError).
+        combined_map: dict[str, str] = {}
+
+        def _rebuild(dict_name: str, chosen_name: str, writable: bool):
+            local_map: dict[str, str] = {}
+            old_dict = new_data.get(dict_name, {})
+            if isinstance(old_dict, dict):
+                rebuilt: dict[str, Any] = {}
+                for old_key, endpoint in old_dict.items():
+                    url = endpoint.get("url", "") if isinstance(endpoint, dict) else ""
+                    if not url:
+                        # keep untouched if we cannot derive a stable id
+                        rebuilt[old_key] = endpoint
+                        continue
+                    new_key = f"eta_{stable_id}_{url.strip('/').replace('/', '_')}"
+                    if writable:
+                        new_key += "_writable"
+                    local_map[old_key] = new_key
+                    combined_map.setdefault(old_key, new_key)
+                    rebuilt[new_key] = endpoint
+                new_data[dict_name] = rebuilt
+
+            old_list = new_data.get(chosen_name, [])
+            if isinstance(old_list, list):
+                new_data[chosen_name] = [local_map.get(item, item) for item in old_list]
+
+        _rebuild(FLOAT_DICT, CHOSEN_FLOAT_SENSORS, writable=False)
+        _rebuild(SWITCHES_DICT, CHOSEN_SWITCHES, writable=False)
+        _rebuild(TEXT_DICT, CHOSEN_TEXT_SENSORS, writable=False)
+        _rebuild(PENDING_DICT, CHOSEN_PENDING_SENSORS, writable=False)
+        _rebuild(WRITABLE_DICT, CHOSEN_WRITABLE_SENSORS, writable=True)
+
+        # Host/port utility entities (errors, resend button, nbr/latest error)
+        # aren't in the dicts; swap their IP prefix for the stable id.
+        host_slug = str(new_data.get(CONF_HOST, "")).replace(".", "_")
+        old_prefix = "eta_" + host_slug + "_"
+        new_prefix = "eta_" + stable_id + "_"
+
+        entity_registry = er.async_get(hass)
+        entities = er.async_entries_for_config_entry(
+            entity_registry, config_entry.entry_id
+        )
+        assigned: set[str] = set()
+        for entity_entry in entities:
+            uid = entity_entry.unique_id
+            new_unique_id = combined_map.get(uid)
+            if new_unique_id is None and host_slug and uid.startswith(old_prefix):
+                new_unique_id = new_prefix + uid[len(old_prefix) :]
+            if new_unique_id is None or new_unique_id == uid:
+                continue
+            if new_unique_id in assigned:
+                _LOGGER.warning(
+                    "Skipping unique_id migration for %s: target %s already assigned",
+                    entity_entry.entity_id,
+                    new_unique_id,
+                )
+                continue
+            entity_registry.async_update_entity(
+                entity_entry.entity_id, new_unique_id=new_unique_id
+            )
+            assigned.add(new_unique_id)
+
     def _get_current_data():
         current_data = config_entry.data.copy()
         if config_entry.options:
@@ -202,6 +277,10 @@ async def async_migrate_entry(  # noqa: D103
     if current_version == 7:
         migrate_to_v8(new_data)
         current_version = 8
+        is_migrated = True
+    if current_version == 8:
+        migrate_to_v9(new_data)
+        current_version = 9
         is_migrated = True
     if is_migrated:
         hass.config_entries.async_update_entry(

@@ -5,6 +5,7 @@
                 "title": "ETA connection",
                 "description": "Enter the host (IP) and port of your ETA terminal. The initial scan for available endpoints can take several minutes on large systems.\n\nEnable old API mode only if you have problems with the newer ETA API.",
                 "data": {
+                    "name": "Name (used to build entity ids)",
                     "host": "Host",
                     "port": "Port",
                     "force_legacy_mode": "Force old API mode",

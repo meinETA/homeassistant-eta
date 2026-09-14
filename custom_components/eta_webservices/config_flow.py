@@ -10,12 +10,13 @@ import time
 import voluptuous as vol
 
 from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, ConfigFlow, OptionsFlow
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 import homeassistant.helpers.entity_registry as er
+from homeassistant.util import slugify
 
 from .api import EtaAPI, ETAEndpoint
 from .const import (
@@ -42,6 +43,7 @@ from .const import (
     PAUSE_COORDINATORS_START_TIMESTAMP,
     PENDING_DICT,
     REQUEST_SEMAPHORE,
+    STABLE_ID,
     SWITCHES_DICT,
     TEXT_DICT,
     UPDATE_INTERVAL,
@@ -317,7 +319,7 @@ def _is_invalid_host_input(host: str) -> bool:
 class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
     """Config flow for Eta."""
 
-    VERSION = 8
+    VERSION = 9
     CONNECTION_CLASS = CONN_CLASS_CLOUD_POLL
 
     def __init__(self) -> None:
@@ -526,7 +528,8 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
             self.data.setdefault(MAX_PARALLEL_REQUESTS, DEFAULT_MAX_PARALLEL_REQUESTS)
             self.data.setdefault(UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
             return self.async_create_entry(
-                title=f"ETA at {self.data[CONF_HOST]}", data=self.data
+                title=self.data.get(CONF_NAME) or f"ETA at {self.data[CONF_HOST]}",
+                data=self.data,
             )
 
         return await self._show_config_form_endpoint()
@@ -542,6 +545,9 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
+                    vol.Required(
+                        CONF_NAME, default=user_input.get(CONF_NAME, "")
+                    ): vol.All(str, vol.Length(min=1)),
                     vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
                     vol.Required(CONF_PORT, default=user_input[CONF_PORT]): vol.All(
                         vol.Coerce(int), vol.Range(min=1, max=65535)
@@ -598,6 +604,9 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
         text_dict = {}
         writable_dict = {}
         pending_dict = {}
+        # Name = frozen identity (konzept-v2): unique_id = eta_<slug(name)>_<uri>.
+        # Frozen (not the changeable title), so ids are reproducible on re-add.
+        stable_id = self.data.setdefault(STABLE_ID, slugify(self.data[CONF_NAME]))
         new_api_version = await eta_client.get_all_sensors(
             force_legacy_mode,
             float_dict,
@@ -606,6 +615,7 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
             writable_dict,
             pending_dict,
             progress_callback=progress_callback,
+            stable_id=stable_id,
         )
 
         if not new_api_version:
@@ -688,6 +698,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
         text_dict = {}
         writable_dict = {}
         pending_dict = {}
+        stable_id = (current_data or self.data).get(STABLE_ID)
         new_api_version = await eta_client.get_all_sensors(
             force_legacy_mode,
             float_dict,
@@ -696,6 +707,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
             writable_dict,
             pending_dict,
             progress_callback=progress_callback,
+            stable_id=stable_id,
         )
         if current_data is not None:
             current_data[PAUSE_COORDINATORS_START_TIMESTAMP] = None
