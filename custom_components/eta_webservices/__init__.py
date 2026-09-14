@@ -27,6 +27,7 @@ from .const import (
     MAX_PARALLEL_REQUESTS,
     PENDING_DICT,
     PENDING_UPDATE_COORDINATOR,
+    RENAME_PENDING_FROM,
     REQUEST_SEMAPHORE,
     SENSOR_UPDATE_COORDINATOR,
     STABLE_ID,
@@ -56,11 +57,65 @@ PLATFORMS: list[Platform] = [
 _LOGGER = logging.getLogger(__name__)
 
 
+def _apply_pending_rename(
+    hass: core.HomeAssistant, entry: config_entries.ConfigEntry
+) -> None:
+    """Rewrite unique_id + entity_id from the old to the new stable id.
+
+    Deferred to setup (before platforms load) because a live unique_id change is
+    ignored; the entry is reused in place, so history is kept.
+    """
+    old_stable = entry.data.get(RENAME_PENDING_FROM)
+    if not old_stable:
+        return
+    new_stable = str(entry.data.get(STABLE_ID, ""))
+    old_uid_prefix = "eta_" + old_stable + "_"
+    new_uid_prefix = "eta_" + new_stable + "_"
+    eid_old_prefix = "eta_" + old_stable
+
+    entity_registry = er.async_get(hass)
+    for ent in er.async_entries_for_config_entry(entity_registry, entry.entry_id):
+        changes: dict[str, str] = {}
+        if ent.unique_id.startswith(old_uid_prefix):
+            changes["new_unique_id"] = (
+                new_uid_prefix + ent.unique_id[len(old_uid_prefix) :]
+            )
+        # entity_id is v1-preserved "eta_<ip>_<rest>" or freshly built
+        # "eta_<rest>"; strip whichever prefix matches, prepend the new stable id.
+        domain, _, object_id = ent.entity_id.partition(".")
+        rest = None
+        if object_id.startswith(eid_old_prefix + "_"):
+            rest = object_id[len(eid_old_prefix) + 1 :]
+        elif object_id.startswith("eta_"):
+            rest = object_id[len("eta_") :]
+        if rest is not None:
+            candidate = f"{domain}.{new_stable}_{rest}"
+            if (
+                candidate != ent.entity_id
+                and entity_registry.async_get(candidate) is None
+            ):
+                changes["new_entity_id"] = candidate
+        if changes:
+            try:
+                entity_registry.async_update_entity(ent.entity_id, **changes)
+            except ValueError:
+                _LOGGER.warning(
+                    "Skipping rename of %s: target already exists", ent.entity_id
+                )
+
+    new_data = dict(entry.data)
+    new_data.pop(RENAME_PENDING_FROM, None)
+    hass.config_entries.async_update_entry(entry, data=new_data)
+    _LOGGER.info("Applied ETA opt-in rename to the '%s' scheme", new_stable)
+
+
 async def async_setup_entry(
     hass: core.HomeAssistant, entry: config_entries.ConfigEntry
 ) -> bool:
     """Set up platform from a ConfigEntry."""
     hass.data.setdefault(DOMAIN, {})
+    # Before the update listener is added, so clearing the marker triggers no reload.
+    _apply_pending_rename(hass, entry)
     config = dict(entry.data)
     # Registers update listener to update config entry when options are updated.
     entry.async_on_unload(entry.add_update_listener(options_update_listener))
