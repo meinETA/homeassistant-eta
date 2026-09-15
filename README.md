@@ -204,7 +204,7 @@ Found a bug or have an idea? Please [open an issue](https://github.com/meinETA/h
 
 ## Credits
 
-Originally created by [nigl](https://github.com/nigl/homeassistant_eta_integration) and substantially extended by [Tidone](https://github.com/Tidone/homeassistant_eta_integration); now maintained by the meinETA community. Built on the ETA REST API.
+Originally created by [nigl](https://github.com/nigl/homeassistant_eta_integration) and substantially extended by [Tidone](https://github.com/Tidone/homeassistant_eta_integration); now maintained by Tidone and [christofpichler](https://github.com/christofpichler). Built on the ETA REST API.
 
 ## License
 
