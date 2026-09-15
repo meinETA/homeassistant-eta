@@ -1,218 +1,211 @@
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)
+# ETA Heating for Home Assistant
 
-# ETA Integration for Home Assistant
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
+[![GitHub release](https://img.shields.io/github/v/release/meinETA/homeassistant-eta?display_name=tag)](https://github.com/meinETA/homeassistant-eta/releases)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.5%2B-41BDF5.svg)](https://www.home-assistant.io/)
+[![Validate](https://github.com/meinETA/homeassistant-eta/actions/workflows/hassfest.yaml/badge.svg)](https://github.com/meinETA/homeassistant-eta/actions/workflows/hassfest.yaml)
+[![Tests](https://github.com/meinETA/homeassistant-eta/actions/workflows/tests.yaml/badge.svg)](https://github.com/meinETA/homeassistant-eta/actions/workflows/tests.yaml)
+[![License: MIT](https://img.shields.io/github/license/meinETA/homeassistant-eta.svg)](LICENSE)
+[![Buy us a coffee](https://img.shields.io/badge/Donate-Buy%20us%20a%20coffee-ffd557.svg)](https://www.buymeacoffee.com/christofpichler)
 
-Integration of ETA (Heating) sensors and switches to Home Assistant
+Home Assistant integration for **ETA heating systems** (pellet, wood, and combined boilers). It reads sensors, states and counters from your ETA unit, and lets you switch and set writable parameters — all discovered automatically over the local [ETA REST API](https://www.meineta.at/javax.faces.resource/downloads/ETA-RESTful-v1.2.pdf.xhtml?ln=default&v=0), no cloud required.
 
-This integration uses the [ETA REST API](https://www.meineta.at/javax.faces.resource/downloads/ETA-RESTful-v1.2.pdf.xhtml?ln=default&v=0) to get sensor values and set switch states from the ETA heating unit.
+[![Open your Home Assistant instance and open this repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=meinETA&repository=homeassistant-eta&category=integration)
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=eta_webservices)
 
-This is a fork of [nigl's repo](https://github.com/nigl/homeassistant_eta_integration) with the following changes:
+![ETA Heating devices in Home Assistant](images/devices_overview.png)
 
--   Friendly sensor names
--   Shows the current values for all sensors during configuration
-    -   This makes it way easier to select the relevant sensors
--   Implemented Switches
--   Implemented Text Sensors (state of some endpoints, e.g. `Bereit` (`Ready`) or `Heizen` (`Heating`) for the boiler)
--   Implemented error sensors:
-    -   A binary sensor, which activates if the ETA terminal reports at least one error
-    -   A sensor, which shows the number of active errors
-    -   A sensor, which shows the latest active error message
--   Implemented error events ([details](#error-events))
--   Implemented a custom service to set the value of an endpoint ([details](#set-value-service))
--   Implemented writable sensors ([details](#writable-sensors))
--   Implemented time sensors (only for API v1.2 or higher)
+## Contents
+
+[Features](#features) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Troubleshooting](#troubleshooting)
+
+## Features
+
+- **Automatic discovery** of every available endpoint on your ETA unit — with live values shown during setup so you can pick the ones you want.
+- **Sensors** for all numeric values (temperatures, pressures, power, flow, counters, …).
+- **State sensors** for text states (e.g. `Ready`, `Heating`).
+- **Switches** for on/off parameters, detected language-independently.
+- **Writable parameters** as `number` entities for setpoints (°C, kg, %, …).
+- **Schedules** as `time` entities (API v1.2+).
+- **Error monitoring**: a binary sensor for active errors, the active-error count, the latest error message, plus [error events](#error-events) for automations.
+- **Services** to write values directly to the unit ([details](#custom-services)).
+- **Stable entity identities**: entity ids stay stable across firmware updates, terminal language changes and IP changes.
+- **Energy Dashboard** ready ([details](#integrating-the-eta-unit-into-the-energy-dashboard)).
 
 ## Screenshots
 
-|            Sensors             |             Controls             |              Diagnostic              |
-| :----------------------------: | :------------------------------: | :----------------------------------: |
-| ![Sensors](images/sensors.png) | ![Controls](images/controls.png) | ![Diagnostic](images/diagnostic.png) |
+Every ETA function block becomes a device, and its entities are grouped into the standard Home Assistant cards (Sensors, Configuration, Diagnostic):
+
+|            Sensors             |              Diagnostic              |
+| :----------------------------: | :----------------------------------: |
+| ![Sensors](images/sensors.png) | ![Diagnostic](images/diagnostic.png) |
+
+## Prerequisites
+
+- **Compatibility:** works with any ETA unit that exposes the local webservices/REST API — pellet, wood and combined boilers.
+- **Activate the webservices API on your ETA unit first** (see the official [documentation](https://www.meineta.at/javax.faces.resource/downloads/ETA-RESTful-v1.2.pdf.xhtml?ln=default&v=0)):
+  - Log in to `meinETA`
+  - Go to `Settings` in the **middle** of the page (not the bottom one!)
+  - Click `Activate Webservices` and follow the instructions
+- **API version 1.2 or higher is recommended.** On older firmware the integration falls back to a compatibility mode where some sensors may not be detected or identified correctly, and writable sensors may not work reliably (v1.1 lacks the endpoints needed to query value details). Firmware files are on `meinETA` (`Settings at the bottom → Installation & Software`).
+- **Use a fixed address for the unit.** With stable entity identities a changed IP no longer breaks your entities or history, but the integration still connects to the unit by address — so a static DHCP lease (or a DNS name) keeps it reachable.
 
 ## Installation
 
-This integration can be configured directly in Home Assistant via HACS:
+### HACS (recommended)
 
-1. Go to `HACS` -> `Integrations` -> Click on the three dots in the top right corner --> Click on `Userdefined repositories`
-1. Insert `https://github.com/Tidone/homeassistant_eta_integration` into the field `Repository`
-1. Choose `Integration` in the dropdown field `Category`.
-1. Click on the `Add` button.
-1. Then search for the new added `ETA` integration, click on it and the click on the button `Download` on the bottom right corner
-1. Restart Home Assistant when it says to.
-1. In Home Assistant, go to `Configuration` -> `Integrations` -> Click `+ Add Integration`
-   Search for `Eta Sensors` and follow the instructions.
-    - **Note**: After entering the host and port the integration will query information about every possible endpoint. This step can take a very long time, so please have some patience.
-      - As a rough reference: on newer ETA units with around `800` discovered entities, the initial setup can take around `8-15 minutes`.
-    - **Note**: This only affects the configuration step when adding the integration. After the integration has been configured, only the selected entities will be queried.
-    - **Note**: The integration will also query the current sensor values of all endpoints when clicking on `Configure`. This will also take a bit of time, but not as much as when adding the integration for the first time.
+This integration is available in the **HACS default store**.
 
-## General Notes
+1. Open **HACS** and search for **ETA Heating** (or use the *Open in HACS* button above).
+2. Click **Download**.
+3. Restart Home Assistant.
 
--   You have to activate the webservices API on your ETA heating unit first: see the "official" [documentation](https://www.meineta.at/javax.faces.resource/downloads/ETA-RESTful-v1.2.pdf.xhtml?ln=default&v=0):
+### Manual
 
-    -   Log in to `meinETA`
-    -   Go to `Settings` in the middle of the page (not the bottom one!)
-    -   Click on `Activate Webservices`
-    -   Follow the instructions
+1. Copy the `custom_components/eta_webservices` folder into your Home Assistant `config/custom_components` directory.
+2. Restart Home Assistant.
 
--   For best results, your ETA heating unit has to support at least API version **1.2**. If you are on an older version the integration will fall back to a compatibility mode, which means that some sensors may not be correctly detected/identified. The ones that are correctly detected and identified should still work without problems.\
-    Writable sensors may not work correctly in this mode (they may set the wrong value), because version 1.1 lacks the necessary functions to query details about sensors.\
-    If you want to update the firmware of your ETA heating unit you can find the firmware files on `meinETA` (`Settings at the bottom` -> `Installation & Software`).
+### Add the integration
 
--   Your ETA heating unit needs a static IP address! Either configure the IP adress directly on the ETA terminal, or set the DHCP server on your router to give the ETA unit a static lease.
+Go to **Settings → Devices & Services → Add Integration**, search for **ETA Heating** and follow the steps (or use the *Add integration* button above).
+
+During setup the integration discovers everything on your unit and shows the counts per category, so you can pick exactly what you want (or add everything at once):
+
+![Choosing entities during setup](images/setup_choose_entities.png)
+
+> **Note:** After you enter host and port, the integration scans every available endpoint once. On large systems (~800 entities) this initial scan can take **8–15 minutes** — please be patient. This only happens when adding the integration or when you explicitly rediscover; normal operation only polls the entities you selected.
 
 ## Related Integrations
 
-You can check out this HACS integration [eta-flow](https://github.com/orazefabian/eta-flow) which provides an animated heat-flow card for visualizing an ETA heating system.
+- [eta-flow](https://github.com/orazefabian/eta-flow) — an animated heat-flow card for visualizing an ETA heating system.
 
 ## Updating the List of Sensors
 
-If the sensors on the ETA unit are changed, the integration can be updated to reflect that. This is useful for example if new sensors are added, which should be shown in HA.
+If the sensors on the ETA unit change (e.g. new hardware is added), you can refresh the list:
 
-To do that follow these steps:
-1. Go to `Settings` -> `Devices & services` -> `ETA Sensors`
-1. Click on the gear symbol (`Configure`)
-1. In the popup dialog, select one of these actions:
-    - `Update parallel API requests only`:
-      - Only updates the request limit.
-      - Does not refresh entity values and does not rediscover entities.
-    - `Update selected entities`:
-      - Refreshes values of your currently selected entities.
-      - Does not rediscover the entity list.
-    - `Rediscover available entities and update selected entities`:
-      - Performs a full rediscovery and then opens entity selection so you can review and adjust your list.
-1. `Maximum parallel API requests` controls how many API requests are sent in parallel.
-    - Higher values can speed up updates, but increase load on the ETA unit and may cause errors/timeouts on older or slower devices.
-    - Lower values are safer for older ETA units.
-    - Practical starting points:
-      - Older ETA units: `3-5`
-      - Newer ETA units: `8-15` (if stable)
-    - If you see API errors/timeouts, reduce this value step by step.
-    - The value is selected via dropdown (`1, 2, 3, 5, 8, 10, 15`).
-1. New sensors will then be added to the list, where you can select them in the next step.
-1. Deleted or renamed sensors will be handled differently depending on if the sensor has previously been added to HA:
-    - If the sensor has not been added to HA, it will simply be removed from the list. If it has been renamed on the ETA terminal, it will show its new name instead.
-    - If the sensor has previously been added to HA, its entity will remain in HA, but it will be orphaned. HA will show a warning that the integration does not provide this entity any more.\
-    **If the sensor has been renamed in the ETA terminal, its new name will show up in the list instead, but the integration will not link the new name to the old entity!** You have to find the new name in the list of available sensors and add it again. If you want to keep the history of the entitiy you have to manually rename the new entity to its old name. If you do this the integration will orphan this entity again the next time the list of sensors is updated in the options, because it can't keep track if the user renames the entities.
+1. Go to `Settings → Devices & Services → ETA Heating`.
+2. Click the gear symbol (`Configure`).
+3. Choose one of the actions:
+   - **Update API & polling settings** — only changes the request limit and update interval.
+   - **Update selected entities** — refreshes the values of your selected entities without rediscovering.
+   - **Rediscover available entities and update selected entities** — performs a full rediscovery, then lets you review and adjust your selection.
 
-## Logs
+**Maximum parallel API requests** controls how many requests are sent at once. Higher values are faster but put more load on the unit and can cause timeouts on older devices.
 
-If you have problems setting up this integration you can enable verbose logs on the dialog where you enter your ETA credentials.
-This will log all communication responses, which may help locating the problem.
-After setting up the integration you can download the logs at `Settings` -> `System` -> `Logs` -> `Download Full Log`.
-Please note that these logs may be very large, and contain sensitive information from other integrations. If you want to post them somewhere you may have to manually edit the file and delete the lines from before you started setting up this integration.
+- Older ETA units: `3–5`
+- Newer ETA units: `8–15` (if stable)
+- If you see API errors/timeouts, reduce the value step by step.
+
+> **Renamed or deleted sensors:** if a sensor you added is renamed on the ETA terminal, the integration cannot automatically link the new name to the existing entity. The old entity is orphaned and the new name appears in the list to be added again. To keep the history, rename the new entity back to the old entity id manually.
 
 ## Error Events
 
-This integration publishes an event whenever a new error is reported by the ETA terminal, or when an active error is cleared.
-These events can then be handled in automations.
+The integration publishes an event whenever the ETA terminal reports a new error, or an active error is cleared. These can be handled in automations.
 
-### Event Info
+- New error → `eta_webservices_error_detected`
+- Cleared error → `eta_webservices_error_cleared`
 
-If a new error is reported, an `eta_webservices_error_detected` event is published.\
-If an error is cleared, an `eta_webservices_error_cleared` event is published.
+Each event carries this data:
 
-Every event has the following data:
 | Name | Info | Sample Data |
 |------------|----------------------------------------------------|---------------------------------------------------------------------------------------------|
 | `msg` | Short error message | Water pressure too low 0,00 bar |
 | `priority` | Error priority | Error |
 | `time` | Time of the error, as reported by the ETA terminal | 2011-06-29T12:48:12 |
 | `text` | Detailed error message | Top up heating water! If this warning occurs more than once a year, please contact plumber. |
-| `fub` | Functional Block of the error | Kessel |
+| `fub` | Functional block of the error | Kessel |
 | `host` | Address of the ETA terminal connection | 0.0.0.0 |
 | `port` | Port of the ETA terminal connection | 8080 |
 
-### Checking Event Info
+### Inspecting a live event
 
-If you want to check the data of an active event, you can follow these steps.
+> Only possible while the ETA terminal actually reports an active error.
 
-**Note**: This is only possible if the ETA terminal actually reports an ective error!
+1. Open Home Assistant in two tabs.
+2. Tab 1: `Settings → Devices & Services → Devices → ETA`.
+3. Tab 2: `Developer tools → Events`, subscribe to `eta_webservices_error_detected`.
+4. Tab 1: click the `Resend Error Events` button.
+5. Tab 2: the detailed event info appears.
 
-1. Open Home Assistant in two tabs
-1. On the first tab go to `Settings` -> `Devices & Services` -> `Devices` on top -> `ETA`
-1. On the second tab go to `Developer tools` -> `Events` on top -> Enter `eta_webservices_error_detected` in the field `Event to subscribe to` -> Click on `Start Listening`
-1. On the first tab click on the `Resend Error Events` button
-1. On the second tab you can now see the detailed event info
+### Sending a test event
 
-### Sending a Test Event
-
-If you want to send a test event to check if your automations work you can follow these steps:
-
-1. Go to `Developer tools` -> `Events` on top
-1. Enter `eta_webservices_error_detected` in the field `Event type`
-1. Enter your test payload in the `Event data` field
-    - ```
-      msg: Test
-      priority: Error
-      time: "2023-11-06T12:48:12"
-      text: This is a test error.
-      fub: Kessel
-      host: 0.0.0.0
-      port: 8080
-      ```
-1. Click on `Fire Event`
-1. Your automation should have been triggered
+1. `Developer tools → Events`.
+2. Event type: `eta_webservices_error_detected`.
+3. Event data:
+   ```yaml
+   msg: Test
+   priority: Error
+   time: "2023-11-06T12:48:12"
+   text: This is a test error.
+   fub: Kessel
+   host: 0.0.0.0
+   port: 8080
+   ```
+4. Click `Fire Event` — your automation should trigger.
 
 ## Writable Sensors
 
-This implementation supports setting the value of sensors which have a unit of `°C`, `kg`, or `%`.
+Parameters with a unit of `°C`, `kg` or `%` can be written back to the unit. After adding them via `Configure`, they appear on the ETA device page under **Configuration**.
 
-These writable sensors are not immediately added to the dashboard in Home Assistant. You can find the sensors (after adding them via configuration) on the ETA device page under `Config`.
+- The first time you open `Configure` after updating from a version without writable-sensor support, the step takes a while because the integration re-queries the list of valid values from the unit.
+- **API v1.1 caveat:** v1.1 lacks the endpoints to query valid value ranges and to tell whether a sensor is writable at all. In compatibility mode the integration guesses the ranges and lists all sensors as potentially writable — you choose the ones that actually are.
 
-### Migration
-
-You can add writable sensors by clicking on `Configure` on the ETA Integeration page in Home Assistant.
-If you are clicking this button for the first time after updating this integration from a previous version without support for these sensor types, this step will take a while because the integration will have to query the list of valid sensors from the ETA unit again.
-
-### Caveats on APi v1.1
-
-API v1.1 does not have some endpoints, which are used to query the valid values of writable sensors.
-If your terminal is on this API version, the integration will fall back to a compatibility mode and guess the valid value ranges for these sensors.
-
-Also, on API v1.1 it is not possible to query if a sensor is writable at all! This integration therefore shows all sensors in the list of writable sensors, and the user has to choose the ones which are actually writable.
-
-### Legal Notes
-
-The authors cannot be made responsible if the user renders their ETA heating unit unusable because they set a sensor to an invalid value.
+> **Caution:** setting a parameter to an invalid value can render your ETA unit unusable. The authors are not responsible for damage caused by writing wrong values.
 
 ## Custom Services
 
-THis integration provides some custom services. More information can be found on the [wiki](https://github.com/Tidone/homeassistant_eta_integration/wiki/Custom-Services).
+The integration provides services to write values to the unit. See the [wiki](https://github.com/meinETA/homeassistant-eta/wiki/Custom-Services) for details.
 
 ## Integrating the ETA Unit into the Energy Dashboard
 
-You can add the ETA Heating Unit into the Energy Dashboard by converting the total pellets consumption into kWh, and adding that as a gas heater.
+You can add the ETA unit to the Energy Dashboard by converting the total pellet consumption (kg) to energy (kWh) and adding it as a gas source.
 
-To convert the consumption you have to add a custom template sensor to your `configuration.yaml` file:
+Add a template sensor to your `configuration.yaml` (replace the entity id with your own total-consumption sensor). The factor `4.8` is an approximate kWh-per-kg value for wood pellets — adjust it for your fuel:
 
-```
+```yaml
 # Convert pellet consumption (kg) to energy consumption (kWh)
 template:
   - sensor:
-    - name: eta_total_energy
-      unit_of_measurement: kWh
-      device_class: energy
-      state_class: total_increasing
-      state: >
-        {% if states('sensor.eta_<IP>_kessel_zahlerstande_gesamtverbrauch') | float(default=none) is not none %}
-          {{ states('sensor.eta_<IP>_kessel_zahlerstande_gesamtverbrauch') | float(default=0.0) | multiply(4.8) | round(1) }}
-        {% else %}
-          {{ states('sensor.eta_<IP>_kessel_zahlerstande_gesamtverbrauch') }}
-        {% endif %}
+      - name: eta_total_energy
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        state: >
+          {% set src = states('sensor.eta_kessel_zahlerstande_gesamtverbrauch') %}
+          {% if src not in ['unknown', 'unavailable', 'none'] %}
+            {{ src | float(0) | multiply(4.8) | round(1) }}
+          {% else %}
+            {{ src }}
+          {% endif %}
 ```
 
-Make sure to replace the `&lt;IP> field with the IP address of your ETA unit. You can also check the sensor id by going to the options of the sensor, and searching for it in the entities.
+You can also create the same helper from the UI:
 
-You can also use the web interface to create a template helper:
 ![template helper](images/template_sensor.png)
 
-You can then add your ETA heating unit to your Energy Dashboard by adding this new sensor to the list of gas sources.
+Then add the new sensor to the gas sources of your Energy Dashboard.
 
-## Future Development
+## Troubleshooting
 
-If you have some ideas about expansions to this implementation, please open an issue and I may look into it.
+Enable verbose logs in the setup dialog (where you enter host and port) to log all communication. After setup, download them at `Settings → System → Logs → Download Full Log`.
 
-## Tests
+> Logs can be large and may contain data from other integrations. Trim the file before sharing it publicly.
 
-You can run the unit tests by executing `python3 -m pytest tests/ -v` in the root directory of the project.\
-Make sure to install the requirements before: `pip3 install -r requirements_test.txt`.
+## Development
+
+Run the unit tests from the repository root:
+
+```bash
+pip3 install -r requirements_test.txt
+python3 -m pytest tests/ -v
+```
+
+Found a bug or have an idea? Please [open an issue](https://github.com/meinETA/homeassistant-eta/issues).
+
+## Credits
+
+Originally created by [nigl](https://github.com/nigl/homeassistant_eta_integration) and substantially extended by [Tidone](https://github.com/Tidone/homeassistant_eta_integration); now maintained by Tidone and [christofpichler](https://github.com/christofpichler). Built on the ETA REST API.
+
+## License
+
+Released under the [MIT License](LICENSE).

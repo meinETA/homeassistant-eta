@@ -1,7 +1,7 @@
 {
   "domain": "eta_webservices",
-  "name": "Eta Sensors",
-  "codeowners": ["@nigl", "@Tidone", "@christofpichler"],
+  "name": "ETA Heating",
+  "codeowners": ["@Tidone", "@christofpichler"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/meinETA/homeassistant-eta",
@@ -9,5 +9,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/meinETA/homeassistant-eta/issues",
   "requirements": ["xmltodict", "packaging"],
-  "version": "1.4.2"
+  "version": "2.0.0"
 }
