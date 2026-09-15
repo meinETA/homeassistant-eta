@@ -50,14 +50,14 @@
         "step": {
             "init": {
                 "title": "Optionen",
-                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.\n\n**Auf das namensbasierte Schema migrieren (v2)**: Migriert eine Bestandsanlage einmalig von IP-basierten Entity-IDs (`sensor.eta_[ip]_…`) auf namensbasierte (`sensor.[name]_…`). Diese Aktion erscheint nur bei Anlagen, die noch das IP-basierte Schema nutzen.",
+                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.",
                 "data": {
                     "options_update_action": "Aktion"
                 }
             },
             "rename_entities": {
                 "title": "Auf das namensbasierte Schema migrieren",
-                "description": "Migriert alle Entity-IDs dieser Anlage von `sensor.eta_[ip]_…` auf `sensor.[name]_…`.\n\nℹ️ **Die Historie bleibt erhalten.**",
+                "description": "Wandelt die Entity-IDs dieser Anlage einmalig vom IP-basierten Schema (`sensor.eta_[ip]_…`) auf ein namensbasiertes um (`sensor.[name]_…`), das gegen IP- und Firmware-Änderungen stabil bleibt. Der unten eingegebene Anlagenname dient als Präfix für die neuen Entity-IDs.\n\nℹ️ **Die Historie bleibt erhalten.**",
                 "data": {
                     "name": "Anlagenname"
                 }
