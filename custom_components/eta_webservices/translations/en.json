@@ -50,14 +50,14 @@
         "step": {
             "init": {
                 "title": "Options",
-                "description": "**Update API & polling settings**: the request limit and update interval are changed.\n\n**Update selected entities**: update the list of entities added to Home Assistant.\n\n**Rediscover available entities and update selected entities**: refreshes the entity list and then lets you adjust your selection.\n\n**Migrate to the name-based scheme (v2)**: one-time migration of an existing installation from IP-based entity ids (`sensor.eta_[ip]_…`) to name-based ones (`sensor.[name]_…`). This action only appears on installations still using the IP-based scheme.",
+                "description": "**Update API & polling settings**: the request limit and update interval are changed.\n\n**Update selected entities**: update the list of entities added to Home Assistant.\n\n**Rediscover available entities and update selected entities**: refreshes the entity list and then lets you adjust your selection.",
                 "data": {
                     "options_update_action": "Action"
                 }
             },
             "rename_entities": {
                 "title": "Migrate to the name-based scheme",
-                "description": "This migrates all entity ids of this installation from `sensor.eta_[ip]_…` to `sensor.[name]_…`.\n\nℹ️ **The history is preserved.**",
+                "description": "Converts the entity ids of this installation once from the IP-based scheme (`sensor.eta_[ip]_…`) to a name-based one (`sensor.[name]_…`) that stays stable across IP and firmware changes. The name you enter below becomes the prefix for the new entity ids.\n\nℹ️ **The history is preserved.**",
                 "data": {
                     "name": "Name of the unit"
                 }
