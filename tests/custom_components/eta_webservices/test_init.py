@@ -5,7 +5,11 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from custom_components.eta_webservices import _apply_pending_rename, async_migrate_entry
+from custom_components.eta_webservices import (
+    _apply_pending_rename,
+    _sync_migration_issue,
+    async_migrate_entry,
+)
 from custom_components.eta_webservices.const import (
     CHOSEN_FLOAT_SENSORS,
     CHOSEN_PENDING_SENSORS,
@@ -25,6 +29,7 @@ from custom_components.eta_webservices.const import (
     WRITABLE_DICT,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 
 
@@ -952,3 +957,49 @@ def test_apply_pending_rename_noop_without_marker():
 
     mock_registry.async_update_entity.assert_not_called()
     hass.config_entries.async_update_entry.assert_not_called()
+
+
+def test_sync_migration_issue_created_for_legacy_scheme():
+    """Installs still on the IP scheme (no name) get the optional-migration issue."""
+    hass = MagicMock(spec=HomeAssistant)
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = {STABLE_ID: "192_168_0_25", "host": "192.168.0.25"}
+
+    with (
+        patch(
+            "homeassistant.helpers.issue_registry.async_create_issue"
+        ) as create_issue,
+        patch(
+            "homeassistant.helpers.issue_registry.async_delete_issue"
+        ) as delete_issue,
+    ):
+        _sync_migration_issue(hass, entry)
+
+    delete_issue.assert_not_called()
+    create_issue.assert_called_once()
+    kwargs = create_issue.call_args.kwargs
+    assert kwargs["is_fixable"] is False
+    assert kwargs["translation_key"] == "legacy_scheme_migration"
+    assert kwargs["translation_placeholders"]["old_prefix"] == "eta_192_168_0_25_"
+
+
+def test_sync_migration_issue_cleared_when_named():
+    """Once the entry carries a name, the issue is removed instead of created."""
+    hass = MagicMock(spec=HomeAssistant)
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = {CONF_NAME: "Haus", STABLE_ID: "haus"}
+
+    with (
+        patch(
+            "homeassistant.helpers.issue_registry.async_create_issue"
+        ) as create_issue,
+        patch(
+            "homeassistant.helpers.issue_registry.async_delete_issue"
+        ) as delete_issue,
+    ):
+        _sync_migration_issue(hass, entry)
+
+    create_issue.assert_not_called()
+    delete_issue.assert_called_once()

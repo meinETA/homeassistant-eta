@@ -98,6 +98,12 @@
             "migration_warning": "Achtung: Die Entity-IDs ändern sich. Alle Automationen, Skripte, Templates und Dashboards, die die alten Entity-IDs verwenden, müssen danach manuell angepasst werden. Die Historie bleibt erhalten."
         }
     },
+    "issues": {
+        "legacy_scheme_migration": {
+            "title": "Optional: auf das namensbasierte Schema (v2) migrieren",
+            "description": "Diese Installation nutzt weiterhin das IP-basierte Entity-Schema (`{old_prefix}…`). Sie funktioniert unverändert weiter – du musst nichts tun.\n\nWenn du möchtest, kannst du unter Einstellungen → Geräte & Dienste → ETA → Konfigurieren auf das namensbasierte Schema migrieren. Dabei wird nur der Präfix `{old_prefix}` durch `[name]_` ersetzt, der Rest der Entity-ID bleibt gleich – im Dashboard genügt ein Suchen & Ersetzen.\n\nAchtung: Die Entity-IDs ändern sich, Automationen, Skripte und Dashboards müssen danach manuell angepasst werden. Die Historie bleibt erhalten."
+        }
+    },
     "entity": {
         "button": {
             "send_error_events_btn": {
