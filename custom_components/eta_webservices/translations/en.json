@@ -42,7 +42,7 @@
     "options": {
         "abort": {
             "integration_busy": "The integration is still starting up or reloading. Please wait a moment and try configuring it again.",
-            "already_named_scheme": "This installation already uses the name-based (v2) scheme. The one-time migration can only be run on an installation coming from the old (v1) scheme."
+            "already_named_scheme": "This installation already uses the name-based scheme (v2) – no migration needed."
         },
         "progress": {
             "prepare_entities": "Preparing entity data in the background. This can take several minutes on large systems. Home Assistant will continue automatically as soon as the process is finished."

@@ -42,7 +42,7 @@
     "options": {
         "abort": {
             "integration_busy": "Die Integration wird gerade noch gestartet oder neu geladen. Bitte warte einen Moment und versuche das Konfigurieren dann erneut.",
-            "already_named_scheme": "Diese Installation nutzt bereits das namensbasierte (v2) Schema. Die einmalige Migration kann nur auf einer vom alten (v1) Schema kommenden Installation ausgeführt werden."
+            "already_named_scheme": "Diese Anlage nutzt bereits das namensbasierte Schema (v2) – eine Migration ist nicht mehr nötig."
         },
         "progress": {
             "prepare_entities": "Entitätsdaten werden im Hintergrund vorbereitet. Das kann bei großen Anlagen mehrere Minuten dauern. Home Assistant fährt automatisch fort, sobald der Vorgang abgeschlossen ist."
