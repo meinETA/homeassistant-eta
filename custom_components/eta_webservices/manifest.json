@@ -1,6 +1,6 @@
 {
   "domain": "eta_webservices",
-  "name": "Eta Sensors",
+  "name": "ETA Heating",
   "codeowners": ["@nigl", "@Tidone", "@christofpichler"],
   "config_flow": true,
   "dependencies": [],
