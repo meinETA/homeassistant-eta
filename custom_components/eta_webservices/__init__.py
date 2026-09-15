@@ -5,8 +5,8 @@ import logging
 from typing import Any
 
 from homeassistant import config_entries, core
-from homeassistant.const import CONF_HOST, Platform
-from homeassistant.helpers import entity_registry as er
+from homeassistant.const import CONF_HOST, CONF_NAME, Platform
+from homeassistant.helpers import entity_registry as er, issue_registry as ir
 
 from .config_flow import EtaFlowHandler
 from .const import (
@@ -109,6 +109,32 @@ def _apply_pending_rename(
     _LOGGER.info("Applied ETA opt-in rename to the '%s' scheme", new_stable)
 
 
+def _sync_migration_issue(
+    hass: core.HomeAssistant, entry: config_entries.ConfigEntry
+) -> None:
+    """Advertise the optional v2 migration on installs still on the IP scheme.
+
+    Informational repair for legacy (auto-migrated) entries without a name; it
+    clears once the entry has a name (fresh install or opt-in migration done).
+    """
+    issue_id = f"legacy_scheme_{entry.entry_id}"
+    if entry.data.get(CONF_NAME):
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
+        return
+    stable = entry.data.get(STABLE_ID) or str(entry.data.get(CONF_HOST, "")).replace(
+        ".", "_"
+    )
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        issue_id,
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="legacy_scheme_migration",
+        translation_placeholders={"old_prefix": f"eta_{stable}_"},
+    )
+
+
 async def async_setup_entry(
     hass: core.HomeAssistant, entry: config_entries.ConfigEntry
 ) -> bool:
@@ -116,6 +142,7 @@ async def async_setup_entry(
     hass.data.setdefault(DOMAIN, {})
     # Before the update listener is added, so clearing the marker triggers no reload.
     _apply_pending_rename(hass, entry)
+    _sync_migration_issue(hass, entry)
     config = dict(entry.data)
     # Registers update listener to update config entry when options are updated.
     entry.async_on_unload(entry.add_update_listener(options_update_listener))
