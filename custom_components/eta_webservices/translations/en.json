@@ -5,7 +5,7 @@
                 "title": "ETA connection",
                 "description": "Enter the host (IP) and port of your ETA terminal. The initial scan for available endpoints can take several minutes on large systems.\n\nEnable old API mode only if you have problems with the newer ETA API.",
                 "data": {
-                    "name": "Name (used to build entity ids)",
+                    "name": "Name of the unit",
                     "host": "Host",
                     "port": "Port",
                     "force_legacy_mode": "Force old API mode",
@@ -50,7 +50,7 @@
         "step": {
             "init": {
                 "title": "Options",
-                "description": "**Update API & polling settings**: the request limit and update interval are changed.\n\n**Update selected entities**: update the list of entities added to Home Assistant.\n\n**Rediscover available entities and update selected entities**: refreshes the entity list and then lets you adjust your selection.\n\n**Migrate to the name-based scheme (v2)**: one-time migration of an existing installation from IP-based entity ids (`sensor.eta_[ip]_…`) to name-based ones (`sensor.[name]_…`). Only for installations coming from v1.",
+                "description": "**Update API & polling settings**: the request limit and update interval are changed.\n\n**Update selected entities**: update the list of entities added to Home Assistant.\n\n**Rediscover available entities and update selected entities**: refreshes the entity list and then lets you adjust your selection.\n\n**Migrate to the name-based scheme (v2)**: one-time migration of an existing installation from IP-based entity ids (`sensor.eta_[ip]_…`) to name-based ones (`sensor.[name]_…`). This action only appears on installations still using the IP-based scheme.",
                 "data": {
                     "options_update_action": "Action"
                 }
@@ -59,7 +59,7 @@
                 "title": "Migrate to the name-based scheme",
                 "description": "This migrates all entity ids of this installation from `sensor.eta_[ip]_…` to `sensor.[name]_…`.\n\nℹ️ **The history is preserved.**",
                 "data": {
-                    "name": "Name (entity id prefix)"
+                    "name": "Name of the unit"
                 }
             },
             "parallel_requests": {

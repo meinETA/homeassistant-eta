@@ -5,7 +5,7 @@
                 "title": "ETA Verbindung",
                 "description": "Gib Host und Port deines ETA-Geräts ein. Die erste Suche nach verfügbaren Endpunkten kann bei großen Anlagen mehrere Minuten dauern.\n\nAktiviere den alten API-Modus nur dann, wenn es Probleme mit der neueren ETA-API gibt.",
                 "data": {
-                    "name": "Name (für die Entity-IDs)",
+                    "name": "Anlagenname",
                     "host": "Host",
                     "port": "Port",
                     "force_legacy_mode": "Erzwinge die alte API Version",
@@ -50,7 +50,7 @@
         "step": {
             "init": {
                 "title": "Optionen",
-                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.\n\n**Auf das namensbasierte Schema migrieren (v2)**: Migriert eine Bestandsanlage einmalig von IP-basierten Entity-IDs (`sensor.eta_[ip]_…`) auf namensbasierte (`sensor.[name]_…`). Nur für von v1 kommende Anlagen.",
+                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.\n\n**Auf das namensbasierte Schema migrieren (v2)**: Migriert eine Bestandsanlage einmalig von IP-basierten Entity-IDs (`sensor.eta_[ip]_…`) auf namensbasierte (`sensor.[name]_…`). Diese Aktion erscheint nur bei Anlagen, die noch das IP-basierte Schema nutzen.",
                 "data": {
                     "options_update_action": "Aktion"
                 }
@@ -59,7 +59,7 @@
                 "title": "Auf das namensbasierte Schema migrieren",
                 "description": "Migriert alle Entity-IDs dieser Anlage von `sensor.eta_[ip]_…` auf `sensor.[name]_…`.\n\nℹ️ **Die Historie bleibt erhalten.**",
                 "data": {
-                    "name": "Name (Entity-ID-Präfix)"
+                    "name": "Anlagenname"
                 }
             },
             "parallel_requests": {

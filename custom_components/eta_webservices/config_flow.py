@@ -883,6 +883,15 @@ class EtaOptionsFlowHandler(OptionsFlow):
         if current_data is None:
             return self.async_abort(reason="integration_busy")
 
+        action_options = [
+            OPTIONS_ACTION_PARALLEL_ONLY,
+            OPTIONS_ACTION_UPDATE_SELECTED,
+            OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
+        ]
+        # Offer the one-time v2 migration only while still on the IP-based scheme.
+        if not current_data.get(CONF_NAME):
+            action_options.append(OPTIONS_ACTION_RENAME_ENTITIES)
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
@@ -892,12 +901,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
                         default=OPTIONS_ACTION_PARALLEL_ONLY,
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
-                            options=[
-                                OPTIONS_ACTION_PARALLEL_ONLY,
-                                OPTIONS_ACTION_UPDATE_SELECTED,
-                                OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
-                                OPTIONS_ACTION_RENAME_ENTITIES,
-                            ],
+                            options=action_options,
                             mode=selector.SelectSelectorMode.DROPDOWN,
                             multiple=False,
                             translation_key="options_update_action",
