@@ -15,6 +15,7 @@ class SensorDiscoveryBase(ABC):
         self,
         http_client: APIClient,
         progress_callback: Callable[[str, float | None], None] | None = None,
+        stable_id: str | None = None,
     ) -> None:
         """Initialize sensor discovery.
 
@@ -23,6 +24,7 @@ class SensorDiscoveryBase(ABC):
         """
         self._http = http_client
         self._progress_callback = progress_callback
+        self._stable_id = stable_id
 
     def _emit_progress(self, message: str, progress: float | None = None) -> None:
         """Emit discovery progress update if a callback is registered."""

@@ -10,12 +10,13 @@ import time
 import voluptuous as vol
 
 from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, ConfigFlow, OptionsFlow
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 import homeassistant.helpers.entity_registry as er
+from homeassistant.util import slugify
 
 from .api import EtaAPI, ETAEndpoint
 from .const import (
@@ -37,11 +38,14 @@ from .const import (
     MAX_PARALLEL_REQUESTS,
     OPTIONS_ACTION_PARALLEL_ONLY,
     OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
+    OPTIONS_ACTION_RENAME_ENTITIES,
     OPTIONS_ACTION_UPDATE_SELECTED,
     OPTIONS_UPDATE_ACTION,
     PAUSE_COORDINATORS_START_TIMESTAMP,
     PENDING_DICT,
+    RENAME_PENDING_FROM,
     REQUEST_SEMAPHORE,
+    STABLE_ID,
     SWITCHES_DICT,
     TEXT_DICT,
     UPDATE_INTERVAL,
@@ -317,7 +321,7 @@ def _is_invalid_host_input(host: str) -> bool:
 class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
     """Config flow for Eta."""
 
-    VERSION = 8
+    VERSION = 9
     CONNECTION_CLASS = CONN_CLASS_CLOUD_POLL
 
     def __init__(self) -> None:
@@ -526,7 +530,8 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
             self.data.setdefault(MAX_PARALLEL_REQUESTS, DEFAULT_MAX_PARALLEL_REQUESTS)
             self.data.setdefault(UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
             return self.async_create_entry(
-                title=f"ETA at {self.data[CONF_HOST]}", data=self.data
+                title=self.data.get(CONF_NAME) or f"ETA at {self.data[CONF_HOST]}",
+                data=self.data,
             )
 
         return await self._show_config_form_endpoint()
@@ -542,6 +547,9 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
+                    vol.Required(
+                        CONF_NAME, default=user_input.get(CONF_NAME, "")
+                    ): vol.All(str, vol.Length(min=1)),
                     vol.Required(CONF_HOST, default=user_input[CONF_HOST]): str,
                     vol.Required(CONF_PORT, default=user_input[CONF_PORT]): vol.All(
                         vol.Coerce(int), vol.Range(min=1, max=65535)
@@ -598,6 +606,9 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
         text_dict = {}
         writable_dict = {}
         pending_dict = {}
+        # Name = frozen identity (konzept-v2): unique_id = eta_<slug(name)>_<uri>.
+        # Frozen (not the changeable title), so ids are reproducible on re-add.
+        stable_id = self.data.setdefault(STABLE_ID, slugify(self.data[CONF_NAME]))
         new_api_version = await eta_client.get_all_sensors(
             force_legacy_mode,
             float_dict,
@@ -606,6 +617,7 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
             writable_dict,
             pending_dict,
             progress_callback=progress_callback,
+            stable_id=stable_id,
         )
 
         if not new_api_version:
@@ -688,6 +700,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
         text_dict = {}
         writable_dict = {}
         pending_dict = {}
+        stable_id = (current_data or self.data).get(STABLE_ID)
         new_api_version = await eta_client.get_all_sensors(
             force_legacy_mode,
             float_dict,
@@ -696,6 +709,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
             writable_dict,
             pending_dict,
             progress_callback=progress_callback,
+            stable_id=stable_id,
         )
         if current_data is not None:
             current_data[PAUSE_COORDINATORS_START_TIMESTAMP] = None
@@ -730,6 +744,9 @@ class EtaOptionsFlowHandler(OptionsFlow):
         if user_input is not None:
             selected_action = user_input[OPTIONS_UPDATE_ACTION]
 
+            if selected_action == OPTIONS_ACTION_RENAME_ENTITIES:
+                return await self.async_step_rename_entities()
+
             self.update_sensor_values = selected_action in (
                 OPTIONS_ACTION_UPDATE_SELECTED,
                 OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
@@ -748,6 +765,80 @@ class EtaOptionsFlowHandler(OptionsFlow):
             return await self.async_step_prepare_entities()
 
         return await self._show_initial_option_screen()
+
+    async def async_step_rename_entities(self, user_input=None):
+        """Opt-in migration from the IP-based scheme to the name-based v2 scheme.
+
+        Re-keys the entry data and sets the RENAME_PENDING_FROM marker; the
+        registry rewrite (unique_id + entity_id) is deferred to setup, so history
+        is kept. Automations, scripts and templates must be updated by hand.
+        """
+        entry = self.config_entry
+        if entry is None:
+            return self.async_abort(reason="integration_busy")
+
+        # Only migrate un-named (v1) installs; a name means fresh v2 or already
+        # migrated -> refuse.
+        if entry.data.get(CONF_NAME):
+            return self.async_abort(reason="already_named_scheme")
+
+        if user_input is not None:
+            name = str(user_input[CONF_NAME]).strip()
+            new_stable = slugify(name)
+            data = dict(entry.data)
+            old_stable = str(
+                data.get(STABLE_ID) or str(data.get(CONF_HOST, "")).replace(".", "_")
+            )
+            old_uid_prefix = "eta_" + old_stable + "_"
+            new_uid_prefix = "eta_" + new_stable + "_"
+
+            def _swap_uid(key):
+                if key.startswith(old_uid_prefix):
+                    return new_uid_prefix + key[len(old_uid_prefix) :]
+                return key
+
+            # Re-key dicts + chosen lists and freeze the new id; defer the
+            # registry rewrite to setup via RENAME_PENDING_FROM (a live unique_id
+            # change is ignored). Title switches to the name.
+            for dict_name in (
+                FLOAT_DICT,
+                SWITCHES_DICT,
+                TEXT_DICT,
+                WRITABLE_DICT,
+                PENDING_DICT,
+            ):
+                dct = data.get(dict_name)
+                if isinstance(dct, dict):
+                    data[dict_name] = {_swap_uid(k): v for k, v in dct.items()}
+            for chosen_name in (
+                CHOSEN_FLOAT_SENSORS,
+                CHOSEN_SWITCHES,
+                CHOSEN_TEXT_SENSORS,
+                CHOSEN_WRITABLE_SENSORS,
+                CHOSEN_PENDING_SENSORS,
+            ):
+                lst = data.get(chosen_name)
+                if isinstance(lst, list):
+                    data[chosen_name] = [_swap_uid(x) for x in lst]
+            data[RENAME_PENDING_FROM] = old_stable
+            data[STABLE_ID] = new_stable
+            data[CONF_NAME] = name
+            self.hass.config_entries.async_update_entry(entry, data=data, title=name)
+            return self.async_create_entry(title="", data={})
+
+        # Warning as a red box: HA renders `errors` in red (markdown can't).
+        self._errors = {"base": "migration_warning"}
+        return self.async_show_form(
+            step_id="rename_entities",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_NAME, default=entry.data.get(CONF_NAME, "")
+                    ): vol.All(str, vol.Length(min=1)),
+                }
+            ),
+            errors=self._errors,
+        )
 
     async def async_step_prepare_entities(self, user_input=None):
         """Show progress while preparing entity data in the options flow."""
@@ -792,6 +883,15 @@ class EtaOptionsFlowHandler(OptionsFlow):
         if current_data is None:
             return self.async_abort(reason="integration_busy")
 
+        action_options = [
+            OPTIONS_ACTION_PARALLEL_ONLY,
+            OPTIONS_ACTION_UPDATE_SELECTED,
+            OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
+        ]
+        # Offer the one-time v2 migration only while still on the IP-based scheme.
+        if not current_data.get(CONF_NAME):
+            action_options.append(OPTIONS_ACTION_RENAME_ENTITIES)
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
@@ -801,11 +901,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
                         default=OPTIONS_ACTION_PARALLEL_ONLY,
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
-                            options=[
-                                OPTIONS_ACTION_PARALLEL_ONLY,
-                                OPTIONS_ACTION_UPDATE_SELECTED,
-                                OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
-                            ],
+                            options=action_options,
                             mode=selector.SelectSelectorMode.DROPDOWN,
                             multiple=False,
                             translation_key="options_update_action",

@@ -5,6 +5,7 @@
                 "title": "ETA Verbindung",
                 "description": "Gib Host und Port deines ETA-Geräts ein. Die erste Suche nach verfügbaren Endpunkten kann bei großen Anlagen mehrere Minuten dauern.\n\nAktiviere den alten API-Modus nur dann, wenn es Probleme mit der neueren ETA-API gibt.",
                 "data": {
+                    "name": "Anlagenname",
                     "host": "Host",
                     "port": "Port",
                     "force_legacy_mode": "Erzwinge die alte API Version",
@@ -40,7 +41,8 @@
     },
     "options": {
         "abort": {
-            "integration_busy": "Die Integration wird gerade noch gestartet oder neu geladen. Bitte warte einen Moment und versuche das Konfigurieren dann erneut."
+            "integration_busy": "Die Integration wird gerade noch gestartet oder neu geladen. Bitte warte einen Moment und versuche das Konfigurieren dann erneut.",
+            "already_named_scheme": "Diese Anlage nutzt bereits das namensbasierte Schema (v2) – eine Migration ist nicht mehr nötig."
         },
         "progress": {
             "prepare_entities": "Entitätsdaten werden im Hintergrund vorbereitet. Das kann bei großen Anlagen mehrere Minuten dauern. Home Assistant fährt automatisch fort, sobald der Vorgang abgeschlossen ist."
@@ -48,9 +50,16 @@
         "step": {
             "init": {
                 "title": "Optionen",
-                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.",
+                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.",
                 "data": {
                     "options_update_action": "Aktion"
+                }
+            },
+            "rename_entities": {
+                "title": "Auf das namensbasierte Schema migrieren",
+                "description": "Wandelt die Entity-IDs dieser Anlage einmalig vom IP-basierten Schema (`sensor.eta_[ip]_…`) auf ein namensbasiertes um (`sensor.[name]_…`), das gegen IP- und Firmware-Änderungen stabil bleibt. Der unten eingegebene Anlagenname dient als Präfix für die neuen Entity-IDs.\n\nℹ️ **Die Historie bleibt erhalten.**",
+                "data": {
+                    "name": "Anlagenname"
                 }
             },
             "parallel_requests": {
@@ -85,7 +94,14 @@
             "legacy_mode_selected": "Alter API Modus wird verwendet. Einige Entitäten werden möglicherweise nicht oder falsch erkannt.",
             "endpoint_discovery_failed": "Die Suche nach verfügbaren Entitäten ist fehlgeschlagen. Bitte versuche es erneut und prüfe die Protokolle, falls das Problem bestehen bleibt.",
             "value_update_error": "Mindestens ein Endpunkt konnte nicht aktualisiert werden. Du musst die Liste der verfügbaren Sensoren eventuell aktualisieren..",
-            "unavailable_sensors": "Mindestens ein ausgewählter Sensor ist nicht mehr verfügbar oder wurde verschoben. Bitte überprüfe die Listen der ausgewählten Sensoren auf fehlende oder falsch detektierte Sensoren. Du findest eine Liste der betroffenen Sensoren in den Protokollen."
+            "unavailable_sensors": "Mindestens ein ausgewählter Sensor ist nicht mehr verfügbar oder wurde verschoben. Bitte überprüfe die Listen der ausgewählten Sensoren auf fehlende oder falsch detektierte Sensoren. Du findest eine Liste der betroffenen Sensoren in den Protokollen.",
+            "migration_warning": "Achtung: Die Entity-IDs ändern sich. Alle Automationen, Skripte, Templates und Dashboards, die die alten Entity-IDs verwenden, müssen danach manuell angepasst werden. Die Historie bleibt erhalten."
+        }
+    },
+    "issues": {
+        "legacy_scheme_migration": {
+            "title": "Optional: auf das namensbasierte Schema (v2) migrieren",
+            "description": "Diese Installation nutzt weiterhin das IP-basierte Entity-Schema (`{old_prefix}…`). Sie funktioniert unverändert weiter – du musst nichts tun.\n\nWenn du möchtest, kannst du unter Einstellungen → Geräte & Dienste → ETA → Konfigurieren auf das namensbasierte Schema migrieren. Dabei wird nur der Präfix `{old_prefix}` durch `[name]_` ersetzt, der Rest der Entity-ID bleibt gleich – im Dashboard genügt ein Suchen & Ersetzen.\n\nAchtung: Die Entity-IDs ändern sich, Automationen, Skripte und Dashboards müssen danach manuell angepasst werden. Die Historie bleibt erhalten."
         }
     },
     "entity": {
@@ -113,7 +129,8 @@
             "options": {
                 "update_parallel_requests": "API- & Aktualisierungseinstellungen ändern",
                 "update_selected_entities": "Ausgewählte Entitäten aktualisieren",
-                "rediscover_and_update_entities": "Verfügbare Entitäten neu suchen und Auswahl aktualisieren"
+                "rediscover_and_update_entities": "Verfügbare Entitäten neu suchen und Auswahl aktualisieren",
+                "rename_entities_to_named_scheme": "Auf das namensbasierte Schema migrieren (v2)"
             }
         }
     },

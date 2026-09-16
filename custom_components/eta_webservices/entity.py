@@ -3,7 +3,7 @@
 from abc import abstractmethod
 from typing import Any, Generic, TypeVar, cast
 
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity, generate_entity_id
@@ -17,6 +17,7 @@ from .const import (
     DEFAULT_MAX_PARALLEL_REQUESTS,
     MAX_PARALLEL_REQUESTS,
     REQUEST_SEMAPHORE,
+    STABLE_ID,
 )
 from .coordinator import ETAErrorUpdateCoordinator
 from .utils import create_device_info
@@ -44,24 +45,34 @@ class EtaEntity(Entity):
         )
         self.request_semaphore = config.get(REQUEST_SEMAPHORE)
 
-        # Extract the FUB from the friendly name and use it as the device name
-        # E.g. "ETA > Living Room Sensor" -> "ETA"
-        device_name = (
+        # Extract the FUB from the friendly name, e.g. "ETA > Living Room" -> "ETA"
+        fub_name = (
             endpoint_info["friendly_name"].split(" > ")[0].strip()
             if ">" in endpoint_info["friendly_name"]
             else None
         )
 
-        # Remove the device name from the friendly name to avoid redundancy, e.g. "ETA > Living Room Sensor" -> "Living Room Sensor"
-        if device_name and device_name in endpoint_info["friendly_name"]:
+        # Remove the FUB from the friendly name to avoid redundancy, e.g. "ETA > Living Room Sensor" -> "Living Room Sensor"
+        if fub_name and fub_name in endpoint_info["friendly_name"]:
             self._attr_name = endpoint_info["friendly_name"].replace(
-                device_name + " > ", "", 1
+                fub_name + " > ", "", 1
             )
         else:
             self._attr_name = endpoint_info["friendly_name"]
 
-        self._attr_device_info = create_device_info(self.host, self.port, device_name)
-        self.entity_id = generate_entity_id(entity_id_format, unique_id, hass=hass)
+        # Install name (konzept-v2) = display prefix for entity_id + device name.
+        # Migrated installs have none and keep their entity_id via registry match.
+        install_name = config.get(CONF_NAME)
+        # One device per FUB; name prefixed with the install name.
+        self._attr_device_info = create_device_info(
+            self.host, self.port, fub_name, install_name
+        )
+        id_prefix = install_name or "eta"
+        self.entity_id = generate_entity_id(
+            entity_id_format,
+            id_prefix + " " + endpoint_info["friendly_name"],
+            hass=hass,
+        )
         self._attr_unique_id = unique_id
 
     def _create_eta_client(self) -> EtaAPI:
@@ -129,15 +140,17 @@ class EtaErrorEntity(CoordinatorEntity[ETAErrorUpdateCoordinator]):
         host = config.get(CONF_HOST, "")
         port = config.get(CONF_PORT, "")
 
-        self._attr_unique_id = (
-            "eta_" + host.replace(".", "_") + "_" + str(port) + unique_id_suffix
-        )
+        # Stable id (IP-independent); host fallback for un-migrated installs.
+        stable = config.get(STABLE_ID) or host.replace(".", "_")
+        self._attr_unique_id = "eta_" + stable + "_" + str(port) + unique_id_suffix
 
         self.entity_id = generate_entity_id(
             entity_id_format, self._attr_unique_id, hass=hass
         )
 
-        self._attr_device_info = create_device_info(host, port, None)
+        self._attr_device_info = create_device_info(
+            host, port, None, config.get(CONF_NAME)
+        )
 
     @abstractmethod
     def handle_data_updates(self, data) -> None:  # noqa: D102
