@@ -96,7 +96,7 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
         if time == "":
             return False
 
-        regex = "^(([01]?[0-9]|2[0-3]):[0-5][0-9])|24:00$"
+        regex = "^((([01]?[0-9]|2[0-3]):[0-5][0-9])|24:00)$"
         p = re.compile(regex)
         m = re.search(p, time)
 
@@ -161,21 +161,29 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
         self, varinfo_data, var_data_entry: tuple[float | str, str, dict]
     ) -> str:
         """Parse and detect custom units (v1.2 specific)."""
-        var_value, var_unit, var_raw = var_data_entry
+        _, var_unit, var_raw = var_data_entry
         unit = var_unit
 
-        if (
+        if unit == "" and self._is_valid_time(var_raw.get("@strValue", "")):
+            _LOGGER.debug("Found time endpoint based on value format")
+            unit = CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT
+
+        elif (
+            unit == ""
+            and varinfo_data["type"] == "DEFAULT"
+            and self._is_valid_datetime(var_raw.get("@strValue", ""))
+        ):
+            _LOGGER.debug("Found datetime endpoint based on value format")
+            unit = CUSTOM_UNIT_DATETIME
+
+        elif (
             varinfo_data["type"] in ["DEFAULT", "IEEE-754"]
             and unit == ""
-            and self._is_number(str(var_value))
+            and self._is_number(var_raw.get("@strValue", ""))
         ):
             # some sensors have an empty unit and a type of DEFAULT (or IEEE-754) in the varinfo endpoint, but show a numeric value in the var endpoint
             # those sensors are most likely unitless float sensors, so we set the unit to unitless and let the normal float sensor detection handle the rest
             unit = CUSTOM_UNIT_UNITLESS
-
-        elif unit == "" and self._is_valid_time(var_raw.get("@strValue", "")):
-            _LOGGER.debug("Found time endpoint based on value format")
-            unit = CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT
 
         elif (
             varinfo_data["type"] == "TIMESLOT"
@@ -188,13 +196,6 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
             else:
                 _LOGGER.debug("Found timeslot endpoint")
             unit = parsed_unit
-        elif (
-            unit == ""
-            and varinfo_data["type"] == "DEFAULT"
-            and self._is_valid_datetime(var_raw.get("@strValue", ""))
-        ):
-            _LOGGER.debug("Found datetime endpoint based on value format")
-            unit = CUSTOM_UNIT_DATETIME
 
         return unit
 
