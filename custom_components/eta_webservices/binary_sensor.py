@@ -89,7 +89,7 @@ class EtaErrorSensor(BinarySensorEntity, EtaErrorEntity):
 class EtaBinarySensor(
     EtaEntity, BinarySensorEntity, CoordinatorEntity[ETASensorUpdateCoordinator]
 ):
-    """Representation of a Switch."""
+    """Representation of a Binary Sensor."""
 
     def __init__(  # noqa: D107
         self,
