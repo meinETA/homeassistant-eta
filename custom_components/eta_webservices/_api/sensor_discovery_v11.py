@@ -6,6 +6,7 @@ import logging
 from .sensor_discovery_base import SensorDiscoveryBase
 from .types import (
     DEFAULT_VALID_WRITABLE_VALUES,
+    VALID_SWITCH_OFFSET_VALUES_V11,
     WRITABLE_SENSOR_UNITS,
     ETAEndpoint,
     ETAValidSwitchValues,
@@ -17,19 +18,23 @@ _LOGGER = logging.getLogger(__name__)
 class SensorDiscoveryV11(SensorDiscoveryBase):
     """ETA API v1.1 specific sensor discovery implementation."""
 
-    def _is_switch(
-        self, endpoint_info: ETAEndpoint, raw_value: str | None = None
-    ) -> bool:
+    def _is_switch(self, endpoint_info: ETAEndpoint, text_offset: str) -> bool:
         """Check if endpoint is a switch (v1.1 method)."""
-        if endpoint_info["unit"] == "" and raw_value in ("1802", "1803"):
+        if (
+            endpoint_info["unit"] == ""
+            and text_offset.isdecimal()
+            and int(text_offset) in VALID_SWITCH_OFFSET_VALUES_V11
+        ):
             return True
         return False
 
-    def _parse_switch_values(self, endpoint_info: ETAEndpoint):
-        """Parse switch values (v1.1 hardcoded values)."""
+    def _parse_switch_values(self, endpoint_info: ETAEndpoint, text_offset: str):
+        """Parse switch values (v1.1 method)."""
         endpoint_info["valid_values"] = ETAValidSwitchValues(
-            on_value=1803, off_value=1802
+            on_value=int(text_offset) + 1, off_value=int(text_offset)
         )
+        # we have to assume the sensor is writable because we have no way of getting it from the API
+        endpoint_info["is_writable"] = True
 
     def _is_writable(self, endpoint_info: ETAEndpoint) -> bool:
         """Check if endpoint is writable (v1.1 method)."""
@@ -46,11 +51,13 @@ class SensorDiscoveryV11(SensorDiscoveryBase):
         ]
         endpoint_info["valid_values"]["dec_places"] = int(raw_dict["@decPlaces"])
         endpoint_info["valid_values"]["scale_factor"] = int(raw_dict["@scaleFactor"])
+        endpoint_info["is_writable"] = True
 
     def _sanitize_duplicate_nodes(
         self,
         all_endpoints: dict[str, list[str]],
         endpoint_data: dict[str, tuple[float | str, str, dict]],
+        deduplicated_uris: dict[str, str],
     ) -> int:
         """Sanitize duplicate nodes by removing invalid URIs (v1.1 version)."""
         nodes_to_check: list[tuple[str, list[str]]] = []
@@ -100,6 +107,10 @@ class SensorDiscoveryV11(SensorDiscoveryBase):
                     key,
                     len(valid_uris),
                 )
+                # rename the keys of the valid URIs to make sure they are unique
+                # by adding a suffix like the URI to the key in deduplicated_uris
+                for uri in valid_uris:
+                    deduplicated_uris[uri] = f"{key}__dedup_{uri.replace('/', '_')}"
 
         removed_count = 0
         for uri in set(uris_to_remove):
@@ -186,7 +197,9 @@ class SensorDiscoveryV11(SensorDiscoveryBase):
 
         # Sanitize duplicates
         self._emit_progress("Resolving duplicate endpoints", 0.95)
-        removed_count = self._sanitize_duplicate_nodes(all_endpoints, endpoint_data)
+        removed_count = self._sanitize_duplicate_nodes(
+            all_endpoints, endpoint_data, deduplicated_uris
+        )
         if removed_count > 0:
             _LOGGER.info("Removed %d invalid URIs from duplicate nodes", removed_count)
 
@@ -208,7 +221,15 @@ class SensorDiscoveryV11(SensorDiscoveryBase):
                     # If the unit is in the list of known units, the sensor will be detected as a float sensor anyway.
                     endpoint_type="TEXT",
                     value=value,
+                    is_writable=False,
+                    is_invalid=raw_dict.get("@strValue") == "xxx",
                 )
+
+                if endpoint_info["is_invalid"]:
+                    _LOGGER.debug(
+                        "Skipping potentially invalid endpoint %s (URI: %s)", key, uri
+                    )
+                    continue
 
                 unique_key = (
                     "eta_"
@@ -236,10 +257,12 @@ class SensorDiscoveryV11(SensorDiscoveryBase):
                         float_dict[unique_key] = endpoint_info
                     else:
                         _LOGGER.debug("Skipping duplicate float sensor %s", unique_key)
-                elif self._is_switch(endpoint_info, raw_dict["#text"]):
+                elif self._is_switch(endpoint_info, raw_dict["@advTextOffset"]):
                     _LOGGER.debug("Adding %s as switch", uri)
                     if unique_key not in switches_dict:
-                        self._parse_switch_values(endpoint_info)
+                        self._parse_switch_values(
+                            endpoint_info, raw_dict["@advTextOffset"]
+                        )
                         switches_dict[unique_key] = endpoint_info
                     else:
                         _LOGGER.debug("Skipping duplicate switch %s", unique_key)
