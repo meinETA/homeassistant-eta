@@ -21,6 +21,7 @@ from .const import (
     DOMAIN,
     ERROR_UPDATE_COORDINATOR,
     SENSOR_UPDATE_COORDINATOR,
+    STABLE_ID,
     SWITCHES_DICT,
 )
 from .coordinator import ETAErrorUpdateCoordinator, ETASensorUpdateCoordinator
@@ -75,7 +76,8 @@ class EtaErrorSensor(BinarySensorEntity, EtaErrorEntity):
         host = config.get(CONF_HOST, "")
 
         # replace the unique id and entity id to keep the entity backwards compatible
-        self._attr_unique_id = "eta_" + host.replace(".", "_") + "_errors"
+        stable = config.get(STABLE_ID) or host.replace(".", "_")
+        self._attr_unique_id = "eta_" + stable + "_errors"
         self.entity_id = generate_entity_id(
             ENTITY_ID_FORMAT, self._attr_unique_id, hass=hass
         )

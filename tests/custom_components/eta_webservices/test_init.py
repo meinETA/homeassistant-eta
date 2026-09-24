@@ -5,7 +5,11 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from custom_components.eta_webservices import async_migrate_entry
+from custom_components.eta_webservices import (
+    _apply_pending_rename,
+    _sync_migration_issue,
+    async_migrate_entry,
+)
 from custom_components.eta_webservices.const import (
     CHOSEN_FLOAT_SENSORS,
     CHOSEN_PENDING_SENSORS,
@@ -18,12 +22,57 @@ from custom_components.eta_webservices.const import (
     FLOAT_DICT,
     FORCE_LEGACY_MODE,
     PENDING_DICT,
+    RENAME_PENDING_FROM,
+    STABLE_ID,
     SWITCHES_DICT,
     TEXT_DICT,
     WRITABLE_DICT,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
+
+
+def _v9_key(url, writable=False, host="192.168.0.25"):
+    """Return the url-based unique_id migrate_to_v9 assigns to an entry."""
+    key = f"eta_{host.replace('.', '_')}_{url.strip('/').replace('/', '_')}"
+    return key + "_writable" if writable else key
+
+
+def _remap_data_to_v9(data, host="192.168.0.25"):
+    """Rewrite dict keys + chosen lists to the v9 scheme, mirroring migrate_to_v9.
+
+    Lets the pre-v9 key-based expectations in these tests match the url-based
+    unique_ids the full migration now produces.
+    """
+    stable_id = host.replace(".", "_")
+
+    def rebuild(dict_name, chosen_name, writable):
+        local_map = {}
+        old_dict = data.get(dict_name, {})
+        if isinstance(old_dict, dict):
+            rebuilt = {}
+            for old_key, endpoint in old_dict.items():
+                url = endpoint.get("url", "") if isinstance(endpoint, dict) else ""
+                if not url:
+                    rebuilt[old_key] = endpoint
+                    continue
+                new_key = f"eta_{stable_id}_{url.strip('/').replace('/', '_')}"
+                if writable:
+                    new_key += "_writable"
+                local_map[old_key] = new_key
+                rebuilt[new_key] = endpoint
+            data[dict_name] = rebuilt
+        old_list = data.get(chosen_name, [])
+        if isinstance(old_list, list):
+            data[chosen_name] = [local_map.get(i, i) for i in old_list]
+
+    rebuild(FLOAT_DICT, CHOSEN_FLOAT_SENSORS, False)
+    rebuild(SWITCHES_DICT, CHOSEN_SWITCHES, False)
+    rebuild(TEXT_DICT, CHOSEN_TEXT_SENSORS, False)
+    rebuild(PENDING_DICT, CHOSEN_PENDING_SENSORS, False)
+    rebuild(WRITABLE_DICT, CHOSEN_WRITABLE_SENSORS, True)
+    return data
 
 
 @pytest.mark.asyncio
@@ -99,6 +148,8 @@ async def test_async_migrate_entry_v5_to_v6(load_fixture):
 
     # Merge original options into original data for comparison
     original_data.update(original_options)
+    # v9 rewrites unique_ids to the url-based scheme; align expectations.
+    _remap_data_to_v9(original_data)
 
     # Get the data that was passed to async_update_entry
     hass.config_entries.async_update_entry.assert_called_once()
@@ -283,11 +334,12 @@ async def test_migration_v6_to_v7_adds_pending_fields():
         "CHOSEN_PENDING_SENSORS must be empty after migration"
     )
 
-    # Existing sensors must be untouched.
-    assert float_sensor_key in new_data[FLOAT_DICT], (
+    # Existing sensors must survive migration (v9 rewrites the key to url-based).
+    new_key = _v9_key(float_sensor["url"])
+    assert new_key in new_data[FLOAT_DICT], (
         "Existing float sensor must survive migration"
     )
-    assert new_data[CHOSEN_FLOAT_SENSORS] == [float_sensor_key], (
+    assert new_data[CHOSEN_FLOAT_SENSORS] == [new_key], (
         "Existing chosen float sensors must survive migration"
     )
 
@@ -361,10 +413,11 @@ async def test_migration_v6_to_v7_with_options():
     assert CHOSEN_PENDING_SENSORS in new_data
     assert new_data[CHOSEN_PENDING_SENSORS] == []
     # The migration merges options into data, so the options-overridden
-    # CHOSEN_FLOAT_SENSORS=[float_sensor_key] wins over data's empty list.
-    assert new_data[CHOSEN_FLOAT_SENSORS] == [float_sensor_key]
+    # CHOSEN_FLOAT_SENSORS wins over data's empty list (v9 key is url-based).
+    new_key = _v9_key(float_sensor["url"])
+    assert new_data[CHOSEN_FLOAT_SENSORS] == [new_key]
     # The float sensor from data must still be present
-    assert float_sensor_key in new_data[FLOAT_DICT]
+    assert new_key in new_data[FLOAT_DICT]
 
     assert new_options == {}, "Options should be empty after migration"
 
@@ -445,21 +498,22 @@ async def test_async_migrate_entry_v1_to_v7():
     assert new_data[PENDING_DICT] == {}
     assert new_data[CHOSEN_PENDING_SENSORS] == []
 
+    # v9 rewrites unique_ids to the url-based scheme.
+    normal_key = _v9_key("/uri/normal")
+    custom_key = _v9_key("/uri/custom")
+
     # migrate_to_v6: custom-unit sensor must leave FLOAT_DICT.
-    assert "sensor_normal" in new_data[FLOAT_DICT]
-    assert "sensor_custom" not in new_data[FLOAT_DICT]
+    assert normal_key in new_data[FLOAT_DICT]
+    assert custom_key not in new_data[FLOAT_DICT]
 
     # migrate_to_v6: custom-unit sensor must arrive in TEXT_DICT.
-    assert "sensor_custom" in new_data[TEXT_DICT]
-    assert (
-        new_data[TEXT_DICT]["sensor_custom"]["unit"]
-        == CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT
-    )
+    assert custom_key in new_data[TEXT_DICT]
+    assert new_data[TEXT_DICT][custom_key]["unit"] == CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT
 
     # migrate_to_v6: CHOSEN_FLOAT_SENSORS updated, CHOSEN_TEXT_SENSORS updated.
-    assert "sensor_normal" in new_data[CHOSEN_FLOAT_SENSORS]
-    assert "sensor_custom" not in new_data[CHOSEN_FLOAT_SENSORS]
-    assert "sensor_custom" in new_data[CHOSEN_TEXT_SENSORS]
+    assert normal_key in new_data[CHOSEN_FLOAT_SENSORS]
+    assert custom_key not in new_data[CHOSEN_FLOAT_SENSORS]
+    assert custom_key in new_data[CHOSEN_TEXT_SENSORS]
 
     # Connection fields must be preserved.
     assert new_data["host"] == "192.168.0.25"
@@ -611,15 +665,17 @@ async def test_migration_v7_to_v8_disables_timeslot_with_writable_counterpart():
     )
 
     # Only the two entries with writable counterparts must have been disabled.
+    # (v9 also rewrites unique_ids via new_unique_id=; count only the disables.)
     disabled_entity_ids = {
         call.kwargs["entity_id"] if "entity_id" in call.kwargs else call.args[0]
         for call in mock_registry.async_update_entity.call_args_list
+        if "disabled_by" in call.kwargs
     }
     assert "sensor.ts_monday" in disabled_entity_ids
     assert "sensor.ts_tuesday" in disabled_entity_ids
     assert "sensor.ts_wednesday" not in disabled_entity_ids
     assert "sensor.text_status" not in disabled_entity_ids
-    assert mock_registry.async_update_entity.call_count == 2
+    assert len(disabled_entity_ids) == 2
 
 
 @pytest.mark.asyncio
@@ -701,4 +757,249 @@ async def test_migration_v7_to_v8_timeslot_without_writable_not_disabled():
         result = await async_migrate_entry(hass, config_entry)
 
     assert result is True
+    # v9 may rewrite the unique_id, but nothing must be disabled here.
+    disabled = [
+        call
+        for call in mock_registry.async_update_entity.call_args_list
+        if "disabled_by" in call.kwargs
+    ]
+    assert disabled == []
+
+
+@pytest.mark.asyncio
+async def test_migrate_to_v9_rewrites_unique_ids_to_url_scheme():
+    """v9 re-keys dicts + chosen lists from the IP-name scheme to the IP-url
+    scheme and rewrites the matching entity registry unique_ids.
+    """
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config_entries = MagicMock()
+    hass.config_entries.async_update_entry = Mock()
+
+    config_entry = MagicMock(spec=ConfigEntry)
+    config_entry.version = 8
+    config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
+
+    old_float = "eta_192_168_0_25_kessel_kesseltemperatur"
+    old_writable = "eta_192_168_0_25_kessel_soll_writable"
+    config_entry.data = {
+        FLOAT_DICT: {old_float: {"url": "/120/10101/0/0/12080", "unit": "°C"}},
+        SWITCHES_DICT: {},
+        TEXT_DICT: {},
+        WRITABLE_DICT: {old_writable: {"url": "/120/10101/0/0/12081", "unit": "°C"}},
+        PENDING_DICT: {},
+        CHOSEN_FLOAT_SENSORS: [old_float],
+        CHOSEN_SWITCHES: [],
+        CHOSEN_TEXT_SENSORS: [],
+        CHOSEN_WRITABLE_SENSORS: [old_writable],
+        CHOSEN_PENDING_SENSORS: [],
+        FORCE_LEGACY_MODE: False,
+        "host": "192.168.0.25",
+        "port": "8080",
+    }
+
+    entities = [
+        _make_entity_entry(old_float, "sensor.eta_192_168_0_25_kesseltemperatur"),
+        _make_entity_entry(old_writable, "number.eta_192_168_0_25_soll"),
+    ]
+    mock_registry = MagicMock()
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=entities,
+        ),
+    ):
+        result = await async_migrate_entry(hass, config_entry)
+
+    assert result is True
+    new_data = hass.config_entries.async_update_entry.call_args.kwargs["data"]
+
+    # stable_id frozen from the IP.
+    assert new_data[STABLE_ID] == "192_168_0_25"
+
+    new_float = _v9_key("/120/10101/0/0/12080")
+    new_writable = _v9_key("/120/10101/0/0/12081", writable=True)
+
+    # Dicts and chosen lists re-keyed to the url scheme.
+    assert new_float in new_data[FLOAT_DICT]
+    assert old_float not in new_data[FLOAT_DICT]
+    assert new_writable in new_data[WRITABLE_DICT]
+    assert new_data[CHOSEN_FLOAT_SENSORS] == [new_float]
+    assert new_data[CHOSEN_WRITABLE_SENSORS] == [new_writable]
+
+    # Registry unique_ids rewritten to match.
+    rewrites = {
+        (call.args[0], call.kwargs["new_unique_id"])
+        for call in mock_registry.async_update_entity.call_args_list
+        if "new_unique_id" in call.kwargs
+    }
+    assert ("sensor.eta_192_168_0_25_kesseltemperatur", new_float) in rewrites
+    assert ("number.eta_192_168_0_25_soll", new_writable) in rewrites
+
+
+@pytest.mark.asyncio
+async def test_migrate_to_v9_keeps_entries_without_url():
+    """An entry without a url yields no stable key and is kept under its old key."""
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config_entries = MagicMock()
+    hass.config_entries.async_update_entry = Mock()
+
+    config_entry = MagicMock(spec=ConfigEntry)
+    config_entry.version = 8
+    config_entry.entry_id = "test_entry_id"
+    config_entry.options = {}
+
+    old_key = "eta_192_168_0_25_legacy_no_url"
+    config_entry.data = {
+        FLOAT_DICT: {old_key: {"unit": "°C"}},
+        SWITCHES_DICT: {},
+        TEXT_DICT: {},
+        WRITABLE_DICT: {},
+        PENDING_DICT: {},
+        CHOSEN_FLOAT_SENSORS: [old_key],
+        CHOSEN_SWITCHES: [],
+        CHOSEN_TEXT_SENSORS: [],
+        CHOSEN_WRITABLE_SENSORS: [],
+        CHOSEN_PENDING_SENSORS: [],
+        FORCE_LEGACY_MODE: False,
+        "host": "192.168.0.25",
+        "port": "8080",
+    }
+
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=[],
+        ),
+    ):
+        result = await async_migrate_entry(hass, config_entry)
+
+    assert result is True
+    new_data = hass.config_entries.async_update_entry.call_args.kwargs["data"]
+    assert old_key in new_data[FLOAT_DICT]
+    assert new_data[CHOSEN_FLOAT_SENSORS] == [old_key]
+
+
+def test_apply_pending_rename_rewrites_unique_and_entity_id():
+    """The opt-in migration swaps the old stable-id prefix for the new one on
+    both the unique_id and the entity_id, then clears the marker.
+    """
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config_entries = MagicMock()
+    hass.config_entries.async_update_entry = Mock()
+
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = {
+        RENAME_PENDING_FROM: "192_168_0_25",
+        STABLE_ID: "haus",
+    }
+
+    ent = _make_entity_entry(
+        "eta_192_168_0_25_120_10101_0_0_12080",
+        "sensor.eta_192_168_0_25_kesseltemperatur",
+    )
+    mock_registry = MagicMock()
+    mock_registry.async_get.return_value = None  # no entity_id collision
+
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=[ent],
+        ),
+    ):
+        _apply_pending_rename(hass, entry)
+
+    call = mock_registry.async_update_entity.call_args
+    assert call.args[0] == "sensor.eta_192_168_0_25_kesseltemperatur"
+    assert call.kwargs["new_unique_id"] == "eta_haus_120_10101_0_0_12080"
+    assert call.kwargs["new_entity_id"] == "sensor.haus_kesseltemperatur"
+
+    # Marker removed from the persisted data.
+    updated = hass.config_entries.async_update_entry.call_args.kwargs["data"]
+    assert RENAME_PENDING_FROM not in updated
+
+
+def test_apply_pending_rename_noop_without_marker():
+    """Without the marker the opt-in migration is a no-op."""
+    hass = MagicMock(spec=HomeAssistant)
+    hass.config_entries = MagicMock()
+    hass.config_entries.async_update_entry = Mock()
+
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = {STABLE_ID: "haus"}
+
+    mock_registry = MagicMock()
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=[],
+        ),
+    ):
+        _apply_pending_rename(hass, entry)
+
     mock_registry.async_update_entity.assert_not_called()
+    hass.config_entries.async_update_entry.assert_not_called()
+
+
+def test_sync_migration_issue_created_for_legacy_scheme():
+    """Installs still on the IP scheme (no name) get the optional-migration issue."""
+    hass = MagicMock(spec=HomeAssistant)
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = {STABLE_ID: "192_168_0_25", "host": "192.168.0.25"}
+
+    with (
+        patch(
+            "homeassistant.helpers.issue_registry.async_create_issue"
+        ) as create_issue,
+        patch(
+            "homeassistant.helpers.issue_registry.async_delete_issue"
+        ) as delete_issue,
+    ):
+        _sync_migration_issue(hass, entry)
+
+    delete_issue.assert_not_called()
+    create_issue.assert_called_once()
+    kwargs = create_issue.call_args.kwargs
+    assert kwargs["is_fixable"] is False
+    assert kwargs["translation_key"] == "legacy_scheme_migration"
+    assert kwargs["translation_placeholders"]["old_prefix"] == "eta_192_168_0_25_"
+
+
+def test_sync_migration_issue_cleared_when_named():
+    """Once the entry carries a name, the issue is removed instead of created."""
+    hass = MagicMock(spec=HomeAssistant)
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = {CONF_NAME: "Haus", STABLE_ID: "haus"}
+
+    with (
+        patch(
+            "homeassistant.helpers.issue_registry.async_create_issue"
+        ) as create_issue,
+        patch(
+            "homeassistant.helpers.issue_registry.async_delete_issue"
+        ) as delete_issue,
+    ):
+        _sync_migration_issue(hass, entry)
+
+    create_issue.assert_not_called()
+    delete_issue.assert_called_once()
