@@ -12,9 +12,17 @@
                     "enable_debug_logging": "Enable verbose logging"
                 }
             },
+            "permission_options": {
+                "title": "Service parameters",
+                "description": "Your ETA system reports permission levels for its parameters. User-level entities are added by default.\n\nService-level parameters are intended for heating professionals. Showing them adds read-only diagnostic values. Allowing writing lets you change them, which can misconfigure your heating system if used incorrectly.",
+                "data": {
+                    "show_service_sensors": "Show service-level sensors (read-only)",
+                    "allow_service_write": "Allow writing service-level parameters (experts only)"
+                }
+            },
             "select_entities": {
                 "title": "Choose entities",
-                "description": "Select which discovered ETA entities should be added to Home Assistant.\n\nSensors: {float_count}\nSwitches: {switch_count}\nState sensors: {text_count}\nWritable sensors: {writable_count}\nPending sensors: {pending_count}\n**Total: {total_count}**\n\nEnable auto-select-all if you want to add everything at once. On large systems this can create several hundred entities.",
+                "description": "Select which discovered ETA entities should be added to Home Assistant.\n\nSensors: {float_count}\nSwitches: {switch_count}\nState sensors: {text_count}\nWritable sensors: {writable_count}\nPending sensors: {pending_count}\n**Total: {total_count}**\nService-level of the above: {service_count}\n\nEnable auto-select-all if you want to add everything at once. On large systems this can create several hundred entities.",
                 "data": {
                     "auto_select_all_entities": "Automatically select all discovered entities",
                     "chosen_float_sensors": "Possible sensors",
@@ -30,7 +38,8 @@
             "no_eta_endpoint": "Could not find a valid ETA endpoint. Did you enable the webservices in meinETA?",
             "legacy_mode_selected": "Using legacy API mode. Some entities may not be detected, or may be detected in the wrong category.",
             "endpoint_discovery_failed": "ETA endpoint discovery failed unexpectedly. Please try again and check the logs if the problem persists.",
-            "value_update_error": "At least one endpoint is reporting an error. The respective entities won't be shown in the list."
+            "value_update_error": "At least one endpoint is reporting an error. The respective entities won't be shown in the list.",
+            "service_write_warning": "Warning: writing service-level parameters can misconfigure your heating system if used incorrectly. Only enable this if you are a heating professional."
         },
         "progress": {
             "discover_entities": "Searching your ETA system for available entities. This can take several minutes on large systems. Home Assistant will continue automatically as soon as the scan is finished."
@@ -42,7 +51,8 @@
     "options": {
         "abort": {
             "integration_busy": "The integration is still starting up or reloading. Please wait a moment and try configuring it again.",
-            "already_named_scheme": "This installation already uses the name-based scheme (v2) – no migration needed."
+            "already_named_scheme": "This installation already uses the name-based scheme (v2) – no migration needed.",
+            "perm_level_unavailable": "Service parameters require ETA API 1.3 (firmware x.67.0), which this system does not report yet. Update your ETA firmware, then run a rediscovery."
         },
         "progress": {
             "prepare_entities": "Preparing entity data in the background. This can take several minutes on large systems. Home Assistant will continue automatically as soon as the process is finished."
@@ -50,10 +60,23 @@
         "step": {
             "init": {
                 "title": "Options",
-                "description": "**Update API & polling settings**: the request limit and update interval are changed.\n\n**Update selected entities**: update the list of entities added to Home Assistant.\n\n**Rediscover available entities and update selected entities**: refreshes the entity list and then lets you adjust your selection.",
-                "data": {
-                    "options_update_action": "Action"
+                "description": "Choose what you want to do:\n\n**Update API & polling settings**: change the request limit and update interval.\n\n**Update selected entities**: refresh the values of the entities you already added.\n\n**Rediscover available entities and update selected entities**: re-scan the boiler for endpoints, then adjust your selection.\n\n**Configure service parameters (API 1.3)**: show or control service-level values (for heating professionals).",
+                "menu_options": {
+                    "parallel_requests": "Update API & polling settings",
+                    "update_selected_entities": "Update selected entities",
+                    "rediscover_entities": "Rediscover available entities and update selected entities",
+                    "rename_entities": "Migrate to the name-based scheme (v2)",
+                    "service_permissions": "Configure service parameters (API 1.3, from ETA firmware x.67.0)",
+                    "purge_service_sensors": "Remove all service sensors"
                 }
+            },
+            "update_selected_entities": {
+                "title": "Update selected entities",
+                "description": "This refreshes the current values of the entities you already added, then lets you adjust your selection. **No re-scan** of the boiler is performed.\n\nContinue?"
+            },
+            "rediscover_entities": {
+                "title": "Rediscover available entities",
+                "description": "This **re-scans your ETA boiler** for all available endpoints, which can take a few minutes on large systems, and then lets you adjust your selection. Your existing entities are kept.\n\nContinue?"
             },
             "rename_entities": {
                 "title": "Migrate to the name-based scheme",
@@ -72,15 +95,36 @@
             },
             "user": {
                 "title": "Choose entities",
-                "description": "Select which discovered ETA entities should be added to Home Assistant.\n\nSensors: {float_count}\nSwitches: {switch_count}\nState sensors: {text_count}\nWritable sensors: {writable_count}\nPending sensors: {pending_count}\n**Total: {total_count}**\n\nEnable auto-select-all if you want to add everything at once. On large systems this can create several hundred entities.",
+                "description": "Select which discovered ETA entities should be added to Home Assistant.\n\nSensors: {float_count}\nSwitches: {switch_count}\nState sensors: {text_count}\nWritable sensors: {writable_count}\nPending sensors: {pending_count}\n**Total: {total_count}**\nService-level of the above: {service_count}\n\nEnable auto-select-all if you want to add everything at once. On large systems this can create several hundred entities.",
                 "data": {
                     "auto_select_all_entities": "Automatically select all discovered entities",
+                    "show_service_sensors": "Show service-level sensors (read-only)",
+                    "allow_service_write": "Allow writing service-level parameters (experts only)",
                     "chosen_float_sensors": "Possible sensors",
                     "chosen_switches": "Possible switches",
                     "chosen_text_sensors": "Possible state sensors",
                     "chosen_writable_sensors": "Possible writable sensors",
                     "chosen_pending_sensors": "Possible pending sensors, which may become available later"
                 }
+            },
+            "service_permissions": {
+                "title": "Service parameters (API 1.3)",
+                "menu_options": {
+                    "service_toggles": "Configure service permissions",
+                    "purge_service_sensors": "Remove all service sensors"
+                }
+            },
+            "service_toggles": {
+                "title": "Service parameters",
+                "description": "User-level entities are always available. Service-level parameters are intended for heating professionals.\n\nShowing them adds read-only diagnostic values. Allowing writing lets you change them, which can misconfigure your heating system if used incorrectly.",
+                "data": {
+                    "show_service_sensors": "Show service-level sensors (read-only)",
+                    "allow_service_write": "Allow writing service-level parameters (experts only)"
+                }
+            },
+            "purge_service_sensors": {
+                "title": "Remove service sensors",
+                "description": "This removes **all {service_count} selected service-level sensors** (read-only and writable) and their entities. User-level entities are kept.\n\nThe recorded history is not deleted immediately; Home Assistant's recorder cleans it up over time.\n\nContinue?"
             },
             "advanced_options": {
                 "title": "Advanced options",
@@ -95,13 +139,19 @@
             "endpoint_discovery_failed": "Rediscovering available entities failed. Please try again and check the logs if the problem persists.",
             "value_update_error": "At least one endpoint could not be updated. You may have to update the list of available sensors.",
             "unavailable_sensors": "One or more selected sensors are not available any more or have been moved to a different category. Please check the lists of selected sensors for any missing or wrong sensors. You can find a list of affected sensors in the logs.",
-            "migration_warning": "Warning: the entity ids will change. All automations, scripts, templates and dashboards that reference the old entity ids must be updated manually afterwards. The history is preserved."
+            "migration_warning": "Warning: the entity ids will change. All automations, scripts, templates and dashboards that reference the old entity ids must be updated manually afterwards. The history is preserved.",
+            "service_write_warning": "Warning: writing service-level parameters can misconfigure your heating system if used incorrectly. Only enable this if you are a heating professional.",
+            "purge_service_warning": "Warning: the service entities are removed. Their history stays until Home Assistant's recorder purges it."
         }
     },
     "issues": {
         "legacy_scheme_migration": {
             "title": "Optional: migrate to the name-based scheme (v2)",
             "description": "This installation still uses the IP-based entity scheme (`{old_prefix}…`). It keeps working unchanged – you don't have to do anything.\n\nIf you want, you can migrate to the name-based scheme under Settings → Devices & Services → ETA → Configure. Only the prefix `{old_prefix}` is replaced with `[name]_`, the rest of the entity id stays the same – a search & replace in your dashboards is enough.\n\nNote: the entity ids change, so automations, scripts and dashboards have to be updated manually afterwards. The history is preserved."
+        },
+        "perm_level_upgrade": {
+            "title": "New ETA API features available",
+            "description": "This ETA system now reports API 1.3 permission levels. Run a rediscovery (Settings > Devices & Services > ETA > Configure > rediscover) to enable service-permission handling and add newly available parameters. Your existing entities are kept."
         }
     },
     "entity": {
@@ -130,7 +180,8 @@
                 "update_parallel_requests": "Update API & polling settings",
                 "update_selected_entities": "Update selected entities",
                 "rediscover_and_update_entities": "Rediscover available entities and update selected entities",
-                "rename_entities_to_named_scheme": "Migrate to the name-based scheme (v2)"
+                "rename_entities_to_named_scheme": "Migrate to the name-based scheme (v2)",
+                "configure_service_permissions": "Configure service parameters (API 1.3)"
             }
         }
     },

@@ -26,6 +26,8 @@ from custom_components.eta_webservices.const import (
     FORCE_LEGACY_MODE,
     MAX_PARALLEL_REQUESTS,
     PENDING_DICT,
+    SHOW_SERVICE_SENSORS,
+    SUPPORTS_PERM_LEVEL,
     SWITCHES_DICT,
     TEXT_DICT,
     UPDATE_INTERVAL,
@@ -214,7 +216,9 @@ async def test_prepare_data_structures_copies_all_keys_from_runtime_config():
 
     await flow._prepare_data_structures()
 
-    assert len(flow.data) == len(config), "flow.data has unexpected number of keys"
+    # All runtime-config keys are copied. _prepare_data_structures may also seed
+    # permission-level defaults (API 1.3), which are not part of this fixture.
+    assert set(config).issubset(flow.data), "not all runtime-config keys copied"
 
     for key in config:
         assert key in flow.data, f"Key {key!r} missing from flow.data"
@@ -1063,3 +1067,159 @@ def test_build_endpoint_selection_schema_applies_defaults():
         k for k in schema if hasattr(k, "schema") and k.schema == CHOSEN_FLOAT_SENSORS
     )
     assert float_key.default() == ["f1"]
+
+
+# ---------------------------------------------------------------------------
+# options menu + service-permissions gating
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_options_menu_always_lists_service_permissions():
+    """The options init shows a menu that always includes service parameters."""
+    flow = _make_flow(_make_runtime_config())  # supports_perm_level absent
+    flow.async_show_menu = Mock(return_value="menu")
+    result = await flow.async_step_init()
+    assert result == "menu"
+    menu_options = flow.async_show_menu.call_args.kwargs["menu_options"]
+    assert "service_permissions" in menu_options
+    assert "update_selected_entities" in menu_options
+    assert "rediscover_entities" in menu_options
+
+
+@pytest.mark.asyncio
+async def test_service_permissions_aborts_below_api_1_3():
+    """Selecting service parameters without permLevel support aborts with a notice."""
+    flow = _make_flow(_make_runtime_config())  # supports_perm_level absent
+    result = await flow.async_step_service_permissions()
+    assert result == "aborted"
+    flow.async_abort.assert_called_with(reason="perm_level_unavailable")
+
+
+@pytest.mark.asyncio
+async def test_service_permissions_shows_submenu_on_api_1_3():
+    """With permLevel support, service parameters open a sub-menu."""
+    flow = _make_flow(_make_runtime_config({SUPPORTS_PERM_LEVEL: True}))
+    flow.async_show_menu = Mock(return_value="menu")
+    result = await flow.async_step_service_permissions()
+    assert result == "menu"
+    assert "service_toggles" in flow.async_show_menu.call_args.kwargs["menu_options"]
+
+
+@pytest.mark.asyncio
+async def test_service_toggles_shows_form():
+    """The service-toggles step shows the two-toggle form."""
+    flow = _make_flow(_make_runtime_config({SUPPORTS_PERM_LEVEL: True}))
+    flow.async_show_form = Mock(return_value="form")
+    result = await flow.async_step_service_toggles()
+    assert result == "form"
+
+
+@pytest.mark.asyncio
+async def test_rediscover_shows_confirmation_before_running():
+    """Rediscover shows a confirmation form first, not run immediately."""
+    flow = _make_flow(_make_runtime_config())
+    flow.async_show_form = Mock(return_value="confirm")
+    result = await flow.async_step_rediscover_entities()  # no user_input
+    assert result == "confirm"
+    assert flow.async_show_form.call_args.kwargs["step_id"] == "rediscover_entities"
+
+
+@pytest.mark.asyncio
+async def test_update_selected_shows_confirmation_before_running():
+    """Update-selected shows a confirmation form first, not run immediately."""
+    flow = _make_flow(_make_runtime_config())
+    flow.async_show_form = Mock(return_value="confirm")
+    result = await flow.async_step_update_selected_entities()  # no user_input
+    assert result == "confirm"
+    assert (
+        flow.async_show_form.call_args.kwargs["step_id"] == "update_selected_entities"
+    )
+
+
+@pytest.mark.asyncio
+async def test_async_step_user_ignores_carried_non_selection_input():
+    """A progress transition carrying the service toggles must not wipe the selection.
+
+    Regression: async_step_user must only submit when its own auto-select field is
+    present; otherwise it renders the form instead of removing all entities.
+    """
+    cfg = _make_runtime_config(
+        {FLOAT_DICT: {"eta_x": _make_sensor()}, CHOSEN_FLOAT_SENSORS: ["eta_x"]}
+    )
+    flow = EtaOptionsFlowHandler()
+    flow.hass = MagicMock()
+    flow.data = {}
+    flow._get_runtime_config = Mock(return_value=cfg)
+    flow._show_config_form_endpoint = AsyncMock(return_value="form")
+
+    registry = Mock()
+    with patch("custom_components.eta_webservices.config_flow.er") as er_mod:
+        er_mod.async_get.return_value = registry
+        er_mod.async_entries_for_config_entry.return_value = []
+        # Carried input = the service toggles only (no auto_select_all_entities).
+        result = await flow.async_step_user(user_input={SHOW_SERVICE_SENSORS: True})
+
+    assert result == "form"  # rendered, not submitted
+    registry.async_remove.assert_not_called()
+
+
+def _service_sensor():
+    s = _make_sensor()
+    s["perm_level"] = "SERVICE"
+    return s
+
+
+@pytest.mark.asyncio
+async def test_service_submenu_offers_purge_only_when_service_selected():
+    """Purge option appears in the service sub-menu only when service is selected."""
+    with_service = _make_runtime_config(
+        {
+            SUPPORTS_PERM_LEVEL: True,
+            FLOAT_DICT: {"svc": _service_sensor()},
+            CHOSEN_FLOAT_SENSORS: ["svc"],
+        }
+    )
+    flow = _make_flow(with_service)
+    flow.async_show_menu = Mock(return_value="menu")
+    await flow.async_step_service_permissions()
+    assert (
+        "purge_service_sensors" in flow.async_show_menu.call_args.kwargs["menu_options"]
+    )
+
+    # no service selected -> not offered
+    without = _make_runtime_config(
+        {
+            SUPPORTS_PERM_LEVEL: True,
+            FLOAT_DICT: {"u": _make_sensor()},
+            CHOSEN_FLOAT_SENSORS: ["u"],
+        }
+    )
+    flow2 = _make_flow(without)
+    flow2.async_show_menu = Mock(return_value="menu")
+    await flow2.async_step_service_permissions()
+    assert (
+        "purge_service_sensors"
+        not in flow2.async_show_menu.call_args.kwargs["menu_options"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_purge_removes_service_keeps_user():
+    """Purge strips selected SERVICE keys and keeps USER selection."""
+    cfg = _make_runtime_config(
+        {
+            SUPPORTS_PERM_LEVEL: True,
+            FLOAT_DICT: {"u": _make_sensor(), "svc": _service_sensor()},
+            CHOSEN_FLOAT_SENSORS: ["u", "svc"],
+        }
+    )
+    flow = _make_flow(cfg)
+    flow.async_create_entry = Mock(return_value="created")
+    with patch("custom_components.eta_webservices.config_flow.er") as er_mod:
+        er_mod.async_get.return_value = Mock()
+        er_mod.async_entries_for_config_entry.return_value = []
+        result = await flow.async_step_purge_service_sensors(user_input={})
+    assert result == "created"
+    saved = flow.async_create_entry.call_args.kwargs["data"]
+    assert saved[CHOSEN_FLOAT_SENSORS] == ["u"]  # service stripped, user kept
