@@ -15,6 +15,7 @@ import xmltodict
 from ._api.api_client import APIClient
 from ._api.sensor_discovery_v11 import SensorDiscoveryV11
 from ._api.sensor_discovery_v12 import SensorDiscoveryV12
+from ._api.sensor_discovery_v13 import SensorDiscoveryV13
 
 # Re-export types for backward compatibility
 from ._api.types import (  # noqa: F401
@@ -92,6 +93,7 @@ class EtaAPI:
             progress_callback("Checking ETA API version", 0.01)
 
         is_new_api = False
+        supports_perm_level = False
         if not force_legacy_mode:
             try:
                 # Avoid long "no progress" stalls before discovery starts.
@@ -118,7 +120,22 @@ class EtaAPI:
                         0.03,
                     )
 
-        if is_new_api:
+            if is_new_api:
+                # Separately probe for API 1.3+ (permLevel-aware). Kept apart from the
+                # >=1.2 gate so it is fully backward compatible and error-tolerant.
+                supports_perm_level = await self.supports_perm_level_api()
+
+        if supports_perm_level:
+            # API 1.3+: permLevel-aware discovery
+            if progress_callback is not None:
+                progress_callback("Using ETA API v1.3 discovery mode", 0.05)
+            sensor_discovery = SensorDiscoveryV13(
+                self._http, progress_callback=progress_callback, stable_id=stable_id
+            )
+            await sensor_discovery.get_all_sensors(
+                float_dict, switches_dict, text_dict, writable_dict, pending_dict
+            )
+        elif is_new_api:
             # New version with varinfo endpoint detected
             if progress_callback is not None:
                 progress_callback("Using ETA API v1.2 discovery mode", 0.05)
@@ -164,6 +181,17 @@ class EtaAPI:
         required_version = version.parse("1.2")
 
         return eta_version >= required_version
+
+    async def supports_perm_level_api(self):
+        """Return true if the ETA API is v1.3 or higher (permLevel-aware).
+
+        Error-tolerant: any failure to read the version returns False so discovery
+        falls back to the v1.2 path instead of raising.
+        """
+        try:
+            return await self.get_api_version() >= version.parse("1.3")
+        except Exception:  # noqa: BLE001
+            return False
 
     async def get_data(
         self,

@@ -37,6 +37,9 @@ class APIClient:
             self._max_concurrent_requests
         )
         self._num_duplicates = 0
+        # API 1.3 menu metadata from the last get_sensors_dict() walk, keyed by node
+        # uri: {perm_level, is_writable, fub_type, fub_def_name}. Empty/all-None on 1.1/1.2.
+        self._node_meta: dict[str, dict] = {}
 
     def _build_uri(self, suffix: str) -> str:
         """Build full URI from suffix."""
@@ -52,14 +55,41 @@ class APIClient:
         async with self._request_semaphore:
             return await self._session.post(self._build_uri(suffix), data=data)
 
-    def _evaluate_xml_dict(self, xml_dict, uri_dict: dict, prefix: str = ""):
-        """Recursively evaluate XML dictionary and extract URIs."""
+    def _record_node_meta(self, node: dict, fub_type, fub_def_name) -> None:
+        """Capture API 1.3 menu metadata for a node (values are None on 1.1/1.2)."""
+        uri = node.get("@uri")
+        if not uri:
+            return
+        is_writable = node.get("@isWritable")
+        self._node_meta[uri] = {
+            "perm_level": node.get("@permLevel"),
+            "is_writable": (is_writable == "1") if is_writable is not None else None,
+            "fub_type": fub_type,
+            "fub_def_name": fub_def_name,
+        }
+
+    def _evaluate_xml_dict(
+        self,
+        xml_dict,
+        uri_dict: dict,
+        prefix: str = "",
+        fub_type=None,
+        fub_def_name=None,
+    ):
+        """Recursively evaluate XML dictionary and extract URIs.
+
+        Also captures API 1.3 per-node metadata (permLevel, isWritable) and the
+        containing fub's type/defName, inherited downward. All absent on 1.1/1.2.
+        """
         if isinstance(xml_dict, list):
             for child in xml_dict:
-                self._evaluate_xml_dict(child, uri_dict, prefix)
+                self._evaluate_xml_dict(child, uri_dict, prefix, fub_type, fub_def_name)
         elif "object" in xml_dict:
             child = xml_dict["object"]
             new_prefix = f"{prefix}_{xml_dict['@name']}"
+            # a fub carries type/defName; inherit it to all descendant objects
+            cur_type = xml_dict.get("@type", fub_type)
+            cur_def_name = xml_dict.get("@defName", fub_def_name)
             # Store multiple URIs per key
             if new_prefix not in uri_dict:
                 uri_dict[new_prefix] = []
@@ -68,7 +98,8 @@ class APIClient:
             # add parent to uri_dict and then evaluate the children
             if (uri := xml_dict["@uri"]) not in uri_dict[new_prefix]:
                 uri_dict[new_prefix].append(uri)
-            self._evaluate_xml_dict(child, uri_dict, new_prefix)
+            self._record_node_meta(xml_dict, cur_type, cur_def_name)
+            self._evaluate_xml_dict(child, uri_dict, new_prefix, cur_type, cur_def_name)
         else:
             key = f"{prefix}_{xml_dict['@name']}"
             if key not in uri_dict:
@@ -77,6 +108,7 @@ class APIClient:
                 self._num_duplicates += 1
             if (uri := xml_dict["@uri"]) not in uri_dict[key]:
                 uri_dict[key].append(uri)
+            self._record_node_meta(xml_dict, fub_type, fub_def_name)
 
     async def get_menu(self):
         """Request the menu from the ETA API."""
@@ -93,6 +125,7 @@ class APIClient:
         """Get flattened sensor dictionary with URIs."""
         raw_dict = await self._get_raw_sensor_dict()
         uri_dict = {}
+        self._node_meta = {}
         self._evaluate_xml_dict(raw_dict, uri_dict)
         return uri_dict
 
@@ -227,6 +260,11 @@ class APIClient:
     def host(self) -> str:
         """Get host."""
         return self._host
+
+    @property
+    def node_meta(self) -> dict[str, dict]:
+        """API 1.3 menu metadata from the last get_sensors_dict() walk (uri -> dict)."""
+        return self._node_meta
 
     @property
     def num_duplicates(self) -> int:
