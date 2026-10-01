@@ -21,6 +21,7 @@ from homeassistant.util import slugify
 from .api import EtaAPI, ETAEndpoint
 from .const import (
     ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION,
+    ALLOW_SERVICE_WRITE,
     AUTO_SELECT_ALL_ENTITIES,
     CHOSEN_FLOAT_SENSORS,
     CHOSEN_PENDING_SENSORS,
@@ -36,16 +37,14 @@ from .const import (
     FORCE_LEGACY_MODE,
     INVISIBLE_UNITS,
     MAX_PARALLEL_REQUESTS,
-    OPTIONS_ACTION_PARALLEL_ONLY,
-    OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
-    OPTIONS_ACTION_RENAME_ENTITIES,
-    OPTIONS_ACTION_UPDATE_SELECTED,
-    OPTIONS_UPDATE_ACTION,
     PAUSE_COORDINATORS_START_TIMESTAMP,
     PENDING_DICT,
+    PERM_LEVEL_USER,
     RENAME_PENDING_FROM,
     REQUEST_SEMAPHORE,
+    SHOW_SERVICE_SENSORS,
     STABLE_ID,
+    SUPPORTS_PERM_LEVEL,
     SWITCHES_DICT,
     TEXT_DICT,
     UPDATE_INTERVAL,
@@ -59,29 +58,190 @@ _HOSTNAME_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?
 def _format_endpoint_label(endpoint: ETAEndpoint) -> str:
     """Format a display label for an endpoint selector option."""
     unit = endpoint.get("unit", "")
+    perm = endpoint.get("perm_level")
+    # Mark non-user endpoints so the user can tell service parameters apart.
+    suffix = f" [{perm}]" if perm and perm != PERM_LEVEL_USER else ""
     if unit and unit not in INVISIBLE_UNITS:
-        return f"{endpoint['friendly_name']} ({endpoint['value']} {unit})"
-    return f"{endpoint['friendly_name']} ({endpoint['value']})"
+        return f"{endpoint['friendly_name']} ({endpoint['value']} {unit}){suffix}"
+    return f"{endpoint['friendly_name']} ({endpoint['value']}){suffix}"
+
+
+def _is_user_perm_level(endpoint: ETAEndpoint) -> bool:
+    """USER is the only unrestricted level; SERVICE/unknown/deeper are restricted."""
+    return endpoint.get("perm_level") == PERM_LEVEL_USER
+
+
+def _perm_visible(endpoint: ETAEndpoint, show_service: bool) -> bool:
+    """Whether a read-only endpoint is offered given the "show service" toggle."""
+    return show_service or _is_user_perm_level(endpoint)
+
+
+def _perm_writable_allowed(endpoint: ETAEndpoint, allow_service_write: bool) -> bool:
+    """Whether a writable endpoint may be edited given the "service write" toggle."""
+    return allow_service_write or _is_user_perm_level(endpoint)
+
+
+def _compute_supports_perm_level(*endpoint_dicts: dict) -> bool:
+    """True if any discovered endpoint carries a permLevel (API 1.3 present)."""
+    return any(
+        endpoint.get("perm_level") is not None
+        for endpoint_dict in endpoint_dicts
+        for endpoint in endpoint_dict.values()
+    )
+
+
+def _visible_keys(
+    endpoint_dict: dict,
+    supports_perm_level: bool,
+    show_service: bool,
+    allow_service_write: bool = False,
+    writable: bool = False,
+) -> list[str]:
+    """Filter endpoint keys by permission level.
+
+    With permLevel support off (API 1.1/1.2) nothing is filtered (today's behavior).
+    """
+    if not supports_perm_level:
+        return list(endpoint_dict.keys())
+    result = []
+    for key, endpoint in endpoint_dict.items():
+        if not _perm_visible(endpoint, show_service):
+            continue
+        if writable and not _perm_writable_allowed(endpoint, allow_service_write):
+            continue
+        result.append(key)
+    return result
+
+
+def _auto_selected_keys(data: dict):
+    """Keys chosen by 'select all', respecting permission-level visibility.
+
+    Non-destructive: select-all adds all currently visible keys but never drops an
+    already-selected one, so toggling "show service" off does not delete service
+    entities the user had chosen.
+    """
+    supports = data.get(SUPPORTS_PERM_LEVEL, False)
+    show_service = data.get(SHOW_SERVICE_SENSORS, False)
+    allow_write = data.get(ALLOW_SERVICE_WRITE, False)
+
+    def _keys(endpoint_dict, chosen_key, writable=False):
+        visible = _visible_keys(
+            endpoint_dict, supports, show_service, allow_write, writable=writable
+        )
+        # keep already-selected keys that exist, even if now filtered out
+        for key in data.get(chosen_key, []):
+            if key in endpoint_dict and key not in visible:
+                visible.append(key)
+        return visible
+
+    return (
+        _keys(data[FLOAT_DICT], CHOSEN_FLOAT_SENSORS),
+        _keys(data[SWITCHES_DICT], CHOSEN_SWITCHES),
+        _keys(data[TEXT_DICT], CHOSEN_TEXT_SENSORS),
+        _keys(data[WRITABLE_DICT], CHOSEN_WRITABLE_SENSORS, writable=True),
+        _keys(data.get(PENDING_DICT, {}), CHOSEN_PENDING_SENSORS),
+    )
+
+
+_SELECTION_CATEGORIES = (
+    (FLOAT_DICT, CHOSEN_FLOAT_SENSORS),
+    (SWITCHES_DICT, CHOSEN_SWITCHES),
+    (TEXT_DICT, CHOSEN_TEXT_SENSORS),
+    (WRITABLE_DICT, CHOSEN_WRITABLE_SENSORS),
+    (PENDING_DICT, CHOSEN_PENDING_SENSORS),
+)
+
+
+def _selected_service_keys(data: dict) -> dict[str, list[str]]:
+    """Return the currently-selected SERVICE keys per chosen-list category."""
+    result: dict[str, list[str]] = {}
+    for dict_key, chosen_key in _SELECTION_CATEGORIES:
+        endpoint_dict = data.get(dict_key, {})
+        result[chosen_key] = [
+            key
+            for key in data.get(chosen_key, [])
+            if key in endpoint_dict
+            and endpoint_dict[key].get("perm_level")
+            and endpoint_dict[key].get("perm_level") != PERM_LEVEL_USER
+        ]
+    return result
+
+
+def _count_selected_service(data: dict) -> int:
+    """Number of currently-selected SERVICE sensors across all categories."""
+    return sum(len(keys) for keys in _selected_service_keys(data).values())
 
 
 def _build_discovered_entity_placeholders(
-    float_count: int,
-    switch_count: int,
-    text_count: int,
-    writable_count: int,
-    pending_count: int,
+    data: dict, language: str = "en"
 ) -> dict[str, str]:
-    """Build placeholders for discovered entity counts."""
-    total_count = (
-        float_count + switch_count + text_count + writable_count + pending_count
+    """Build placeholders for discovered entity counts.
+
+    Counts mirror what the selection actually offers: with "show service" off the
+    service-level endpoints are filtered out, so they are not counted either.
+
+    The service summary line (``service_line``) is assembled here instead of in the
+    translation strings: on API 1.1/1.2 there is no service concept so the line is
+    omitted entirely, and with the toggle off it reads "disabled" rather than "0" so
+    users do not mistake it for "no service sensors exist". The wording cannot live
+    in translations/ because a placeholder value is language-agnostic, so the two
+    supported languages are handled here.
+    """
+    supports = data.get(SUPPORTS_PERM_LEVEL, False)
+    show_service = data.get(SHOW_SERVICE_SENSORS, False)
+    allow_service_write = data.get(ALLOW_SERVICE_WRITE, False)
+    dicts = {
+        "float": data[FLOAT_DICT],
+        "switch": data[SWITCHES_DICT],
+        "text": data[TEXT_DICT],
+        "writable": data[WRITABLE_DICT],
+        "pending": data.get(PENDING_DICT, {}),
+    }
+    visible = {
+        "float": _visible_keys(dicts["float"], supports, show_service),
+        "switch": _visible_keys(dicts["switch"], supports, show_service),
+        "text": _visible_keys(dicts["text"], supports, show_service),
+        "writable": _visible_keys(
+            dicts["writable"],
+            supports,
+            show_service,
+            allow_service_write,
+            writable=True,
+        ),
+        "pending": _visible_keys(dicts["pending"], supports, show_service),
+    }
+    counts = {name: len(keys) for name, keys in visible.items()}
+    total_count = sum(counts.values())
+    # Service-level endpoints among those currently shown (0 when "show service" off).
+    service_count = sum(
+        1
+        for name, keys in visible.items()
+        for key in keys
+        if (ep := dicts[name].get(key))
+        and ep.get("perm_level")
+        and ep.get("perm_level") != PERM_LEVEL_USER
     )
+    is_de = str(language).lower().startswith("de")
+    if not supports:
+        # API 1.1/1.2: no permission levels at all -> no service line.
+        service_line = ""
+    else:
+        label = "Service-Sensoren" if is_de else "Service-level sensors"
+        if data.get(SHOW_SERVICE_SENSORS, False):
+            value = str(service_count)
+        else:
+            value = "deaktiviert" if is_de else "disabled"
+        service_line = f"\n{label}: {value}"
+
     return {
-        "float_count": str(float_count),
-        "switch_count": str(switch_count),
-        "text_count": str(text_count),
-        "writable_count": str(writable_count),
+        "float_count": str(counts["float"]),
+        "switch_count": str(counts["switch"]),
+        "text_count": str(counts["text"]),
+        "writable_count": str(counts["writable"]),
+        "pending_count": str(counts["pending"]),
         "total_count": str(total_count),
-        "pending_count": str(pending_count),
+        "service_count": str(service_count),
+        "service_line": service_line,
     }
 
 
@@ -104,6 +264,40 @@ def _build_endpoint_selection_schema(
     writable_dict: dict[str, ETAEndpoint] = data[WRITABLE_DICT]
     pending_dict: dict[str, ETAEndpoint] = data.get(PENDING_DICT, {})
 
+    # Permission-level filtering (API 1.3). On 1.1/1.2 supports=False -> no filtering.
+    supports = data.get(SUPPORTS_PERM_LEVEL, False)
+    show_service = data.get(SHOW_SERVICE_SENSORS, False)
+    allow_service_write = data.get(ALLOW_SERVICE_WRITE, False)
+    float_keys = _visible_keys(float_dict, supports, show_service)
+    switch_keys = _visible_keys(switches_dict, supports, show_service)
+    text_keys = _visible_keys(text_dict, supports, show_service)
+    writable_keys = _visible_keys(
+        writable_dict, supports, show_service, allow_service_write, writable=True
+    )
+    pending_keys = _visible_keys(pending_dict, supports, show_service)
+
+    def _keep_selected(keys, chosen_key, endpoint_dict):
+        """Keep already-selected keys as valid options even if filtered out.
+
+        Otherwise a pre-filled default that is now hidden would be an invalid choice
+        (voluptuous rejects it) and would render as a raw id. This also keeps the
+        migration non-destructive: existing service selections are preserved.
+        """
+        result = list(keys)
+        selected = list(defaults.get(chosen_key, [])) + list(data.get(chosen_key, []))
+        for key in selected:
+            if key in endpoint_dict and key not in result:
+                result.append(key)
+        return result
+
+    float_keys = _keep_selected(float_keys, CHOSEN_FLOAT_SENSORS, float_dict)
+    switch_keys = _keep_selected(switch_keys, CHOSEN_SWITCHES, switches_dict)
+    text_keys = _keep_selected(text_keys, CHOSEN_TEXT_SENSORS, text_dict)
+    writable_keys = _keep_selected(
+        writable_keys, CHOSEN_WRITABLE_SENSORS, writable_dict
+    )
+    pending_keys = _keep_selected(pending_keys, CHOSEN_PENDING_SENSORS, pending_dict)
+
     schema: dict = {
         vol.Required(AUTO_SELECT_ALL_ENTITIES, default=auto_select_default): cv.boolean,
         vol.Optional(
@@ -119,7 +313,7 @@ def _build_endpoint_selection_schema(
                     selector.SelectOptionDict(
                         value=key, label=_format_endpoint_label(float_dict[key])
                     )
-                    for key in float_dict
+                    for key in float_keys
                 ],
                 mode=selector.SelectSelectorMode.DROPDOWN,
                 multiple=True,
@@ -138,7 +332,7 @@ def _build_endpoint_selection_schema(
                     selector.SelectOptionDict(
                         value=key, label=_format_endpoint_label(switches_dict[key])
                     )
-                    for key in switches_dict
+                    for key in switch_keys
                 ],
                 mode=selector.SelectSelectorMode.DROPDOWN,
                 multiple=True,
@@ -157,7 +351,7 @@ def _build_endpoint_selection_schema(
                     selector.SelectOptionDict(
                         value=key, label=_format_endpoint_label(text_dict[key])
                     )
-                    for key in text_dict
+                    for key in text_keys
                 ],
                 mode=selector.SelectSelectorMode.DROPDOWN,
                 multiple=True,
@@ -176,7 +370,7 @@ def _build_endpoint_selection_schema(
                     selector.SelectOptionDict(
                         value=key, label=_format_endpoint_label(writable_dict[key])
                     )
-                    for key in writable_dict
+                    for key in writable_keys
                 ],
                 mode=selector.SelectSelectorMode.DROPDOWN,
                 multiple=True,
@@ -196,7 +390,7 @@ def _build_endpoint_selection_schema(
                             value=key,
                             label=f"{pending_dict[key]['friendly_name']} (pending — activates automatically)",
                         )
-                        for key in pending_dict
+                        for key in pending_keys
                     ],
                     mode=selector.SelectSelectorMode.DROPDOWN,
                     multiple=True,
@@ -412,7 +606,46 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
             return self.async_show_progress_done(next_step_id="user")
 
         self._endpoint_discovery_task = None
-        return self.async_show_progress_done(next_step_id="select_entities")
+        # On API 1.3, ask about service permissions before the selection form.
+        next_step = (
+            "permission_options"
+            if self.data.get(SUPPORTS_PERM_LEVEL, False)
+            else "select_entities"
+        )
+        return self.async_show_progress_done(next_step_id=next_step)
+
+    async def async_step_permission_options(self, user_input=None):
+        """API 1.3: choose whether to expose/allow writing service parameters."""
+        # Guard against a progress transition re-entering this step with another
+        # form's input: only submit when this form's own field is present.
+        if user_input is not None and SHOW_SERVICE_SENSORS in user_input:
+            self.data[SHOW_SERVICE_SENSORS] = user_input.get(
+                SHOW_SERVICE_SENSORS, False
+            )
+            self.data[ALLOW_SERVICE_WRITE] = user_input.get(ALLOW_SERVICE_WRITE, False)
+            # Writing service parameters implies showing them.
+            if self.data[ALLOW_SERVICE_WRITE]:
+                self.data[SHOW_SERVICE_SENSORS] = True
+            return await self.async_step_select_entities()
+
+        # Red warning box (HA renders `errors` in red) about writing service params.
+        self._errors = {"allow_service_write": "service_write_warning"}
+        return self.async_show_form(
+            step_id="permission_options",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        SHOW_SERVICE_SENSORS,
+                        default=self.data.get(SHOW_SERVICE_SENSORS, False),
+                    ): cv.boolean,
+                    vol.Required(
+                        ALLOW_SERVICE_WRITE,
+                        default=self.data.get(ALLOW_SERVICE_WRITE, False),
+                    ): cv.boolean,
+                }
+            ),
+            errors=self._errors,
+        )
 
     async def _async_validate_and_discover_endpoints(
         self, host: str, port: str, force_legacy_mode: bool
@@ -467,6 +700,13 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
                 force_legacy_mode,
                 progress_callback=self._on_discovery_progress,
             )
+            self.data[SUPPORTS_PERM_LEVEL] = _compute_supports_perm_level(
+                self.data[FLOAT_DICT],
+                self.data[SWITCHES_DICT],
+                self.data[TEXT_DICT],
+                self.data[WRITABLE_DICT],
+                self.data[PENDING_DICT],
+            )
             total_entities = (
                 len(self.data[FLOAT_DICT])
                 + len(self.data[SWITCHES_DICT])
@@ -492,15 +732,19 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
 
     async def async_step_select_entities(self, user_input=None):
         """Second step in config flow to add a repo to watch."""
-        if user_input is not None:
+        # Only submit when this form's own auto-select field is present; a progress
+        # transition can re-enter this step carrying another form's input.
+        if user_input is not None and AUTO_SELECT_ALL_ENTITIES in user_input:
             auto_select_all_entities = user_input.get(AUTO_SELECT_ALL_ENTITIES, False)
             # add chosen entities to data
             if auto_select_all_entities:
-                selected_float_sensors = list(self.data[FLOAT_DICT].keys())
-                selected_switches = list(self.data[SWITCHES_DICT].keys())
-                selected_text_sensors = list(self.data[TEXT_DICT].keys())
-                selected_writable_sensors = list(self.data[WRITABLE_DICT].keys())
-                selected_pending_sensors = list(self.data.get(PENDING_DICT, {}).keys())
+                (
+                    selected_float_sensors,
+                    selected_switches,
+                    selected_text_sensors,
+                    selected_writable_sensors,
+                    selected_pending_sensors,
+                ) = _auto_selected_keys(self.data)
             else:
                 selected_float_sensors = user_input.get(CHOSEN_FLOAT_SENSORS, [])
                 selected_switches = user_input.get(CHOSEN_SWITCHES, [])
@@ -569,13 +813,8 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
 
     async def _show_config_form_endpoint(self):
         """Show the configuration form to select which endpoints should become entities."""
-        pending_dict: dict[str, ETAEndpoint] = self.data.get(PENDING_DICT, {})
         count_placeholders = _build_discovered_entity_placeholders(
-            len(self.data[FLOAT_DICT]),
-            len(self.data[SWITCHES_DICT]),
-            len(self.data[TEXT_DICT]),
-            len(self.data[WRITABLE_DICT]),
-            len(pending_dict),
+            self.data, self.hass.config.language
         )
         schema = _build_endpoint_selection_schema(self.data)
         return self.async_show_form(
@@ -668,6 +907,9 @@ class EtaOptionsFlowHandler(OptionsFlow):
         self._options_update_task: asyncio.Task | None = None
         self._options_update_error: str | None = None
         self._pending_init_error: str | None = None
+        # (show_service, allow_write) staged by the service-permissions step and
+        # applied in _prepare_data_structures before the selection form is shown.
+        self._pending_service_toggles: tuple[bool, bool] | None = None
 
     def _get_runtime_config(self) -> dict | None:
         """Return the loaded runtime config for this entry if available."""
@@ -741,30 +983,177 @@ class EtaOptionsFlowHandler(OptionsFlow):
             UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
         )
 
+        menu_options = [
+            "parallel_requests",
+            "update_selected_entities",
+            "rediscover_entities",
+        ]
+        # Offer the one-time v2 migration only while still on the IP-based scheme.
+        if not current_data.get(CONF_NAME):
+            menu_options.append("rename_entities")
+        # Always list the service parameters so users learn the feature exists;
+        # selecting it on a system below API 1.3 shows an "not available yet" notice.
+        # Its own sub-menu then offers the toggles and the bulk-removal action.
+        menu_options.append("service_permissions")
+        return self.async_show_menu(step_id="init", menu_options=menu_options)
+
+    async def async_step_update_selected_entities(self, user_input=None):
+        """Menu action: update the current entity selection (no rediscovery).
+
+        Shows a confirmation first so the action does not run on a stray click; the
+        user can go back to the menu instead.
+        """
         if user_input is not None:
-            selected_action = user_input[OPTIONS_UPDATE_ACTION]
+            return await self._start_entity_selection(enumerate_new=False)
+        return self.async_show_form(
+            step_id="update_selected_entities",
+            data_schema=vol.Schema({}),
+            errors=self._errors,
+        )
 
-            if selected_action == OPTIONS_ACTION_RENAME_ENTITIES:
-                return await self.async_step_rename_entities()
+    async def async_step_rediscover_entities(self, user_input=None):
+        """Menu action: rediscover available endpoints, then adjust the selection.
 
-            self.update_sensor_values = selected_action in (
-                OPTIONS_ACTION_UPDATE_SELECTED,
-                OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
-            )
-            self.enumerate_new_endpoints = (
-                selected_action == OPTIONS_ACTION_REDISCOVER_AND_UPDATE
-            )
+        Shows a confirmation first (the scan can take a while) so it does not run on
+        a stray click; the user can go back to the menu instead.
+        """
+        if user_input is not None:
+            return await self._start_entity_selection(enumerate_new=True)
+        return self.async_show_form(
+            step_id="rediscover_entities",
+            data_schema=vol.Schema({}),
+            errors=self._errors,
+        )
 
-            if not self.update_sensor_values and not self.enumerate_new_endpoints:
-                return await self.async_step_parallel_requests()
+    async def _start_entity_selection(self, enumerate_new: bool):
+        """Kick off preparation and route to the selection form."""
+        if self._get_runtime_config() is None:
+            return self.async_abort(reason="integration_busy")
+        self.update_sensor_values = True
+        self.enumerate_new_endpoints = enumerate_new
+        self._options_update_error = None
+        self._options_update_task = self.hass.async_create_task(
+            self._async_prepare_entity_selection()
+        )
+        return await self.async_step_prepare_entities()
 
+    async def async_step_service_permissions(self, user_input=None):
+        """API 1.3: reconfigure the two service-permission toggles (own step).
+
+        Stages the chosen toggles and routes through the normal preparation +
+        selection form, which then persists them with the rest of the config.
+        """
+        current_data = self._get_runtime_config()
+        if current_data is None:
+            return self.async_abort(reason="integration_busy")
+        # Feature requires API 1.3; on older systems explain that it is not available.
+        if not current_data.get(SUPPORTS_PERM_LEVEL):
+            return self.async_abort(reason="perm_level_unavailable")
+
+        # Sub-menu: configure the toggles, and (if service sensors are selected)
+        # remove them all in bulk.
+        menu_options = ["service_toggles"]
+        if _count_selected_service(current_data):
+            menu_options.append("purge_service_sensors")
+        return self.async_show_menu(
+            step_id="service_permissions", menu_options=menu_options
+        )
+
+    async def async_step_service_toggles(self, user_input=None):
+        """Configure the two service-permission toggles (part of the service menu)."""
+        current_data = self._get_runtime_config()
+        if current_data is None:
+            return self.async_abort(reason="integration_busy")
+
+        # Guard against a progress transition re-entering with another form's input.
+        if user_input is not None and SHOW_SERVICE_SENSORS in user_input:
+            show_service = user_input.get(SHOW_SERVICE_SENSORS, False)
+            allow_write = user_input.get(ALLOW_SERVICE_WRITE, False)
+            # Writing service parameters implies showing them.
+            self._pending_service_toggles = (show_service or allow_write, allow_write)
+            self.update_sensor_values = False
+            self.enumerate_new_endpoints = False
             self._options_update_error = None
             self._options_update_task = self.hass.async_create_task(
                 self._async_prepare_entity_selection()
             )
             return await self.async_step_prepare_entities()
 
-        return await self._show_initial_option_screen()
+        # Red warning box (HA renders `errors` in red) about writing service params.
+        self._errors = {"allow_service_write": "service_write_warning"}
+        return self.async_show_form(
+            step_id="service_toggles",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        SHOW_SERVICE_SENSORS,
+                        default=current_data.get(SHOW_SERVICE_SENSORS, False),
+                    ): cv.boolean,
+                    vol.Required(
+                        ALLOW_SERVICE_WRITE,
+                        default=current_data.get(ALLOW_SERVICE_WRITE, False),
+                    ): cv.boolean,
+                }
+            ),
+            errors=self._errors,
+        )
+
+    async def async_step_purge_service_sensors(self, user_input=None):
+        """Bulk-remove all currently selected SERVICE sensors (with confirmation)."""
+        current_data = self._get_runtime_config()
+        if current_data is None:
+            return self.async_abort(reason="integration_busy")
+        service_keys = _selected_service_keys(current_data)
+        total = sum(len(keys) for keys in service_keys.values())
+
+        if user_input is not None:
+            remove_ids = {key for keys in service_keys.values() for key in keys}
+            entity_registry = er.async_get(self.hass)
+            entries = er.async_entries_for_config_entry(
+                entity_registry,
+                self.config_entry.entry_id,  # pyright: ignore[reportOptionalMemberAccess]
+            )
+            for entity in entries:
+                if entity.unique_id in remove_ids:
+                    entity_registry.async_remove(entity.entity_id)
+
+            # Persist the reduced selection; USER selection stays untouched.
+            data = {
+                dict_key: current_data.get(dict_key, {})
+                for dict_key, _chosen in _SELECTION_CATEGORIES
+            }
+            for _dict_key, chosen_key in _SELECTION_CATEGORIES:
+                removed = set(service_keys.get(chosen_key, []))
+                data[chosen_key] = [
+                    key
+                    for key in current_data.get(chosen_key, [])
+                    if key not in removed
+                ]
+            data[CONF_HOST] = current_data.get(CONF_HOST)
+            data[CONF_PORT] = current_data.get(CONF_PORT)
+            data[MAX_PARALLEL_REQUESTS] = current_data.get(
+                MAX_PARALLEL_REQUESTS, DEFAULT_MAX_PARALLEL_REQUESTS
+            )
+            data[UPDATE_INTERVAL] = current_data.get(
+                UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
+            )
+            data[FORCE_LEGACY_MODE] = current_data.get(FORCE_LEGACY_MODE, False)
+            data[ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION] = current_data.get(
+                ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION, []
+            )
+            data[SUPPORTS_PERM_LEVEL] = current_data.get(SUPPORTS_PERM_LEVEL, False)
+            data[SHOW_SERVICE_SENSORS] = current_data.get(SHOW_SERVICE_SENSORS, False)
+            data[ALLOW_SERVICE_WRITE] = current_data.get(ALLOW_SERVICE_WRITE, False)
+            return self.async_create_entry(title="", data=data)
+
+        # Confirmation with count; red warning box.
+        self._errors = {"base": "purge_service_warning"}
+        return self.async_show_form(
+            step_id="purge_service_sensors",
+            data_schema=vol.Schema({}),
+            errors=self._errors,
+            description_placeholders={"service_count": str(total)},
+        )
 
     async def async_step_rename_entities(self, user_input=None):
         """Opt-in migration from the IP-based scheme to the name-based v2 scheme.
@@ -876,41 +1265,6 @@ class EtaOptionsFlowHandler(OptionsFlow):
                 else "value_update_error"
             )
             self._on_options_progress("Background preparation failed", None)
-
-    async def _show_initial_option_screen(self):
-        """Show the initial option form."""
-        current_data = self._get_runtime_config()
-        if current_data is None:
-            return self.async_abort(reason="integration_busy")
-
-        action_options = [
-            OPTIONS_ACTION_PARALLEL_ONLY,
-            OPTIONS_ACTION_UPDATE_SELECTED,
-            OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
-        ]
-        # Offer the one-time v2 migration only while still on the IP-based scheme.
-        if not current_data.get(CONF_NAME):
-            action_options.append(OPTIONS_ACTION_RENAME_ENTITIES)
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        OPTIONS_UPDATE_ACTION,
-                        default=OPTIONS_ACTION_PARALLEL_ONLY,
-                    ): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=action_options,
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                            multiple=False,
-                            translation_key="options_update_action",
-                        )
-                    ),
-                }
-            ),
-            errors=self._errors,
-        )
 
     async def async_step_parallel_requests(self, user_input=None):
         """Update only the max number of parallel API requests."""
@@ -1246,6 +1600,16 @@ class EtaOptionsFlowHandler(OptionsFlow):
         self.data[ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION] = (
             current_data.get(ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION, [])
         )
+        # Permission-level flags may be absent on pre-1.3 entries; default them off.
+        self.data[SUPPORTS_PERM_LEVEL] = current_data.get(SUPPORTS_PERM_LEVEL, False)
+        self.data[SHOW_SERVICE_SENSORS] = current_data.get(SHOW_SERVICE_SENSORS, False)
+        self.data[ALLOW_SERVICE_WRITE] = current_data.get(ALLOW_SERVICE_WRITE, False)
+        # Apply toggles chosen in the service-permissions step, if any.
+        if self._pending_service_toggles is not None:
+            show_service, allow_write = self._pending_service_toggles
+            self.data[SHOW_SERVICE_SENSORS] = show_service
+            self.data[ALLOW_SERVICE_WRITE] = allow_write
+            self._pending_service_toggles = None
         self.data[MAX_PARALLEL_REQUESTS] = self.max_parallel_requests
         self.data[UPDATE_INTERVAL] = self.update_interval
         self._on_options_progress("Loaded current configuration", 0.1)
@@ -1264,6 +1628,15 @@ class EtaOptionsFlowHandler(OptionsFlow):
                 self.data[CONF_PORT],
                 self.data[FORCE_LEGACY_MODE],
                 progress_callback=self._on_options_progress,
+            )
+
+            # A rediscovery on 1.3 firmware turns permLevel support on for this entry.
+            self.data[SUPPORTS_PERM_LEVEL] = _compute_supports_perm_level(
+                new_float_sensors,
+                new_switches,
+                new_text_sensors,
+                new_writable_sensors,
+                new_pending_sensors,
             )
 
             self._verify_pending_sensors(
@@ -1336,16 +1709,22 @@ class EtaOptionsFlowHandler(OptionsFlow):
             e.unique_id: e for e in entries if e.unique_id in self.data[WRITABLE_DICT]
         }
 
-        if user_input is not None:
+        # Only treat this as a real selection submit when the selection form's own
+        # auto-select field is present. After a progress transition HA can re-enter
+        # this step carrying another form's input (e.g. the service toggles); that
+        # must render the form, not submit an empty selection (which would wipe all).
+        if user_input is not None and AUTO_SELECT_ALL_ENTITIES in user_input:
             self.auto_select_all_entities = user_input.get(
                 AUTO_SELECT_ALL_ENTITIES, False
             )
             if self.auto_select_all_entities:
-                selected_float_sensors = list(self.data[FLOAT_DICT].keys())
-                selected_switches = list(self.data[SWITCHES_DICT].keys())
-                selected_text_sensors = list(self.data[TEXT_DICT].keys())
-                selected_writable_sensors = list(self.data[WRITABLE_DICT].keys())
-                selected_pending_sensors = list(self.data.get(PENDING_DICT, {}).keys())
+                (
+                    selected_float_sensors,
+                    selected_switches,
+                    selected_text_sensors,
+                    selected_writable_sensors,
+                    selected_pending_sensors,
+                ) = _auto_selected_keys(self.data)
             else:
                 selected_float_sensors = user_input.get(CHOSEN_FLOAT_SENSORS, [])
                 selected_switches = user_input.get(CHOSEN_SWITCHES, [])
@@ -1416,6 +1795,9 @@ class EtaOptionsFlowHandler(OptionsFlow):
                     ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION
                 ],
                 FORCE_LEGACY_MODE: self.data[FORCE_LEGACY_MODE],
+                SUPPORTS_PERM_LEVEL: self.data.get(SUPPORTS_PERM_LEVEL, False),
+                SHOW_SERVICE_SENSORS: self.data.get(SHOW_SERVICE_SENSORS, False),
+                ALLOW_SERVICE_WRITE: self.data.get(ALLOW_SERVICE_WRITE, False),
             }
 
             # only show advanced options for writable sensors that do not have a custom unit like time sensors
@@ -1500,11 +1882,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
             self._errors["base"] = "unavailable_sensors"
 
         count_placeholders = _build_discovered_entity_placeholders(
-            len(self.data[FLOAT_DICT]),
-            len(self.data[SWITCHES_DICT]),
-            len(self.data[TEXT_DICT]),
-            len(self.data[WRITABLE_DICT]),
-            len(self.data.get(PENDING_DICT, {})),
+            self.data, self.hass.config.language
         )
         # Pending sensors don't have HA entities yet, so read their selection from local data
         defaults = {
