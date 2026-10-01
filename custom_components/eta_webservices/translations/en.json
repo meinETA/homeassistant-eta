@@ -14,15 +14,15 @@
             },
             "permission_options": {
                 "title": "Service parameters",
-                "description": "Your ETA system reports permission levels for its parameters. User-level entities are added by default.\n\nService-level parameters are intended for heating professionals. Showing them adds read-only diagnostic values. Allowing writing lets you change them, which can misconfigure your heating system if used incorrectly.",
+                "description": "Your ETA system reports permission levels for its parameters. User-level entities are added by default.\n\nService-level parameters are intended for heating professionals. These switches only control which of them are offered in the sensor selection; entities you already added are left unchanged. \"Show\" offers read-only diagnostic values, \"offer writable\" additionally offers changeable parameters, which can misconfigure your heating system if used incorrectly.",
                 "data": {
                     "show_service_sensors": "Show service-level sensors (read-only)",
-                    "allow_service_write": "Allow writing service-level parameters (experts only)"
+                    "allow_service_write": "Offer writable service-level parameters in the selection (experts only)"
                 }
             },
             "select_entities": {
                 "title": "Choose entities",
-                "description": "Select which discovered ETA entities should be added to Home Assistant.\n\nSensors: {float_count}\nSwitches: {switch_count}\nState sensors: {text_count}\nWritable sensors: {writable_count}\nPending sensors: {pending_count}\n**Total: {total_count}**\nService-level of the above: {service_count}\n\nEnable auto-select-all if you want to add everything at once. On large systems this can create several hundred entities.",
+                "description": "Select which discovered ETA entities should be added to Home Assistant.\n\nSensors: {float_count}\nSwitches: {switch_count}\nState sensors: {text_count}\nWritable sensors: {writable_count}\nPending sensors: {pending_count}\n**Total: {total_count}**{service_line}\n\nEnable auto-select-all if you want to add everything at once. On large systems this can create several hundred entities.",
                 "data": {
                     "auto_select_all_entities": "Automatically select all discovered entities",
                     "chosen_float_sensors": "Possible sensors",
@@ -52,7 +52,7 @@
         "abort": {
             "integration_busy": "The integration is still starting up or reloading. Please wait a moment and try configuring it again.",
             "already_named_scheme": "This installation already uses the name-based scheme (v2) – no migration needed.",
-            "perm_level_unavailable": "Service parameters require ETA API 1.3 (firmware x.67.0), which this system does not report yet. Update your ETA firmware, then run a rediscovery."
+            "perm_level_unavailable": "Service parameters require ETA API 1.3 (firmware x.67.0), which this system does not report yet. Update your ETA firmware if needed.\n\n**Then run a rediscovery: \"Rediscover available entities and update selected entities\".**"
         },
         "progress": {
             "prepare_entities": "Preparing entity data in the background. This can take several minutes on large systems. Home Assistant will continue automatically as soon as the process is finished."
@@ -95,11 +95,11 @@
             },
             "user": {
                 "title": "Choose entities",
-                "description": "Select which discovered ETA entities should be added to Home Assistant.\n\nSensors: {float_count}\nSwitches: {switch_count}\nState sensors: {text_count}\nWritable sensors: {writable_count}\nPending sensors: {pending_count}\n**Total: {total_count}**\nService-level of the above: {service_count}\n\nEnable auto-select-all if you want to add everything at once. On large systems this can create several hundred entities.",
+                "description": "Select which discovered ETA entities should be added to Home Assistant.\n\nSensors: {float_count}\nSwitches: {switch_count}\nState sensors: {text_count}\nWritable sensors: {writable_count}\nPending sensors: {pending_count}\n**Total: {total_count}**{service_line}\n\nEnable auto-select-all if you want to add everything at once. On large systems this can create several hundred entities.",
                 "data": {
                     "auto_select_all_entities": "Automatically select all discovered entities",
                     "show_service_sensors": "Show service-level sensors (read-only)",
-                    "allow_service_write": "Allow writing service-level parameters (experts only)",
+                    "allow_service_write": "Offer writable service-level parameters in the selection (experts only)",
                     "chosen_float_sensors": "Possible sensors",
                     "chosen_switches": "Possible switches",
                     "chosen_text_sensors": "Possible state sensors",
@@ -116,10 +116,10 @@
             },
             "service_toggles": {
                 "title": "Service parameters",
-                "description": "User-level entities are always available. Service-level parameters are intended for heating professionals.\n\nShowing them adds read-only diagnostic values. Allowing writing lets you change them, which can misconfigure your heating system if used incorrectly.",
+                "description": "User-level entities are always available. Service-level parameters are intended for heating professionals.\n\nThese switches only control which service-level parameters are offered in the sensor selection; entities you already added are left unchanged. \"Show\" offers read-only diagnostic values, \"offer writable\" additionally offers changeable parameters, which can misconfigure your heating system if used incorrectly.",
                 "data": {
                     "show_service_sensors": "Show service-level sensors (read-only)",
-                    "allow_service_write": "Allow writing service-level parameters (experts only)"
+                    "allow_service_write": "Offer writable service-level parameters in the selection (experts only)"
                 }
             },
             "purge_service_sensors": {
@@ -151,7 +151,7 @@
         },
         "perm_level_upgrade": {
             "title": "New ETA API features available",
-            "description": "This ETA system now reports API 1.3 permission levels. Run a rediscovery (Settings > Devices & Services > ETA > Configure > rediscover) to enable service-permission handling and add newly available parameters. Your existing entities are kept."
+            "description": "This ETA system now reports API 1.3 permission levels. Open Settings > Devices & Services > ETA > Configure and choose \"Rediscover available entities and update selected entities\" to enable service-permission handling and add newly available parameters. Your existing entities are kept."
         }
     },
     "entity": {

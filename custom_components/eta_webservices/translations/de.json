@@ -14,15 +14,15 @@
             },
             "permission_options": {
                 "title": "Service-Parameter",
-                "description": "Deine ETA-Anlage meldet Berechtigungsstufen für ihre Parameter. Entitäten der Benutzerebene werden standardmäßig hinzugefügt.\n\nService-Parameter sind für Fachleute gedacht. Anzeigen fügt schreibgeschützte Diagnosewerte hinzu. Schreiben erlauben lässt dich diese verändern, was die Heizungsanlage bei falscher Anwendung fehlkonfigurieren kann.",
+                "description": "Deine ETA-Anlage meldet Berechtigungsstufen für ihre Parameter. Entitäten der Benutzerebene werden standardmäßig hinzugefügt.\n\nService-Parameter sind für Fachleute gedacht. Diese Schalter steuern nur, welche davon in der Sensor-Auswahl angeboten werden; bereits hinzugefügte Entitäten bleiben unverändert. „Anzeigen“ bietet schreibgeschützte Diagnosewerte an, „schreibbare anbieten“ zusätzlich veränderbare Parameter, die die Heizungsanlage bei falscher Anwendung fehlkonfigurieren können.",
                 "data": {
                     "show_service_sensors": "Service-Sensoren anzeigen (schreibgeschützt)",
-                    "allow_service_write": "Schreiben von Service-Parametern erlauben (nur Fachleute)"
+                    "allow_service_write": "Schreibbare Service-Parameter zur Auswahl anbieten (nur Fachleute)"
                 }
             },
             "select_entities": {
                 "title": "Entitäten auswählen",
-                "description": "Wähle aus, welche gefundenen ETA-Entitäten zu Home Assistant hinzugefügt werden sollen.\n\nSensoren: {float_count}\nSchalter: {switch_count}\nZustandssensoren: {text_count}\nSchreibbare Sensoren: {writable_count}\nAusstehende Sensoren: {pending_count}\n**Gesamt: {total_count}**\n\nAktiviere die automatische Auswahl, wenn du alles auf einmal hinzufügen möchtest. Bei großen Anlagen können das mehrere hundert Entitäten sein.",
+                "description": "Wähle aus, welche gefundenen ETA-Entitäten zu Home Assistant hinzugefügt werden sollen.\n\nSensoren: {float_count}\nSchalter: {switch_count}\nZustandssensoren: {text_count}\nSchreibbare Sensoren: {writable_count}\nAusstehende Sensoren: {pending_count}\n**Gesamt: {total_count}**{service_line}\n\nAktiviere die automatische Auswahl, wenn du alles auf einmal hinzufügen möchtest. Bei großen Anlagen können das mehrere hundert Entitäten sein.",
                 "data": {
                     "auto_select_all_entities": "Alle gefundenen Entitäten automatisch auswählen",
                     "chosen_float_sensors": "Sensoren",
@@ -52,7 +52,7 @@
         "abort": {
             "integration_busy": "Die Integration wird gerade noch gestartet oder neu geladen. Bitte warte einen Moment und versuche das Konfigurieren dann erneut.",
             "already_named_scheme": "Diese Anlage nutzt bereits das namensbasierte Schema (v2) – eine Migration ist nicht mehr nötig.",
-            "perm_level_unavailable": "Service-Parameter benötigen ETA API 1.3 (Firmware x.67.0), die diese Anlage noch nicht meldet. Aktualisiere die ETA-Firmware und führe dann eine erneute Erkennung durch."
+            "perm_level_unavailable": "Service-Parameter benötigen ETA API 1.3 (Firmware x.67.0), die diese Anlage noch nicht meldet. Aktualisiere ggf. die ETA-Firmware.\n\n**Führe dann eine erneute Erkennung durch: „Verfügbare Entitäten neu erkennen und Auswahl aktualisieren“.**"
         },
         "progress": {
             "prepare_entities": "Entitätsdaten werden im Hintergrund vorbereitet. Das kann bei großen Anlagen mehrere Minuten dauern. Home Assistant fährt automatisch fort, sobald der Vorgang abgeschlossen ist."
@@ -95,11 +95,11 @@
             },
             "user": {
                 "title": "Entitäten auswählen",
-                "description": "Wähle aus, welche gefundenen ETA-Entitäten zu Home Assistant hinzugefügt werden sollen.\n\nSensoren: {float_count}\nSchalter: {switch_count}\nZustandssensoren: {text_count}\nSchreibbare Sensoren: {writable_count}\nAusstehende Sensoren: {pending_count}\n**Gesamt: {total_count}**\n\nAktiviere die automatische Auswahl, wenn du alles auf einmal hinzufügen möchtest. Bei großen Anlagen können das mehrere hundert Entitäten sein.",
+                "description": "Wähle aus, welche gefundenen ETA-Entitäten zu Home Assistant hinzugefügt werden sollen.\n\nSensoren: {float_count}\nSchalter: {switch_count}\nZustandssensoren: {text_count}\nSchreibbare Sensoren: {writable_count}\nAusstehende Sensoren: {pending_count}\n**Gesamt: {total_count}**{service_line}\n\nAktiviere die automatische Auswahl, wenn du alles auf einmal hinzufügen möchtest. Bei großen Anlagen können das mehrere hundert Entitäten sein.",
                 "data": {
                     "auto_select_all_entities": "Alle gefundenen Entitäten automatisch auswählen",
                     "show_service_sensors": "Service-Sensoren anzeigen (schreibgeschützt)",
-                    "allow_service_write": "Schreiben von Service-Parametern erlauben (nur Fachleute)",
+                    "allow_service_write": "Schreibbare Service-Parameter zur Auswahl anbieten (nur Fachleute)",
                     "chosen_float_sensors": "Sensoren",
                     "chosen_switches": "Schalter",
                     "chosen_text_sensors": "Zustandssensoren",
@@ -116,10 +116,10 @@
             },
             "service_toggles": {
                 "title": "Service-Parameter",
-                "description": "Entitäten der Benutzerebene sind immer verfügbar. Service-Parameter sind für Fachleute gedacht.\n\nAnzeigen fügt schreibgeschützte Diagnosewerte hinzu. Schreiben erlauben lässt dich diese verändern, was die Heizungsanlage bei falscher Anwendung fehlkonfigurieren kann.",
+                "description": "Entitäten der Benutzerebene sind immer verfügbar. Service-Parameter sind für Fachleute gedacht.\n\nDiese Schalter steuern nur, welche Service-Parameter in der Sensor-Auswahl angeboten werden; bereits hinzugefügte Entitäten bleiben unverändert. „Anzeigen“ bietet schreibgeschützte Diagnosewerte an, „schreibbare anbieten“ zusätzlich veränderbare Parameter, die die Heizungsanlage bei falscher Anwendung fehlkonfigurieren können.",
                 "data": {
                     "show_service_sensors": "Service-Sensoren anzeigen (schreibgeschützt)",
-                    "allow_service_write": "Schreiben von Service-Parametern erlauben (nur Fachleute)"
+                    "allow_service_write": "Schreibbare Service-Parameter zur Auswahl anbieten (nur Fachleute)"
                 }
             },
             "purge_service_sensors": {
@@ -151,7 +151,7 @@
         },
         "perm_level_upgrade": {
             "title": "Neue ETA-API-Funktionen verfügbar",
-            "description": "Diese ETA-Anlage meldet jetzt API-1.3-Berechtigungsstufen. Führe eine erneute Erkennung durch (Einstellungen > Geräte & Dienste > ETA > Konfigurieren > erneut suchen), um die Service-Berechtigungen zu aktivieren und neue Parameter hinzuzufügen. Deine bestehenden Entitäten bleiben erhalten."
+            "description": "Diese ETA-Anlage meldet jetzt API-1.3-Berechtigungsstufen. Öffne Einstellungen > Geräte & Dienste > ETA > Konfigurieren und wähle „Verfügbare Entitäten neu erkennen und Auswahl aktualisieren“, um die Service-Berechtigungen zu aktivieren und neue Parameter hinzuzufügen. Deine bestehenden Entitäten bleiben erhalten."
         }
     },
     "entity": {

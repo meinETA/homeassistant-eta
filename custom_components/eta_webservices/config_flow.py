@@ -172,8 +172,24 @@ def _count_selected_service(data: dict) -> int:
     return sum(len(keys) for keys in _selected_service_keys(data).values())
 
 
-def _build_discovered_entity_placeholders(data: dict) -> dict[str, str]:
-    """Build placeholders for discovered entity counts, including service counts."""
+def _build_discovered_entity_placeholders(
+    data: dict, language: str = "en"
+) -> dict[str, str]:
+    """Build placeholders for discovered entity counts.
+
+    Counts mirror what the selection actually offers: with "show service" off the
+    service-level endpoints are filtered out, so they are not counted either.
+
+    The service summary line (``service_line``) is assembled here instead of in the
+    translation strings: on API 1.1/1.2 there is no service concept so the line is
+    omitted entirely, and with the toggle off it reads "disabled" rather than "0" so
+    users do not mistake it for "no service sensors exist". The wording cannot live
+    in translations/ because a placeholder value is language-agnostic, so the two
+    supported languages are handled here.
+    """
+    supports = data.get(SUPPORTS_PERM_LEVEL, False)
+    show_service = data.get(SHOW_SERVICE_SENSORS, False)
+    allow_service_write = data.get(ALLOW_SERVICE_WRITE, False)
     dicts = {
         "float": data[FLOAT_DICT],
         "switch": data[SWITCHES_DICT],
@@ -181,15 +197,42 @@ def _build_discovered_entity_placeholders(data: dict) -> dict[str, str]:
         "writable": data[WRITABLE_DICT],
         "pending": data.get(PENDING_DICT, {}),
     }
-    counts = {name: len(d) for name, d in dicts.items()}
+    visible = {
+        "float": _visible_keys(dicts["float"], supports, show_service),
+        "switch": _visible_keys(dicts["switch"], supports, show_service),
+        "text": _visible_keys(dicts["text"], supports, show_service),
+        "writable": _visible_keys(
+            dicts["writable"],
+            supports,
+            show_service,
+            allow_service_write,
+            writable=True,
+        ),
+        "pending": _visible_keys(dicts["pending"], supports, show_service),
+    }
+    counts = {name: len(keys) for name, keys in visible.items()}
     total_count = sum(counts.values())
-    # Non-user permLevel (SERVICE and unknown/deeper) count as service.
+    # Service-level endpoints among those currently shown (0 when "show service" off).
     service_count = sum(
         1
-        for d in dicts.values()
-        for ep in d.values()
-        if ep.get("perm_level") and ep.get("perm_level") != PERM_LEVEL_USER
+        for name, keys in visible.items()
+        for key in keys
+        if (ep := dicts[name].get(key))
+        and ep.get("perm_level")
+        and ep.get("perm_level") != PERM_LEVEL_USER
     )
+    is_de = str(language).lower().startswith("de")
+    if not supports:
+        # API 1.1/1.2: no permission levels at all -> no service line.
+        service_line = ""
+    else:
+        label = "Service-Sensoren" if is_de else "Service-level sensors"
+        if data.get(SHOW_SERVICE_SENSORS, False):
+            value = str(service_count)
+        else:
+            value = "deaktiviert" if is_de else "disabled"
+        service_line = f"\n{label}: {value}"
+
     return {
         "float_count": str(counts["float"]),
         "switch_count": str(counts["switch"]),
@@ -198,6 +241,7 @@ def _build_discovered_entity_placeholders(data: dict) -> dict[str, str]:
         "pending_count": str(counts["pending"]),
         "total_count": str(total_count),
         "service_count": str(service_count),
+        "service_line": service_line,
     }
 
 
@@ -769,7 +813,9 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
 
     async def _show_config_form_endpoint(self):
         """Show the configuration form to select which endpoints should become entities."""
-        count_placeholders = _build_discovered_entity_placeholders(self.data)
+        count_placeholders = _build_discovered_entity_placeholders(
+            self.data, self.hass.config.language
+        )
         schema = _build_endpoint_selection_schema(self.data)
         return self.async_show_form(
             step_id="select_entities",
@@ -1835,7 +1881,9 @@ class EtaOptionsFlowHandler(OptionsFlow):
         if self.show_unavailable_sensor_warning:
             self._errors["base"] = "unavailable_sensors"
 
-        count_placeholders = _build_discovered_entity_placeholders(self.data)
+        count_placeholders = _build_discovered_entity_placeholders(
+            self.data, self.hass.config.language
+        )
         # Pending sensors don't have HA entities yet, so read their selection from local data
         defaults = {
             CHOSEN_FLOAT_SENSORS: current_chosen_sensors,

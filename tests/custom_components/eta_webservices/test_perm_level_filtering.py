@@ -153,3 +153,69 @@ def test_disabling_show_service_keeps_already_selected_service():
     floats, _sw, _t, _w, _p = _auto_selected_keys(data)
     # non-destructive: USER visible + the already-selected SERVICE key kept
     assert set(floats) == {"u", "s"}
+
+
+def test_discovered_counts_ignore_hidden_service_sensors():
+    """Shown counts reflect the selection: hidden service sensors are not counted."""
+    from custom_components.eta_webservices.config_flow import (
+        _build_discovered_entity_placeholders,
+    )
+
+    data = {
+        SUPPORTS_PERM_LEVEL: True,
+        SHOW_SERVICE_SENSORS: False,
+        ALLOW_SERVICE_WRITE: False,
+        FLOAT_DICT: {"u": _ep("USER"), "s": _ep("SERVICE")},
+        SWITCHES_DICT: {},
+        TEXT_DICT: {},
+        WRITABLE_DICT: {"uw": _ep("USER", True), "sw": _ep("SERVICE", True)},
+        PENDING_DICT: {},
+    }
+
+    # show_service off: only USER-level is offered, so service is not counted,
+    # and the service line reads "disabled" (not "0") in both languages.
+    ph = _build_discovered_entity_placeholders(data, "en")
+    assert ph["float_count"] == "1"
+    assert ph["writable_count"] == "1"
+    assert ph["total_count"] == "2"
+    assert ph["service_count"] == "0"
+    assert ph["service_line"] == "\nService-level sensors: disabled"
+    ph_de = _build_discovered_entity_placeholders(data, "de")
+    assert ph_de["service_line"] == "\nService-Sensoren: deaktiviert"
+
+    # show_service on (read-only service shown) but writing not allowed:
+    # service float counts; service writable stays excluded from the writable list.
+    data[SHOW_SERVICE_SENSORS] = True
+    ph = _build_discovered_entity_placeholders(data, "en")
+    assert ph["float_count"] == "2"
+    assert ph["writable_count"] == "1"
+    assert ph["total_count"] == "3"
+    assert ph["service_count"] == "1"
+    assert ph["service_line"] == "\nService-level sensors: 1"
+
+    # both toggles on: service writable is offered too.
+    data[ALLOW_SERVICE_WRITE] = True
+    ph = _build_discovered_entity_placeholders(data, "en")
+    assert ph["writable_count"] == "2"
+    assert ph["total_count"] == "4"
+    assert ph["service_count"] == "2"
+    assert ph["service_line"] == "\nService-level sensors: 2"
+
+
+def test_service_line_omitted_without_perm_level_support():
+    """On API 1.1/1.2 there is no service concept, so no service line is shown."""
+    from custom_components.eta_webservices.config_flow import (
+        _build_discovered_entity_placeholders,
+    )
+
+    data = {
+        SUPPORTS_PERM_LEVEL: False,
+        FLOAT_DICT: {"a": _ep(None), "b": _ep(None)},
+        SWITCHES_DICT: {},
+        TEXT_DICT: {},
+        WRITABLE_DICT: {},
+        PENDING_DICT: {},
+    }
+    ph = _build_discovered_entity_placeholders(data, "de")
+    assert ph["total_count"] == "2"
+    assert ph["service_line"] == ""
