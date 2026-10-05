@@ -67,7 +67,7 @@ class EtaTime(TimeEntity, EtaCoordinatedSensorEntity[str]):
         self._attr_native_value = time(hour=19)
 
     def handle_data_updates(self, data: str | None) -> None:
-        """Calculate the actual time from the minutes since midnight and set the entity's value."""
+        """Calculate the actual time from its string representation (`HH:MM`) and set the entity's value."""
         if data is None:
             _LOGGER.info(
                 "Sensor %s received None value; setting state to unavailable",
@@ -75,7 +75,16 @@ class EtaTime(TimeEntity, EtaCoordinatedSensorEntity[str]):
             )
             self._attr_native_value = None
             return
-        parsed_time = time.fromisoformat(data)
+        try:
+            parsed_time = time.fromisoformat(data)
+        except ValueError:
+            _LOGGER.warning(
+                "Sensor %s received invalid time value %r; setting state to unavailable",
+                self.entity_id,
+                data,
+            )
+            self._attr_native_value = None
+            return
         self._attr_native_value = parsed_time
 
     async def async_set_value(self, value: time):

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from homeassistant.components.button import ENTITY_ID_FORMAT, ButtonEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT, EntityCategory
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, ERROR_UPDATE_COORDINATOR
+from .const import DOMAIN, ERROR_UPDATE_COORDINATOR, STABLE_ID
 from .coordinator import ETAErrorUpdateCoordinator
 from .utils import create_device_info
 
@@ -44,13 +44,14 @@ class EtaResendErrorEventsButton(ButtonEntity):
         self.coordinator = coordinator
 
         self._attr_translation_key = "send_error_events_btn"
-        self._attr_unique_id = (
-            "eta_" + host.replace(".", "_") + "_" + str(port) + "_send_events_btn"
-        )
+        stable = config.get(STABLE_ID) or host.replace(".", "_")
+        self._attr_unique_id = "eta_" + stable + "_" + str(port) + "_send_events_btn"
         self.entity_id = generate_entity_id(
             ENTITY_ID_FORMAT, self._attr_unique_id, hass=hass
         )
-        self._attr_device_info = create_device_info(host, port, None)
+        self._attr_device_info = create_device_info(
+            host, port, None, config.get(CONF_NAME)
+        )
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_press(self) -> None:

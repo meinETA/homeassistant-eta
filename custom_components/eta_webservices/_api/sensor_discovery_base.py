@@ -15,6 +15,7 @@ class SensorDiscoveryBase(ABC):
         self,
         http_client: APIClient,
         progress_callback: Callable[[str, float | None], None] | None = None,
+        stable_id: str | None = None,
     ) -> None:
         """Initialize sensor discovery.
 
@@ -23,6 +24,7 @@ class SensorDiscoveryBase(ABC):
         """
         self._http = http_client
         self._progress_callback = progress_callback
+        self._stable_id = stable_id
 
     def _emit_progress(self, message: str, progress: float | None = None) -> None:
         """Emit discovery progress update if a callback is registered."""
@@ -45,19 +47,20 @@ class SensorDiscoveryBase(ABC):
 
     def _get_friendly_name(self, key: str) -> str:
         """Generate friendly name from key."""
+        # remove the part that starts with "__dedup_" from the end of the key if it exists
+        if "__dedup_" in key:
+            key = key.rsplit("__dedup_", maxsplit=1)[0]
         components = key.split("_")[1:]  # The first part is always empty
         return " > ".join(components)
 
     # Abstract methods (must be implemented by subclasses)
 
     @abstractmethod
-    def _is_switch(
-        self, endpoint_info: ETAEndpoint, raw_value: str | None = None
-    ) -> bool:
+    def _is_switch(self, endpoint_info: ETAEndpoint, text_offset: str) -> bool:
         """Check if endpoint is a switch.
 
         :param endpoint_info: Endpoint metadata
-        :param raw_value: Optional raw value (used by v1.1)
+        :param text_offset: 'advTextOffset' value
         :return: True if switch
         """
 
@@ -70,10 +73,11 @@ class SensorDiscoveryBase(ABC):
         """
 
     @abstractmethod
-    def _parse_switch_values(self, endpoint_info: ETAEndpoint):
+    def _parse_switch_values(self, endpoint_info: ETAEndpoint, text_offset: str):
         """Parse and populate switch valid values.
 
         :param endpoint_info: Endpoint metadata (modified in place)
+        :param text_offset: 'advTextOffset' value
         """
 
     @abstractmethod

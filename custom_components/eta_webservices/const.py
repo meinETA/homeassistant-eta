@@ -16,6 +16,9 @@ CHOSEN_TEXT_SENSORS = "chosen_text_sensors"
 CHOSEN_WRITABLE_SENSORS = "chosen_writable_sensors"
 CHOSEN_PENDING_SENSORS = "chosen_pending_sensors"
 
+# Frozen per-entry id; anchor of entity unique_ids (independent of IP + node names).
+STABLE_ID = "stable_id"
+
 FORCE_LEGACY_MODE = "force_legacy_mode"
 ENABLE_DEBUG_LOGGING = "enable_debug_logging"
 AUTO_SELECT_ALL_ENTITIES = "auto_select_all_entities"
@@ -24,6 +27,9 @@ OPTIONS_UPDATE_ACTION = "options_update_action"
 OPTIONS_ACTION_PARALLEL_ONLY = "update_parallel_requests"
 OPTIONS_ACTION_UPDATE_SELECTED = "update_selected_entities"
 OPTIONS_ACTION_REDISCOVER_AND_UPDATE = "rediscover_and_update_entities"
+OPTIONS_ACTION_RENAME_ENTITIES = "rename_entities_to_named_scheme"
+# Old stable id, staged by the opt-in migration; consumed once in async_setup_entry.
+RENAME_PENDING_FROM = "rename_pending_from"
 ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION = (
     "ignore_decimal_places_restriction_for_writable_entities"
 )
@@ -38,11 +44,13 @@ CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT = "minutes_since_midnight"
 CUSTOM_UNIT_TIMESLOT = "timeslot"
 CUSTOM_UNIT_TIMESLOT_PLUS_TEMPERATURE = "timeslot_plus_temperature"
 CUSTOM_UNIT_UNITLESS = "unitless"
+CUSTOM_UNIT_DATETIME = "datetime"
 CUSTOM_UNITS = [
     CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT,
     CUSTOM_UNIT_TIMESLOT,
     CUSTOM_UNIT_TIMESLOT_PLUS_TEMPERATURE,
     CUSTOM_UNIT_UNITLESS,
+    CUSTOM_UNIT_DATETIME,
 ]
 
 # Supported features for ETA entities
@@ -58,6 +66,7 @@ INVISIBLE_UNITS = [
     CUSTOM_UNIT_TIMESLOT,
     CUSTOM_UNIT_TIMESLOT_PLUS_TEMPERATURE,
     CUSTOM_UNIT_UNITLESS,
+    CUSTOM_UNIT_DATETIME,
 ]
 
 MAX_PARALLEL_REQUESTS = "max_parallel_requests"

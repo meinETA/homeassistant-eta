@@ -346,8 +346,8 @@ async def test_prepare_data_structures_runs_full_discovery_pipeline():
     empty = ({}, {}, {}, {}, {})
     flow._get_possible_endpoints_with_progress = AsyncMock(return_value=empty)
     flow._verify_pending_sensors = Mock(return_value=0)
-    flow._handle_new_sensors = Mock(return_value=0)
-    flow._handle_deleted_sensors = Mock(return_value=0)
+    flow._handle_new_sensors = Mock(return_value={})
+    flow._handle_deleted_sensors = Mock(return_value=({}, {}))
     flow._handle_sensor_value_updates_from_enumeration = Mock()
     flow._update_sensor_values = AsyncMock()
 
@@ -382,8 +382,8 @@ async def test_prepare_data_structures_discovery_passes_correct_arguments():
         return_value=(new_floats, new_switches, new_text, new_writable, new_pending)
     )
     flow._verify_pending_sensors = Mock(return_value=0)
-    flow._handle_new_sensors = Mock(return_value=0)
-    flow._handle_deleted_sensors = Mock(return_value=0)
+    flow._handle_new_sensors = Mock(return_value={})
+    flow._handle_deleted_sensors = Mock(return_value=({}, {}))
     flow._handle_sensor_value_updates_from_enumeration = Mock()
 
     await flow._prepare_data_structures()
@@ -398,7 +398,7 @@ async def test_prepare_data_structures_discovery_passes_correct_arguments():
         new_floats, new_switches, new_text, new_writable, new_pending
     )
     flow._handle_sensor_value_updates_from_enumeration.assert_called_once_with(
-        new_floats, new_switches, new_text, new_writable
+        new_floats, new_switches, new_text, new_writable, new_pending
     )
 
 
@@ -413,6 +413,91 @@ async def test_prepare_data_structures_skips_discovery_when_only_update_values()
     await flow._prepare_data_structures()
 
     flow._get_possible_endpoints_with_progress.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_prepare_data_structures_updates_existing_sensor_metadata_during_discovery():
+    """enumerate_new_endpoints=True: existing entries get stale values replaced and new keys backfilled.
+
+    f1 — tests that stale values (unit, valid_values, is_writable) are replaced.
+    f2 — tests that a new key (is_writable) is inserted when it was previously absent.
+
+    This test currently FAILS because no helper updates metadata on already-existing entries.
+    """
+    new_valid_values = {
+        "scaled_min_value": 0.0,
+        "scaled_max_value": 10.0,
+        "scale_factor": 1,
+        "dec_places": 1,
+    }
+
+    # f1: all keys present but with stale values
+    f1_stored = {
+        "url": "/f1",
+        "unit": "old_unit",
+        "value": 42.0,
+        "endpoint_type": "DEFAULT",
+        "friendly_name": "Float sensor 1",
+        "valid_values": None,
+        "is_writable": False,
+    }
+    # f2: missing the is_writable key entirely (pre-dates that field)
+    f2_stored = {
+        "url": "/f2",
+        "unit": "°C",
+        "value": 20.0,
+        "endpoint_type": "DEFAULT",
+        "friendly_name": "Float sensor 2",
+        "valid_values": None,
+    }
+
+    config = _make_runtime_config(
+        {FLOAT_DICT: {"f1": dict(f1_stored), "f2": dict(f2_stored)}}
+    )
+    flow = _make_flow(config, enumerate_new_endpoints=True)
+
+    f1_rediscovered = {
+        "url": "/f1",
+        "unit": "kW",
+        "value": 99.0,
+        "endpoint_type": "DEFAULT",
+        "friendly_name": "Float sensor 1",
+        "valid_values": new_valid_values,
+        "is_writable": True,
+    }
+    f2_rediscovered = {
+        "url": "/f2",
+        "unit": "°C",
+        "value": 21.0,
+        "endpoint_type": "DEFAULT",
+        "friendly_name": "Float sensor 2",
+        "valid_values": None,
+        "is_writable": True,  # new key absent from f2_stored
+    }
+    flow._get_possible_endpoints_with_progress = AsyncMock(
+        return_value=(
+            {"f1": f1_rediscovered, "f2": f2_rediscovered},
+            {},
+            {},
+            {},
+            {},
+        )
+    )
+
+    await flow._prepare_data_structures()
+
+    # f1: stale values must be replaced by the rediscovered values
+    f1 = flow.data[FLOAT_DICT]["f1"]
+    assert f1["unit"] == "kW", "unit should be updated from 'old_unit' to 'kW'"
+    assert f1["valid_values"] == new_valid_values, (
+        "valid_values should be updated from None"
+    )
+    assert f1["is_writable"] is True, "is_writable should be updated from False to True"
+
+    # f2: new key must be inserted even though it was absent from the stored entry
+    f2 = flow.data[FLOAT_DICT]["f2"]
+    assert "is_writable" in f2, "is_writable should be backfilled from discovery"
+    assert f2["is_writable"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -505,7 +590,7 @@ def test_handle_new_sensors_adds_new_float():
 
     result = flow._handle_new_sensors({"f1": new_sensor}, {}, {}, {}, {})
 
-    assert result == 1
+    assert len(result) == 1
     assert flow.data[FLOAT_DICT]["f1"] is new_sensor
 
 
@@ -516,7 +601,7 @@ def test_handle_new_sensors_skips_existing_float():
 
     result = flow._handle_new_sensors({"f1": _make_sensor(url="/f1")}, {}, {}, {}, {})
 
-    assert result == 0
+    assert len(result) == 0
     assert flow.data[FLOAT_DICT]["f1"] is existing
 
 
@@ -532,7 +617,7 @@ def test_handle_new_sensors_one_per_category():
         {"p1": _make_sensor(url="/p1")},
     )
 
-    assert result == 5
+    assert len(result) == 5
     assert "f1" in flow.data[FLOAT_DICT]
     assert "sw1" in flow.data[SWITCHES_DICT]
     assert "t1" in flow.data[TEXT_DICT]
@@ -553,7 +638,7 @@ def test_handle_new_sensors_all_already_present():
         {"f1": _make_sensor()}, {"sw1": _make_sensor()}, {}, {}, {}
     )
 
-    assert result == 0
+    assert len(result) == 0
 
 
 def test_handle_new_sensors_adds_pending():
@@ -562,7 +647,7 @@ def test_handle_new_sensors_adds_pending():
 
     result = flow._handle_new_sensors({}, {}, {}, {}, {"p1": _make_sensor(url="/p1")})
 
-    assert result == 1
+    assert len(result) == 1
     assert "p1" in flow.data[PENDING_DICT]
 
 
@@ -575,15 +660,15 @@ def test_handle_deleted_sensors_non_chosen_float_deleted():
     """Float absent from new discovery is removed; not stored as unavailable."""
     flow = _flow_with_data({FLOAT_DICT: {"gone": _make_sensor()}})
 
-    result = flow._handle_deleted_sensors({}, {}, {}, {}, {})
+    deleted, moved = flow._handle_deleted_sensors({}, {}, {}, {}, {})
 
-    assert result == 1
+    assert len(deleted) + len(moved) == 1
     assert "gone" not in flow.data[FLOAT_DICT]
     assert "gone" not in flow.unavailable_sensors
 
 
 def test_handle_deleted_sensors_chosen_float_tracked_as_unavailable():
-    """Chosen float sensor deleted → moved to unavailable_sensors, removed from chosen list."""
+    """Chosen float sensor deleted, removed from chosen list."""
     sensor = _make_sensor()
     flow = _flow_with_data(
         {
@@ -592,12 +677,11 @@ def test_handle_deleted_sensors_chosen_float_tracked_as_unavailable():
         }
     )
 
-    result = flow._handle_deleted_sensors({}, {}, {}, {}, {})
+    deleted, moved = flow._handle_deleted_sensors({}, {}, {}, {}, {})
 
-    assert result == 1
+    assert len(deleted) + len(moved) == 1
     assert "gone" not in flow.data[FLOAT_DICT]
     assert "gone" not in flow.data[CHOSEN_FLOAT_SENSORS]
-    assert flow.unavailable_sensors["gone"] is sensor
 
 
 def test_handle_deleted_sensors_sensor_still_present():
@@ -605,9 +689,9 @@ def test_handle_deleted_sensors_sensor_still_present():
     sensor = _make_sensor(url="/s1")
     flow = _flow_with_data({FLOAT_DICT: {"s1": sensor}})
 
-    result = flow._handle_deleted_sensors({"s1": sensor}, {}, {}, {}, {})
+    deleted, moved = flow._handle_deleted_sensors({"s1": sensor}, {}, {}, {}, {})
 
-    assert result == 0
+    assert len(deleted) + len(moved) == 0
     assert "s1" in flow.data[FLOAT_DICT]
 
 
@@ -620,9 +704,9 @@ def test_handle_deleted_sensors_chosen_pending_cleaned_up():
         }
     )
 
-    result = flow._handle_deleted_sensors({}, {}, {}, {}, {})
+    deleted, moved = flow._handle_deleted_sensors({}, {}, {}, {}, {})
 
-    assert result == 1
+    assert len(deleted) + len(moved) == 1
     assert "p1" not in flow.data[PENDING_DICT]
     assert "p1" not in flow.data[CHOSEN_PENDING_SENSORS]
 
@@ -637,9 +721,9 @@ def test_handle_deleted_sensors_multiple_categories():
         }
     )
 
-    result = flow._handle_deleted_sensors({}, {}, {}, {}, {})
+    deleted, moved = flow._handle_deleted_sensors({}, {}, {}, {}, {})
 
-    assert result == 3
+    assert len(deleted) + len(moved) == 3
     assert flow.data[FLOAT_DICT] == {}
     assert flow.data[SWITCHES_DICT] == {}
     assert flow.data[TEXT_DICT] == {}
@@ -664,6 +748,7 @@ def test_handle_sensor_value_updates_float_and_switch():
         {"sw1": {**_make_sensor(url="/sw1"), "value": 1.0}},
         {},
         {},
+        {},
     )
 
     assert flow.data[FLOAT_DICT]["f1"]["value"] == 99.0
@@ -684,6 +769,7 @@ def test_handle_sensor_value_updates_text_and_writable():
         {},
         {"t1": {**_make_sensor(url="/t1"), "value": "new"}},
         {"w1": {**_make_sensor(url="/w1"), "value": 7.0}},
+        {},
     )
 
     assert flow.data[TEXT_DICT]["t1"]["value"] == "new"
@@ -699,7 +785,7 @@ def test_handle_sensor_value_updates_exception_is_swallowed():
     )
 
     # new_float_sensors is missing "f1" → will raise KeyError inside the method.
-    flow._handle_sensor_value_updates_from_enumeration({}, {}, {}, {})
+    flow._handle_sensor_value_updates_from_enumeration({}, {}, {}, {}, {})
 
     # No exception raised; f1 value is untouched.
     assert flow.data[FLOAT_DICT]["f1"]["value"] == 0.0
@@ -977,11 +1063,3 @@ def test_build_endpoint_selection_schema_applies_defaults():
         k for k in schema if hasattr(k, "schema") and k.schema == CHOSEN_FLOAT_SENSORS
     )
     assert float_key.default() == ["f1"]
-
-
-def test_build_endpoint_selection_schema_adds_unavailable_sensors_field():
-    """An 'unavailable_sensors' TextSelector key is added when unavailable_sensors is non-empty."""
-    data = _make_runtime_config()
-    unavailable = {"gone": _make_sensor(url="/gone")}
-    schema = _build_endpoint_selection_schema(data, unavailable_sensors=unavailable)
-    assert "unavailable_sensors" in _schema_keys(schema)

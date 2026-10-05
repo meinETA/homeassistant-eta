@@ -71,6 +71,7 @@ class EtaAPI:
         writable_dict: dict,
         pending_dict: dict,
         progress_callback: Callable[[str, float | None], None] | None = None,
+        stable_id: str | None = None,
     ) -> bool:
         """Enumerate all possible sensors on the ETA API.
 
@@ -122,7 +123,7 @@ class EtaAPI:
             if progress_callback is not None:
                 progress_callback("Using ETA API v1.2 discovery mode", 0.05)
             sensor_discovery = SensorDiscoveryV12(
-                self._http, progress_callback=progress_callback
+                self._http, progress_callback=progress_callback, stable_id=stable_id
             )
             await sensor_discovery.get_all_sensors(
                 float_dict, switches_dict, text_dict, writable_dict, pending_dict
@@ -132,7 +133,7 @@ class EtaAPI:
             if progress_callback is not None:
                 progress_callback("Using ETA compatibility discovery mode", 0.05)
             sensor_discovery = SensorDiscoveryV11(
-                self._http, progress_callback=progress_callback
+                self._http, progress_callback=progress_callback, stable_id=stable_id
             )
             await sensor_discovery.get_all_sensors(
                 float_dict, switches_dict, text_dict, writable_dict, pending_dict
