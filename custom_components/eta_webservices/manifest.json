@@ -1,7 +1,7 @@
 {
   "domain": "eta_webservices",
-  "name": "Eta Sensors",
-  "codeowners": ["@nigl", "@Tidone", "@christofpichler"],
+  "name": "ETA Heating",
+  "codeowners": ["@Tidone", "@christofpichler"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/meinETA/homeassistant-eta",
