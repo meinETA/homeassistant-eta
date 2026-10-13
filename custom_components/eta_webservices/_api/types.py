@@ -1,7 +1,7 @@
 """Type definitions for ETA API."""
 
 from datetime import datetime
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from ..const import (  # noqa: TID252
     CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT,
@@ -38,6 +38,11 @@ class ETAEndpoint(TypedDict):
     endpoint_type: str
     is_writable: bool
     is_invalid: bool
+    # API 1.3+ metadata, absent (None) on API 1.1/1.2. Fallback-safe: consumers treat a
+    # missing/None permLevel conservatively and behave as today when unset.
+    perm_level: NotRequired[str | None]
+    fub_type: NotRequired[str | None]
+    fub_def_name: NotRequired[str | None]
 
 
 class ETAError(TypedDict):

@@ -5,9 +5,11 @@ import logging
 from typing import Any
 
 from homeassistant import config_entries, core
-from homeassistant.const import CONF_HOST, CONF_NAME, Platform
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
 from homeassistant.helpers import entity_registry as er, issue_registry as ir
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .api import EtaAPI
 from .config_flow import EtaFlowHandler
 from .const import (
     CHOSEN_FLOAT_SENSORS,
@@ -31,6 +33,7 @@ from .const import (
     REQUEST_SEMAPHORE,
     SENSOR_UPDATE_COORDINATOR,
     STABLE_ID,
+    SUPPORTS_PERM_LEVEL,
     SWITCHES_DICT,
     TEXT_DICT,
     UPDATE_INTERVAL,
@@ -184,9 +187,49 @@ async def async_setup_entry(
     # any promotion fires and updates the options.
     hass.async_create_task(pending_coordinator.async_refresh())
 
+    # If the boiler now speaks API 1.3 but this entry was set up before permLevel
+    # support, offer a rediscovery. Runs in the background so setup is not delayed.
+    hass.async_create_task(_maybe_create_perm_level_upgrade_issue(hass, entry, config))
+
     await async_setup_services(hass, entry)
 
     return True
+
+
+async def _maybe_create_perm_level_upgrade_issue(
+    hass: core.HomeAssistant,
+    entry: config_entries.ConfigEntry,
+    config: dict,
+) -> None:
+    """Create a repair issue when a pre-1.3 entry now talks to a 1.3 boiler."""
+    issue_id = f"perm_level_upgrade_{entry.entry_id}"
+    if config.get(SUPPORTS_PERM_LEVEL, False):
+        # Already permLevel-aware; clear any stale issue.
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
+        return
+    try:
+        session = async_get_clientsession(hass)
+        api = EtaAPI(
+            session,
+            config.get(CONF_HOST, ""),
+            config.get(CONF_PORT, ""),
+            max_concurrent_requests=config[MAX_PARALLEL_REQUESTS],
+            request_semaphore=config[REQUEST_SEMAPHORE],
+        )
+        if not await api.supports_perm_level_api():
+            return
+    except Exception:
+        _LOGGER.debug("permLevel upgrade check failed", exc_info=True)
+        return
+
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        issue_id,
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="perm_level_upgrade",
+    )
 
 
 async def async_migrate_entry(  # noqa: C901, D103

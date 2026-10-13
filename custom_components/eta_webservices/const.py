@@ -19,6 +19,17 @@ CHOSEN_PENDING_SENSORS = "chosen_pending_sensors"
 # Frozen per-entry id; anchor of entity unique_ids (independent of IP + node names).
 STABLE_ID = "stable_id"
 
+# API 1.3 permission levels (permLevel attribute on menu/varinfo nodes).
+# SUPPORTS_PERM_LEVEL is detected at discovery and stored per config entry; it gates
+# the whole permission-level UI. The two service toggles default to off (least privilege).
+SUPPORTS_PERM_LEVEL = "supports_perm_level"
+SHOW_SERVICE_SENSORS = "show_service_sensors"
+ALLOW_SERVICE_WRITE = "allow_service_write"
+PERM_LEVEL_USER = "USER"
+PERM_LEVEL_SERVICE = "SERVICE"
+# USER endpoints are unrestricted; SERVICE and unknown/deeper levels (e.g. ServiceKD)
+# are treated conservatively and only exposed/writable behind the service toggles.
+
 FORCE_LEGACY_MODE = "force_legacy_mode"
 ENABLE_DEBUG_LOGGING = "enable_debug_logging"
 AUTO_SELECT_ALL_ENTITIES = "auto_select_all_entities"
@@ -28,6 +39,8 @@ OPTIONS_ACTION_PARALLEL_ONLY = "update_parallel_requests"
 OPTIONS_ACTION_UPDATE_SELECTED = "update_selected_entities"
 OPTIONS_ACTION_REDISCOVER_AND_UPDATE = "rediscover_and_update_entities"
 OPTIONS_ACTION_RENAME_ENTITIES = "rename_entities_to_named_scheme"
+# API 1.3 only: reconfigure the two service-permission toggles.
+OPTIONS_ACTION_CONFIGURE_PERMISSIONS = "configure_service_permissions"
 # Old stable id, staged by the opt-in migration; consumed once in async_setup_entry.
 RENAME_PENDING_FROM = "rename_pending_from"
 ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION = (
