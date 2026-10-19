@@ -16,8 +16,10 @@ jobs:
       - name: Ruff lint
         uses: astral-sh/ruff-action@v3
         with:
+          version: "0.17.1"
           args: "check"
       - name: Ruff format check
         uses: astral-sh/ruff-action@v3
         with:
+          version: "0.17.1"
           args: "format --check"
