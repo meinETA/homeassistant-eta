@@ -1066,7 +1066,7 @@ async def test_does_endpoint_exists_returns_false_on_timeout():
 
     # Mock get_menu to raise TimeoutError
     async def mock_get_request(suffix):
-        raise asyncio.TimeoutError("Connection timeout")
+        raise TimeoutError("Connection timeout")
 
     api._http.get_request = mock_get_request
 
