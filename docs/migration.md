@@ -17,7 +17,7 @@ The previous version keeps working, but it no longer receives updates. You can s
 2. Update the previous integration to **1.4.3**.
 3. Restart Home Assistant once. This saves the setup to `.storage/eta_webservices.migration`.
 
-Do not skip the restart. Without the saved setup, ETA Heating starts with a regular setup.
+Version 1.4.2 and older do not save the setup, so do not skip the update or the restart. Without the saved setup, ETA Heating starts with a regular setup.
 
 ## Home Assistant 2026.11 and newer
 
