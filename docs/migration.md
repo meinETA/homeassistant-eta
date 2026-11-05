@@ -1,5 +1,7 @@
 # Moving to ETA Heating
 
+[Deutsche Version](migration.de.md)
+
 This guide is for installations that still use the previous repository, `Tidone/homeassistant_eta_integration`. Version 1.4.3 of that repository saves the setup automatically, so ETA Heating can restore it without a new scan.
 
 The previous version keeps working, but it no longer receives updates. You can switch at any time.
@@ -17,7 +19,7 @@ The previous version keeps working, but it no longer receives updates. You can s
 2. Update the previous integration to **1.4.3**.
 3. Restart Home Assistant once. This saves the setup to `.storage/eta_webservices.migration`.
 
-Version 1.4.2 and older do not save the setup, so do not skip the update or the restart. Without the saved setup, ETA Heating starts with a regular setup.
+Only version 1.4.3 saves your setup. If you switch directly from 1.4.2 or older, nothing is saved, and you have to set up ETA Heating from scratch, including the scan and your selection.
 
 ## Home Assistant 2026.11 and newer
 
