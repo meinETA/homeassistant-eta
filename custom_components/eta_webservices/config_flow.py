@@ -6,6 +6,7 @@ import ipaddress
 import logging
 import re
 import time
+from typing import Any
 
 import voluptuous as vol
 
@@ -51,6 +52,7 @@ from .const import (
     UPDATE_INTERVAL,
     WRITABLE_DICT,
 )
+from .migration_restore import RESTORE_SNAPSHOT_ID, async_find_snapshot
 
 _LOGGER = logging.getLogger(__name__)
 _HOSTNAME_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
@@ -322,6 +324,8 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
     """Config flow for Eta."""
 
     VERSION = 9
+    _restore_candidate: tuple[str, dict[str, Any]] | None = None
+    _restore_offered = False
     CONNECTION_CLASS = CONN_CLASS_CLOUD_POLL
 
     def __init__(self) -> None:
@@ -341,6 +345,14 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
+        if user_input is None and not self._restore_offered:
+            self._restore_offered = True
+            self._restore_candidate = await async_find_snapshot(
+                self.hass, self._async_current_entries(), self.VERSION
+            )
+            if self._restore_candidate is not None:
+                return await self.async_step_restore_choice()
+
         self._errors = {}
         if self._pending_user_error is not None:
             self._errors["base"] = self._pending_user_error
@@ -381,6 +393,27 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
         user_input[CONF_PORT] = self.data.get(CONF_PORT, "8080")
 
         return await self._show_config_form_user(user_input)
+
+    async def async_step_restore_choice(self, user_input=None):
+        """Offer to restore the setup of the previous repository."""
+        return self.async_show_menu(
+            step_id="restore_choice", menu_options=["restore", "manual"]
+        )
+
+    async def async_step_manual(self, user_input=None):
+        """Continue with a regular setup although a snapshot exists."""
+        return await self.async_step_user()
+
+    async def async_step_restore(self, user_input=None):
+        """Create the entry in its old version, the migration restores the rest."""
+        snapshot_id, snapshot = self._restore_candidate
+        result = self.async_create_entry(
+            title=snapshot["title"],
+            data={**snapshot["data"], RESTORE_SNAPSHOT_ID: snapshot_id},
+        )
+        result["version"] = snapshot["version"]
+        result["minor_version"] = snapshot["minor_version"]
+        return result
 
     @callback
     def async_remove(self) -> None:

@@ -23,6 +23,14 @@
                     "chosen_writable_sensors": "Possible writable sensors",
                     "chosen_pending_sensors": "Possible pending sensors, which may become available later"
                 }
+            },
+            "restore_choice": {
+                "title": "Restore previous ETA setup",
+                "description": "A saved setup of the previous ETA integration was found. Restoring keeps your selection, entity ids and history and skips the scan.",
+                "menu_options": {
+                    "restore": "Restore previous setup",
+                    "manual": "Start a new setup"
+                }
             }
         },
         "error": {

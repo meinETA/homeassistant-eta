@@ -17,7 +17,7 @@ Home Assistant integration for **ETA heating systems** (pellet, wood, and combin
 
 ## Contents
 
-[Features](#features) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Troubleshooting](#troubleshooting)
+[Features](#features) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Moving from the previous repository](#moving-from-the-previous-repository) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Troubleshooting](#troubleshooting)
 
 ## Features
 
@@ -52,7 +52,13 @@ Every ETA function block becomes a device, and its entities are grouped into the
 
 ## Installation
 
-### HACS (recommended)
+### Home Assistant Marketplace (2026.11 and newer)
+
+1. Go to **Settings → Marketplace** and search for **ETA Heating**.
+2. Click **Install**.
+3. Restart Home Assistant.
+
+### HACS (2026.10 and older)
 
 This integration is available in the **HACS default store**.
 
@@ -74,6 +80,10 @@ During setup the integration discovers everything on your unit and shows the cou
 ![Choosing entities during setup](images/setup_choose_entities.png)
 
 > **Note:** After you enter host and port, the integration scans every available endpoint once. On large systems (~800 entities) this initial scan can take **8–15 minutes** — please be patient. This only happens when adding the integration or when you explicitly rediscover; normal operation only polls the entities you selected.
+
+## Moving from the Previous Repository
+
+Coming from `Tidone/homeassistant_eta_integration`? Update it to version 1.4.3 first, then follow the [migration guide](docs/migration.md). Your selection, entity IDs, devices and history are restored without a new scan.
 
 ## Related Integrations
 
