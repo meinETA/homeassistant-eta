@@ -26,7 +26,7 @@
             },
             "restore_choice": {
                 "title": "Restore previous ETA setup",
-                "description": "A saved setup of the previous ETA integration was found. Restoring keeps your selection, entity ids and history and skips the scan. [Open the migration guide](https://github.com/meinETA/homeassistant-eta/blob/main/docs/migration.md)",
+                "description": "A saved setup of the previous ETA integration was found. Restoring keeps your selection, entity ids and history and skips the scan. [Open the migration guide]({guide_url})",
                 "menu_options": {
                     "restore": "Restore previous setup",
                     "manual": "Start a new setup"

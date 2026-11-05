@@ -13,6 +13,9 @@ from .const import DOMAIN
 STORAGE_KEY = f"{DOMAIN}.migration"
 STORAGE_VERSION = 1
 RESTORE_SNAPSHOT_ID = "restore_snapshot_id"
+MIGRATION_GUIDE_URL = (
+    "https://github.com/meinETA/homeassistant-eta/blob/main/docs/migration.md"
+)
 
 _LOGGER = logging.getLogger(__name__)
 

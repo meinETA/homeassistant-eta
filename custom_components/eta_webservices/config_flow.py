@@ -52,7 +52,11 @@ from .const import (
     UPDATE_INTERVAL,
     WRITABLE_DICT,
 )
-from .migration_restore import RESTORE_SNAPSHOT_ID, async_find_snapshot
+from .migration_restore import (
+    MIGRATION_GUIDE_URL,
+    RESTORE_SNAPSHOT_ID,
+    async_find_snapshot,
+)
 
 _LOGGER = logging.getLogger(__name__)
 _HOSTNAME_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
@@ -397,7 +401,9 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
     async def async_step_restore_choice(self, user_input=None):
         """Offer to restore the setup of the previous repository."""
         return self.async_show_menu(
-            step_id="restore_choice", menu_options=["restore", "manual"]
+            step_id="restore_choice",
+            menu_options=["restore", "manual"],
+            description_placeholders={"guide_url": MIGRATION_GUIDE_URL},
         )
 
     async def async_step_manual(self, user_input=None):
