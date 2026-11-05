@@ -23,6 +23,14 @@
                     "chosen_writable_sensors": "Schreibbare Sensoren",
                     "chosen_pending_sensors": "Sensoren, die erst später verfügbar werden könnten"
                 }
+            },
+            "restore_choice": {
+                "title": "Vorherige ETA-Einrichtung wiederherstellen",
+                "description": "Es wurde eine gespeicherte Einrichtung der bisherigen ETA-Integration gefunden. Die Wiederherstellung behält Auswahl, Entity-IDs und Verlauf und überspringt den Scan. [Migrationsanleitung öffnen]({guide_url})",
+                "menu_options": {
+                    "restore": "Vorherige Einrichtung wiederherstellen",
+                    "manual": "Neu einrichten"
+                }
             }
         },
         "error": {

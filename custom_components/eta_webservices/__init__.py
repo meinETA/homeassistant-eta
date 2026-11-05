@@ -43,6 +43,11 @@ from .coordinator import (
     ETASensorUpdateCoordinator,
     ETAWritableUpdateCoordinator,
 )
+from .migration_restore import (
+    RESTORE_SNAPSHOT_ID,
+    async_remove_snapshot,
+    async_restore_registries,
+)
 from .services import async_setup_services
 
 PLATFORMS: list[Platform] = [
@@ -334,9 +339,14 @@ async def async_migrate_entry(  # noqa: C901, D103
 
     _LOGGER.debug("Migrating from version %s", config_entry.version)
 
+    restore_snapshot_id = config_entry.data.get(RESTORE_SNAPSHOT_ID)
+    if restore_snapshot_id:
+        await async_restore_registries(hass, config_entry, restore_snapshot_id)
+
     current_version = config_entry.version
     new_version = EtaFlowHandler.VERSION
     new_data = _get_current_data()
+    new_data.pop(RESTORE_SNAPSHOT_ID, None)
     is_migrated = False
 
     if current_version == 1:
@@ -371,6 +381,8 @@ async def async_migrate_entry(  # noqa: C901, D103
             options={},
             version=new_version,
         )
+        if restore_snapshot_id:
+            await async_remove_snapshot(hass, restore_snapshot_id)
     if not is_migrated:
         _LOGGER.warning("No migration path to version %s found", new_version)
         return True
