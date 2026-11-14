@@ -836,34 +836,47 @@ class EtaOptionsFlowHandler(OptionsFlow):
                     return new_uid_prefix + key[len(old_uid_prefix) :]
                 return key
 
-            # Re-key dicts + chosen lists and freeze the new id; defer the
-            # registry rewrite to setup via RENAME_PENDING_FROM (a live unique_id
-            # change is ignored). Title switches to the name.
-            for dict_name in (
-                FLOAT_DICT,
-                SWITCHES_DICT,
-                TEXT_DICT,
-                WRITABLE_DICT,
-                PENDING_DICT,
-            ):
-                dct = data.get(dict_name)
-                if isinstance(dct, dict):
-                    data[dict_name] = {_swap_uid(k): v for k, v in dct.items()}
-            for chosen_name in (
-                CHOSEN_FLOAT_SENSORS,
-                CHOSEN_SWITCHES,
-                CHOSEN_TEXT_SENSORS,
-                CHOSEN_WRITABLE_SENSORS,
-                CHOSEN_PENDING_SENSORS,
-            ):
-                lst = data.get(chosen_name)
-                if isinstance(lst, list):
-                    data[chosen_name] = [_swap_uid(x) for x in lst]
+            def _rekey(selection: dict[str, Any]) -> dict[str, Any]:
+                """Return a copy of a selection mapping with all keys re-keyed."""
+                rekeyed = dict(selection)
+                for dict_name in (
+                    FLOAT_DICT,
+                    SWITCHES_DICT,
+                    TEXT_DICT,
+                    WRITABLE_DICT,
+                    PENDING_DICT,
+                ):
+                    dct = rekeyed.get(dict_name)
+                    if isinstance(dct, dict):
+                        rekeyed[dict_name] = {_swap_uid(k): v for k, v in dct.items()}
+                for chosen_name in (
+                    CHOSEN_FLOAT_SENSORS,
+                    CHOSEN_SWITCHES,
+                    CHOSEN_TEXT_SENSORS,
+                    CHOSEN_WRITABLE_SENSORS,
+                    CHOSEN_PENDING_SENSORS,
+                ):
+                    lst = rekeyed.get(chosen_name)
+                    if isinstance(lst, list):
+                        rekeyed[chosen_name] = [_swap_uid(x) for x in lst]
+                return rekeyed
+
+            # Re-key data *and* options: "Update selected entities" keeps the
+            # newer selection in the options, so re-keying data alone would let
+            # setup merge the old option keys back in. Freeze the new id and
+            # defer the registry rewrite to setup via RENAME_PENDING_FROM (a
+            # live unique_id change is ignored). Title switches to the name.
+            data = _rekey(data)
+            options = _rekey(entry.options)
             data[RENAME_PENDING_FROM] = old_stable
             data[STABLE_ID] = new_stable
             data[CONF_NAME] = name
-            self.hass.config_entries.async_update_entry(entry, data=data, title=name)
-            return self.async_create_entry(title="", data={})
+            # A single update: updating data first would reload the entry while
+            # the not-yet-re-keyed options are still in place.
+            self.hass.config_entries.async_update_entry(
+                entry, data=data, options=options, title=name
+            )
+            return self.async_create_entry(title="", data=options)
 
         # Warning as a red box: HA renders `errors` in red (markdown can't).
         self._errors = {"base": "migration_warning"}

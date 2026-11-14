@@ -1,5 +1,6 @@
 """Unit tests for config_flow helper logic."""
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -26,12 +27,14 @@ from custom_components.eta_webservices.const import (
     FORCE_LEGACY_MODE,
     MAX_PARALLEL_REQUESTS,
     PENDING_DICT,
+    RENAME_PENDING_FROM,
+    STABLE_ID,
     SWITCHES_DICT,
     TEXT_DICT,
     UPDATE_INTERVAL,
     WRITABLE_DICT,
 )
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -1063,3 +1066,61 @@ def test_build_endpoint_selection_schema_applies_defaults():
         k for k in schema if hasattr(k, "schema") and k.schema == CHOSEN_FLOAT_SENSORS
     )
     assert float_key.default() == ["f1"]
+
+
+# ---------------------------------------------------------------------------
+# async_step_rename_entities
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_rename_entities_rekeys_options_selection():
+    """Selection kept in the options survives the opt-in rename.
+
+    "Update selected entities" stores the newer sensors in entry.options, so
+    re-keying only entry.data would let setup merge the old option keys back in
+    and reload the entry in between with a mixed data/options state.
+    """
+    old_uid = "eta_192_168_80_100_40_10021_0_0_12161"
+    added_uid = "eta_192_168_80_100_121_10101_0_0_12241"
+    entry = SimpleNamespace(
+        data={
+            CONF_HOST: "192.168.80.100",
+            CONF_PORT: 8080,
+            STABLE_ID: "192_168_80_100",
+            FLOAT_DICT: {old_uid: _make_sensor()},
+            CHOSEN_FLOAT_SENSORS: [old_uid],
+        },
+        options={
+            FLOAT_DICT: {
+                old_uid: _make_sensor(),
+                added_uid: _make_sensor(url="/added"),
+            },
+            CHOSEN_FLOAT_SENSORS: [old_uid, added_uid],
+        },
+    )
+    flow = _make_flow()
+    flow.handler = "entry-id"
+    flow.hass.config_entries.async_get_entry = Mock(return_value=entry)
+    flow.async_create_entry = Mock(return_value="entry_result")
+
+    result = await flow.async_step_rename_entities(user_input={CONF_NAME: "eta"})
+
+    assert result == "entry_result"
+    update = flow.hass.config_entries.async_update_entry
+    assert update.call_count == 1
+    saved_data = update.call_args.kwargs["data"]
+    saved_options = update.call_args.kwargs["options"]
+    assert saved_data[STABLE_ID] == "eta"
+    assert saved_data[CONF_NAME] == "eta"
+    assert saved_data[RENAME_PENDING_FROM] == "192_168_80_100"
+    assert saved_data[CHOSEN_FLOAT_SENSORS] == ["eta_eta_40_10021_0_0_12161"]
+    assert saved_options[CHOSEN_FLOAT_SENSORS] == [
+        "eta_eta_40_10021_0_0_12161",
+        "eta_eta_121_10101_0_0_12241",
+    ]
+    assert list(saved_options[FLOAT_DICT]) == [
+        "eta_eta_40_10021_0_0_12161",
+        "eta_eta_121_10101_0_0_12241",
+    ]
+    assert flow.async_create_entry.call_args.kwargs["data"] == saved_options
