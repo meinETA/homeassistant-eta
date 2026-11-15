@@ -156,6 +156,13 @@ async def async_setup_entry(
     # The options are set if a user configures the integration after the initial set-up
     if entry.options:
         config.update(entry.options)
+    # The identity always comes from entry.data: older pending promotions copied
+    # it into the options, where it would undo an opt-in rename.
+    for key in (STABLE_ID, CONF_NAME):
+        if key in entry.data:
+            config[key] = entry.data[key]
+        else:
+            config.pop(key, None)
 
     config[MAX_PARALLEL_REQUESTS] = int(
         config.get(MAX_PARALLEL_REQUESTS, DEFAULT_MAX_PARALLEL_REQUESTS)

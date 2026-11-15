@@ -824,9 +824,15 @@ class EtaOptionsFlowHandler(OptionsFlow):
         if user_input is not None:
             name = str(user_input[CONF_NAME]).strip()
             new_stable = slugify(name)
-            data = dict(entry.data)
+            # The options flow and the pending promotion keep the newer selection
+            # in entry.options, and setup merges options over data. Fold them
+            # into data so everything is re-keyed once, then clear the options:
+            # no stale old keys or old stable id can be merged back in.
+            data = {**entry.data, **entry.options}
+            # The stable id comes from entry.data only; an options copy may be stale.
             old_stable = str(
-                data.get(STABLE_ID) or str(data.get(CONF_HOST, "")).replace(".", "_")
+                entry.data.get(STABLE_ID)
+                or str(entry.data.get(CONF_HOST, "")).replace(".", "_")
             )
             old_uid_prefix = "eta_" + old_stable + "_"
             new_uid_prefix = "eta_" + new_stable + "_"
@@ -862,7 +868,10 @@ class EtaOptionsFlowHandler(OptionsFlow):
             data[RENAME_PENDING_FROM] = old_stable
             data[STABLE_ID] = new_stable
             data[CONF_NAME] = name
-            self.hass.config_entries.async_update_entry(entry, data=data, title=name)
+            # One update, so the reload never sees re-keyed data next to old options.
+            self.hass.config_entries.async_update_entry(
+                entry, data=data, options={}, title=name
+            )
             return self.async_create_entry(title="", data={})
 
         # Warning as a red box: HA renders `errors` in red (markdown can't).

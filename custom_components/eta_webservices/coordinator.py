@@ -6,6 +6,7 @@ from asyncio import timeout
 from datetime import timedelta
 import logging
 import time
+from typing import Any
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT
@@ -433,9 +434,18 @@ class ETAPendingNodeCoordinator(DataUpdateCoordinator[bool]):
             return False
 
         # Build the effective config dict (data overridden by options, same as async_setup_entry).
-        current = {**self.entry.data}
+        merged = {**self.entry.data}
         if self.entry.options:
-            current.update(self.entry.options)
+            merged.update(self.entry.options)
+        # Copy only the selection keys: identity keys (host, stable id, name)
+        # must stay in entry.data, or a later rename would be undone by the
+        # stale copy in the options. The copies keep entry.data unmodified.
+        current: dict[str, Any] = {
+            PENDING_DICT: dict(merged.get(PENDING_DICT) or {}),
+            FLOAT_DICT: dict(merged.get(FLOAT_DICT) or {}),
+            CHOSEN_PENDING_SENSORS: list(merged.get(CHOSEN_PENDING_SENSORS) or []),
+            CHOSEN_FLOAT_SENSORS: list(merged.get(CHOSEN_FLOAT_SENSORS) or []),
+        }
 
         for unique_key, endpoint in promoted.items():
             current.setdefault(PENDING_DICT, {}).pop(unique_key, None)
@@ -455,5 +465,7 @@ class ETAPendingNodeCoordinator(DataUpdateCoordinator[bool]):
             )
 
         # Persist as options — the existing options_update_listener triggers a reload.
-        self.hass.config_entries.async_update_entry(self.entry, options=current)
+        self.hass.config_entries.async_update_entry(
+            self.entry, options={**self.entry.options, **current}
+        )
         return True
