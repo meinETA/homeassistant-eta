@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  release-zip:
+    name: Attach the integration ZIP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v7
+
+      - name: Check the manifest version against the tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(jq -r .version custom_components/eta_webservices/manifest.json)
+          if [ "$version" != "${TAG#v}" ]; then
+            echo "::error::manifest.json version $version does not match tag $TAG"
+            exit 1
+          fi
+
+      - name: Build the ZIP
+        run: |
+          cd custom_components/eta_webservices
+          zip -r -X "$GITHUB_WORKSPACE/eta_webservices.zip" . -x "__pycache__/*" "*.pyc"
+
+      - name: Upload the ZIP to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" eta_webservices.zip --clobber
