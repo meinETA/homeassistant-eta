@@ -146,6 +146,17 @@ def _remove_stale_rename_duplicates(
         entity_registry.async_remove(ent.entity_id)
     if stale:
         _LOGGER.info("Removed %d duplicate entities left by the rename", len(stale))
+        # The same rename dropped sensors added later from the selection; they
+        # can only be selected again by hand. Cleared by the options flow.
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            f"rename_reselect_{entry.entry_id}",
+            is_fixable=False,
+            is_persistent=True,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="rename_reselect",
+        )
 
 
 def _sync_migration_issue(

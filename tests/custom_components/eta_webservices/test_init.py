@@ -1020,9 +1020,10 @@ def _run_cleanup(data, entities):
             "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
             return_value=entities,
         ),
+        patch("custom_components.eta_webservices.ir.async_create_issue") as issue,
     ):
         _remove_stale_rename_duplicates(MagicMock(spec=HomeAssistant), entry)
-    return mock_registry.async_remove
+    return mock_registry.async_remove, issue
 
 
 def test_remove_stale_rename_duplicates_removes_only_true_duplicates():
@@ -1035,10 +1036,13 @@ def test_remove_stale_rename_duplicates_removes_only_true_duplicates():
         # No renamed counterpart: kept.
         _make_entity_entry("eta_192_168_0_25_40_99999_0_0_1", "sensor.eta_other"),
     ]
-    remove = _run_cleanup(
+    remove, issue = _run_cleanup(
         {"host": "192.168.0.25", STABLE_ID: "eta", CONF_NAME: "eta"}, entities
     )
     remove.assert_called_once_with("sensor.eta_kessel_2")
+    issue.assert_called_once()
+    assert issue.call_args.args[2] == "rename_reselect_test_entry_id"
+    assert issue.call_args.kwargs["translation_key"] == "rename_reselect"
 
 
 @pytest.mark.parametrize(
@@ -1062,4 +1066,6 @@ def test_remove_stale_rename_duplicates_noop(data):
             "eta_192_168_0_25_40_10021_0_0_12161", "sensor.eta_kessel_2"
         ),
     ]
-    _run_cleanup(data, entities).assert_not_called()
+    remove, issue = _run_cleanup(data, entities)
+    remove.assert_not_called()
+    issue.assert_not_called()

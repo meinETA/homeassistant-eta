@@ -13,7 +13,7 @@ import voluptuous as vol
 from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, ConfigFlow, OptionsFlow
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import callback
-from homeassistant.helpers import selector
+from homeassistant.helpers import issue_registry as ir, selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 import homeassistant.helpers.entity_registry as er
@@ -1465,6 +1465,9 @@ class EtaOptionsFlowHandler(OptionsFlow):
                 ],
                 FORCE_LEGACY_MODE: self.data[FORCE_LEGACY_MODE],
             }
+
+            # The selection was reviewed, so the reselect hint after a rename is done.
+            ir.async_delete_issue(self.hass, DOMAIN, f"rename_reselect_{self.handler}")
 
             # only show advanced options for writable sensors that do not have a custom unit like time sensors
             self.advanced_options_writable_sensors = [

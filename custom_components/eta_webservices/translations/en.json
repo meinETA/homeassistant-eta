@@ -110,6 +110,10 @@
         "legacy_scheme_migration": {
             "title": "Optional: migrate to the name-based scheme (v2)",
             "description": "This installation still uses the IP-based entity scheme (`{old_prefix}…`). It keeps working unchanged – you don't have to do anything.\n\nIf you want, you can migrate to the name-based scheme under Settings → Devices & Services → ETA → Configure. Only the prefix `{old_prefix}` is replaced with `[name]_`, the rest of the entity id stays the same – a search & replace in your dashboards is enough.\n\nNote: the entity ids change, so automations, scripts and dashboards have to be updated manually afterwards. The history is preserved."
+        },
+        "rename_reselect": {
+            "title": "ETA: select missing sensors again",
+            "description": "The rename to the name-based scheme in version 2.0.0 removed sensors that were added after the initial setup from the selection. They now show as unavailable. Duplicate `_2` entities have been removed automatically.\n\nSelect the missing sensors again under Settings → Devices & Services → ETA → Configure → Update selected entities. Their entity ids and history are kept. This notice disappears once the selection is saved."
         }
     },
     "entity": {
