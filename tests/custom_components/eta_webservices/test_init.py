@@ -7,6 +7,7 @@ import pytest
 
 from custom_components.eta_webservices import (
     _apply_pending_rename,
+    _remove_stale_rename_duplicates,
     _sync_migration_issue,
     async_migrate_entry,
 )
@@ -1003,3 +1004,62 @@ def test_sync_migration_issue_cleared_when_named():
 
     create_issue.assert_not_called()
     delete_issue.assert_called_once()
+
+
+def _run_cleanup(data, entities):
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = data
+    mock_registry = MagicMock()
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=entities,
+        ),
+    ):
+        _remove_stale_rename_duplicates(MagicMock(spec=HomeAssistant), entry)
+    return mock_registry.async_remove
+
+
+def test_remove_stale_rename_duplicates_removes_only_true_duplicates():
+    """An old IP-based entry is removed only next to its renamed counterpart."""
+    entities = [
+        _make_entity_entry("eta_eta_40_10021_0_0_12161", "sensor.eta_kessel"),
+        _make_entity_entry(
+            "eta_192_168_0_25_40_10021_0_0_12161", "sensor.eta_kessel_2"
+        ),
+        # No renamed counterpart: kept.
+        _make_entity_entry("eta_192_168_0_25_40_99999_0_0_1", "sensor.eta_other"),
+    ]
+    remove = _run_cleanup(
+        {"host": "192.168.0.25", STABLE_ID: "eta", CONF_NAME: "eta"}, entities
+    )
+    remove.assert_called_once_with("sensor.eta_kessel_2")
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"host": "192.168.0.25", STABLE_ID: "192_168_0_25"},
+        {"host": "192.168.0.25", STABLE_ID: "192_168_0_25", CONF_NAME: "x"},
+        {
+            "host": "192.168.0.25",
+            STABLE_ID: "eta",
+            CONF_NAME: "eta",
+            RENAME_PENDING_FROM: "192_168_0_25",
+        },
+    ],
+)
+def test_remove_stale_rename_duplicates_noop(data):
+    """Unnamed entries, IP-named entries and a pending rename are left alone."""
+    entities = [
+        _make_entity_entry("eta_eta_40_10021_0_0_12161", "sensor.eta_kessel"),
+        _make_entity_entry(
+            "eta_192_168_0_25_40_10021_0_0_12161", "sensor.eta_kessel_2"
+        ),
+    ]
+    _run_cleanup(data, entities).assert_not_called()

@@ -114,6 +114,40 @@ def _apply_pending_rename(
     _LOGGER.info("Applied ETA opt-in rename to the '%s' scheme", new_stable)
 
 
+def _remove_stale_rename_duplicates(
+    hass: core.HomeAssistant, entry: config_entries.ConfigEntry
+) -> None:
+    """Remove duplicates left behind by the opt-in rename in 2.0.0.
+
+    The rename could rebuild entities from stale option keys, which created a
+    second registry entry ("<entity_id>_2") under the old IP-based unique_id.
+    Only entries whose renamed counterpart exists in the same config entry are
+    removed; the history stays on the renamed entity.
+    """
+    if not entry.data.get(CONF_NAME) or entry.data.get(RENAME_PENDING_FROM):
+        return
+    ip_stable = str(entry.data.get(CONF_HOST, "")).replace(".", "_")
+    new_stable = str(entry.data.get(STABLE_ID, ""))
+    if not ip_stable or not new_stable or ip_stable == new_stable:
+        return
+    old_uid_prefix = "eta_" + ip_stable + "_"
+    new_uid_prefix = "eta_" + new_stable + "_"
+
+    entity_registry = er.async_get(hass)
+    entries = er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+    unique_ids = {ent.unique_id for ent in entries}
+    stale = [
+        ent
+        for ent in entries
+        if ent.unique_id.startswith(old_uid_prefix)
+        and new_uid_prefix + ent.unique_id[len(old_uid_prefix) :] in unique_ids
+    ]
+    for ent in stale:
+        entity_registry.async_remove(ent.entity_id)
+    if stale:
+        _LOGGER.info("Removed %d duplicate entities left by the rename", len(stale))
+
+
 def _sync_migration_issue(
     hass: core.HomeAssistant, entry: config_entries.ConfigEntry
 ) -> None:
@@ -147,6 +181,7 @@ async def async_setup_entry(
     hass.data.setdefault(DOMAIN, {})
     # Before the update listener is added, so clearing the marker triggers no reload.
     _apply_pending_rename(hass, entry)
+    _remove_stale_rename_duplicates(hass, entry)
     _sync_migration_issue(hass, entry)
     config = dict(entry.data)
     # Registers update listener to update config entry when options are updated.
