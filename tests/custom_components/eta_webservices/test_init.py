@@ -1010,6 +1010,7 @@ def _run_cleanup(data, entities):
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry_id"
     entry.data = data
+    entry.options = {}
     mock_registry = MagicMock()
     with (
         patch(
@@ -1068,4 +1069,32 @@ def test_remove_stale_rename_duplicates_noop(data):
     ]
     remove, issue = _run_cleanup(data, entities)
     remove.assert_not_called()
+    issue.assert_not_called()
+
+
+def test_remove_stale_rename_duplicates_no_issue_when_selection_complete():
+    """Duplicates of selected sensors and fixed entities need no reselect hint."""
+    entities = [
+        _make_entity_entry("eta_eta_40_10021_0_0_12161", "sensor.eta_kessel"),
+        _make_entity_entry(
+            "eta_192_168_0_25_40_10021_0_0_12161", "sensor.eta_kessel_2"
+        ),
+        _make_entity_entry("eta_eta_errors", "binary_sensor.eta_errors"),
+        _make_entity_entry("eta_192_168_0_25_errors", "binary_sensor.eta_errors_2"),
+        _make_entity_entry("eta_eta_8080_send_events_btn", "button.eta_events"),
+        _make_entity_entry(
+            "eta_192_168_0_25_8080_send_events_btn", "button.eta_events_2"
+        ),
+    ]
+    remove, issue = _run_cleanup(
+        {
+            "host": "192.168.0.25",
+            "port": 8080,
+            STABLE_ID: "eta",
+            CONF_NAME: "eta",
+            CHOSEN_FLOAT_SENSORS: ["eta_eta_40_10021_0_0_12161"],
+        },
+        entities,
+    )
+    assert remove.call_count == 3
     issue.assert_not_called()

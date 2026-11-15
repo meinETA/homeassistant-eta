@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 from homeassistant import config_entries, core
-from homeassistant.const import CONF_HOST, CONF_NAME, Platform
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
 from homeassistant.helpers import entity_registry as er, issue_registry as ir
 
 from .config_flow import EtaFlowHandler
@@ -144,10 +144,36 @@ def _remove_stale_rename_duplicates(
     ]
     for ent in stale:
         entity_registry.async_remove(ent.entity_id)
-    if stale:
-        _LOGGER.info("Removed %d duplicate entities left by the rename", len(stale))
-        # The same rename dropped sensors added later from the selection; they
-        # can only be selected again by hand. Cleared by the options flow.
+    if not stale:
+        return
+    _LOGGER.info("Removed %d duplicate entities left by the rename", len(stale))
+
+    # The same rename could drop sensors added later from the selection; they
+    # can only be selected again by hand. Ask only if a duplicated selection
+    # entity is missing from the selection now; the fixed entities (errors,
+    # buttons) are never part of it.
+    config = {**entry.data, **entry.options}
+    chosen: set[str] = set()
+    for chosen_name in (
+        CHOSEN_FLOAT_SENSORS,
+        CHOSEN_SWITCHES,
+        CHOSEN_TEXT_SENSORS,
+        CHOSEN_WRITABLE_SENSORS,
+        CHOSEN_PENDING_SENSORS,
+    ):
+        chosen.update(config.get(chosen_name) or [])
+    fixed_prefix = f"{new_uid_prefix}{entry.data.get(CONF_PORT, '')}_"
+    dropped = [
+        uid
+        for uid in (
+            new_uid_prefix + ent.unique_id[len(old_uid_prefix) :] for ent in stale
+        )
+        if uid not in chosen
+        and uid != new_uid_prefix + "errors"
+        and not uid.startswith(fixed_prefix)
+    ]
+    if dropped:
+        # Cleared by the options flow once the selection is saved.
         ir.async_create_issue(
             hass,
             DOMAIN,

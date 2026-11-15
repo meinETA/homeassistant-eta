@@ -112,8 +112,8 @@
             "description": "Diese Installation nutzt weiterhin das IP-basierte Entity-Schema (`{old_prefix}…`). Sie funktioniert unverändert weiter – du musst nichts tun.\n\nWenn du möchtest, kannst du unter Einstellungen → Geräte & Dienste → ETA → Konfigurieren auf das namensbasierte Schema migrieren. Dabei wird nur der Präfix `{old_prefix}` durch `[name]_` ersetzt, der Rest der Entity-ID bleibt gleich – im Dashboard genügt ein Suchen & Ersetzen.\n\nAchtung: Die Entity-IDs ändern sich, Automationen, Skripte und Dashboards müssen danach manuell angepasst werden. Die Historie bleibt erhalten."
         },
         "rename_reselect": {
-            "title": "ETA: fehlende Sensoren erneut auswählen",
-            "description": "Die Umbenennung auf das namensbasierte Schema in Version 2.0.0 hat Sensoren, die nach der Ersteinrichtung hinzugefügt wurden, aus der Auswahl entfernt. Sie werden jetzt als nicht verfügbar angezeigt. Doppelte `_2`-Entitäten wurden automatisch entfernt.\n\nWähle die fehlenden Sensoren unter Einstellungen → Geräte & Dienste → ETA → Konfigurieren → Ausgewählte Entitäten aktualisieren erneut aus. Entity-IDs und Verlauf bleiben erhalten. Dieser Hinweis verschwindet, sobald die Auswahl gespeichert ist."
+            "title": "ETA Heating: fehlende Sensoren erneut auswählen",
+            "description": "Die Umbenennung auf das namensbasierte Schema in Version 2.0.0 hat Sensoren, die nach der Ersteinrichtung hinzugefügt wurden, aus der Auswahl entfernt. Sie werden jetzt als nicht verfügbar angezeigt. Doppelte `_2`-Entitäten wurden automatisch entfernt.\n\nWähle die fehlenden Sensoren unter Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → Ausgewählte Entitäten aktualisieren erneut aus. Entity-IDs und Verlauf bleiben erhalten. Dieser Hinweis verschwindet, sobald die Auswahl gespeichert ist."
         }
     },
     "entity": {
