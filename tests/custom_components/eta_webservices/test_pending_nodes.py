@@ -12,6 +12,8 @@ from custom_components.eta_webservices.const import (
     CHOSEN_PENDING_SENSORS,
     FLOAT_DICT,
     PENDING_DICT,
+    STABLE_ID,
+    UPDATE_INTERVAL,
 )
 from custom_components.eta_webservices.coordinator import ETAPendingNodeCoordinator
 from homeassistant.config_entries import ConfigEntry
@@ -471,3 +473,61 @@ async def test_pending_node_with_invalid_permission_error():
     assert switches_dict == {}, "switches_dict should be empty"
     assert text_dict == {}, "text_dict should be empty"
     assert writable_dict == {}, "writable_dict should be empty"
+
+
+@pytest.mark.asyncio
+async def test_coordinator_promotion_keeps_identity_out_of_options(
+    mock_hass, mock_client_session
+):
+    """A promotion stores only the selection; identity stays in entry.data."""
+    pending_key = "eta_192_168_0_25_40_10021_0_0_12161"
+    pending_dict = {
+        pending_key: {
+            "url": PENDING_URI,
+            "unit": "",
+            "endpoint_type": "DEFAULT",
+            "friendly_name": "Restsauerstoff",
+            "value": "---",
+            "valid_values": None,
+        }
+    }
+    config = {
+        "host": "192.168.0.25",
+        "port": 8080,
+        PENDING_DICT: pending_dict,
+        FLOAT_DICT: {},
+        CHOSEN_FLOAT_SENSORS: [],
+        CHOSEN_PENDING_SENSORS: [pending_key],
+    }
+    entry = MagicMock(spec=ConfigEntry)
+    entry.data = {
+        "host": "192.168.0.25",
+        "port": 8080,
+        STABLE_ID: "192_168_0_25",
+        FLOAT_DICT: {},
+        CHOSEN_FLOAT_SENSORS: [],
+        PENDING_DICT: deepcopy(pending_dict),
+        CHOSEN_PENDING_SENSORS: [pending_key],
+    }
+    data_before = deepcopy(entry.data)
+    entry.options = {UPDATE_INTERVAL: 60}
+    entry.pref_disable_polling = False
+
+    coordinator = ETAPendingNodeCoordinator(mock_hass, config, entry)
+    mock_eta_client = MagicMock()
+    mock_eta_client.get_all_data = AsyncMock(return_value={PENDING_URI: 20.64})
+    mock_eta_client.get_data = AsyncMock(return_value=(20.64, "%"))
+    coordinator._create_eta_client = MagicMock(return_value=mock_eta_client)
+
+    assert await coordinator._async_update_data() is True
+
+    new_options = mock_hass.config_entries.async_update_entry.call_args.kwargs[
+        "options"
+    ]
+    assert STABLE_ID not in new_options
+    assert "host" not in new_options
+    assert new_options[UPDATE_INTERVAL] == 60
+    assert new_options[CHOSEN_FLOAT_SENSORS] == [pending_key]
+    assert new_options[CHOSEN_PENDING_SENSORS] == []
+    assert pending_key in new_options[FLOAT_DICT]
+    assert entry.data == data_before

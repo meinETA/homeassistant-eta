@@ -13,7 +13,7 @@ import voluptuous as vol
 from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, ConfigFlow, OptionsFlow
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import callback
-from homeassistant.helpers import selector
+from homeassistant.helpers import issue_registry as ir, selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 import homeassistant.helpers.entity_registry as er
@@ -824,9 +824,15 @@ class EtaOptionsFlowHandler(OptionsFlow):
         if user_input is not None:
             name = str(user_input[CONF_NAME]).strip()
             new_stable = slugify(name)
-            data = dict(entry.data)
+            # The options flow and the pending promotion keep the newer selection
+            # in entry.options, and setup merges options over data. Fold them
+            # into data so everything is re-keyed once, then clear the options:
+            # no stale old keys or old stable id can be merged back in.
+            data = {**entry.data, **entry.options}
+            # The stable id comes from entry.data only; an options copy may be stale.
             old_stable = str(
-                data.get(STABLE_ID) or str(data.get(CONF_HOST, "")).replace(".", "_")
+                entry.data.get(STABLE_ID)
+                or str(entry.data.get(CONF_HOST, "")).replace(".", "_")
             )
             old_uid_prefix = "eta_" + old_stable + "_"
             new_uid_prefix = "eta_" + new_stable + "_"
@@ -862,7 +868,10 @@ class EtaOptionsFlowHandler(OptionsFlow):
             data[RENAME_PENDING_FROM] = old_stable
             data[STABLE_ID] = new_stable
             data[CONF_NAME] = name
-            self.hass.config_entries.async_update_entry(entry, data=data, title=name)
+            # One update, so the reload never sees re-keyed data next to old options.
+            self.hass.config_entries.async_update_entry(
+                entry, data=data, options={}, title=name
+            )
             return self.async_create_entry(title="", data={})
 
         # Warning as a red box: HA renders `errors` in red (markdown can't).
@@ -1456,6 +1465,9 @@ class EtaOptionsFlowHandler(OptionsFlow):
                 ],
                 FORCE_LEGACY_MODE: self.data[FORCE_LEGACY_MODE],
             }
+
+            # The selection was reviewed, so the reselect hint after a rename is done.
+            ir.async_delete_issue(self.hass, DOMAIN, f"rename_reselect_{self.handler}")
 
             # only show advanced options for writable sensors that do not have a custom unit like time sensors
             self.advanced_options_writable_sensors = [

@@ -7,6 +7,7 @@ import pytest
 
 from custom_components.eta_webservices import (
     _apply_pending_rename,
+    _remove_stale_rename_duplicates,
     _sync_migration_issue,
     async_migrate_entry,
 )
@@ -1003,3 +1004,97 @@ def test_sync_migration_issue_cleared_when_named():
 
     create_issue.assert_not_called()
     delete_issue.assert_called_once()
+
+
+def _run_cleanup(data, entities):
+    entry = MagicMock(spec=ConfigEntry)
+    entry.entry_id = "test_entry_id"
+    entry.data = data
+    entry.options = {}
+    mock_registry = MagicMock()
+    with (
+        patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ),
+        patch(
+            "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
+            return_value=entities,
+        ),
+        patch("custom_components.eta_webservices.ir.async_create_issue") as issue,
+    ):
+        _remove_stale_rename_duplicates(MagicMock(spec=HomeAssistant), entry)
+    return mock_registry.async_remove, issue
+
+
+def test_remove_stale_rename_duplicates_removes_only_true_duplicates():
+    """An old IP-based entry is removed only next to its renamed counterpart."""
+    entities = [
+        _make_entity_entry("eta_eta_40_10021_0_0_12161", "sensor.eta_kessel"),
+        _make_entity_entry(
+            "eta_192_168_0_25_40_10021_0_0_12161", "sensor.eta_kessel_2"
+        ),
+        # No renamed counterpart: kept.
+        _make_entity_entry("eta_192_168_0_25_40_99999_0_0_1", "sensor.eta_other"),
+    ]
+    remove, issue = _run_cleanup(
+        {"host": "192.168.0.25", STABLE_ID: "eta", CONF_NAME: "eta"}, entities
+    )
+    remove.assert_called_once_with("sensor.eta_kessel_2")
+    issue.assert_called_once()
+    assert issue.call_args.args[2] == "rename_reselect_test_entry_id"
+    assert issue.call_args.kwargs["translation_key"] == "rename_reselect"
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"host": "192.168.0.25", STABLE_ID: "192_168_0_25"},
+        {"host": "192.168.0.25", STABLE_ID: "192_168_0_25", CONF_NAME: "x"},
+        {
+            "host": "192.168.0.25",
+            STABLE_ID: "eta",
+            CONF_NAME: "eta",
+            RENAME_PENDING_FROM: "192_168_0_25",
+        },
+    ],
+)
+def test_remove_stale_rename_duplicates_noop(data):
+    """Unnamed entries, IP-named entries and a pending rename are left alone."""
+    entities = [
+        _make_entity_entry("eta_eta_40_10021_0_0_12161", "sensor.eta_kessel"),
+        _make_entity_entry(
+            "eta_192_168_0_25_40_10021_0_0_12161", "sensor.eta_kessel_2"
+        ),
+    ]
+    remove, issue = _run_cleanup(data, entities)
+    remove.assert_not_called()
+    issue.assert_not_called()
+
+
+def test_remove_stale_rename_duplicates_no_issue_when_selection_complete():
+    """Duplicates of selected sensors and fixed entities need no reselect hint."""
+    entities = [
+        _make_entity_entry("eta_eta_40_10021_0_0_12161", "sensor.eta_kessel"),
+        _make_entity_entry(
+            "eta_192_168_0_25_40_10021_0_0_12161", "sensor.eta_kessel_2"
+        ),
+        _make_entity_entry("eta_eta_errors", "binary_sensor.eta_errors"),
+        _make_entity_entry("eta_192_168_0_25_errors", "binary_sensor.eta_errors_2"),
+        _make_entity_entry("eta_eta_8080_send_events_btn", "button.eta_events"),
+        _make_entity_entry(
+            "eta_192_168_0_25_8080_send_events_btn", "button.eta_events_2"
+        ),
+    ]
+    remove, issue = _run_cleanup(
+        {
+            "host": "192.168.0.25",
+            "port": 8080,
+            STABLE_ID: "eta",
+            CONF_NAME: "eta",
+            CHOSEN_FLOAT_SENSORS: ["eta_eta_40_10021_0_0_12161"],
+        },
+        entities,
+    )
+    assert remove.call_count == 3
+    issue.assert_not_called()
