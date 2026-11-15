@@ -2,6 +2,7 @@
 
 [![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub release](https://img.shields.io/github/v/release/meinETA/homeassistant-eta?display_name=tag)](https://github.com/meinETA/homeassistant-eta/releases)
+[![Downloads](https://img.shields.io/github/downloads/meinETA/homeassistant-eta/total?label=downloads)](https://github.com/meinETA/homeassistant-eta/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.5%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![Validate](https://github.com/meinETA/homeassistant-eta/actions/workflows/hassfest.yaml/badge.svg)](https://github.com/meinETA/homeassistant-eta/actions/workflows/hassfest.yaml)
 [![Tests](https://github.com/meinETA/homeassistant-eta/actions/workflows/tests.yaml/badge.svg)](https://github.com/meinETA/homeassistant-eta/actions/workflows/tests.yaml)
