@@ -4,8 +4,6 @@
 [![GitHub release](https://img.shields.io/github/v/release/meinETA/homeassistant-eta?display_name=tag)](https://github.com/meinETA/homeassistant-eta/releases)
 [![Downloads](https://img.shields.io/github/downloads/meinETA/homeassistant-eta/total?label=downloads)](https://github.com/meinETA/homeassistant-eta/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.5%2B-41BDF5.svg)](https://www.home-assistant.io/)
-[![Validate](https://github.com/meinETA/homeassistant-eta/actions/workflows/hassfest.yaml/badge.svg)](https://github.com/meinETA/homeassistant-eta/actions/workflows/hassfest.yaml)
-[![Tests](https://github.com/meinETA/homeassistant-eta/actions/workflows/tests.yaml/badge.svg)](https://github.com/meinETA/homeassistant-eta/actions/workflows/tests.yaml)
 [![License: MIT](https://img.shields.io/github/license/meinETA/homeassistant-eta.svg)](LICENSE)
 [![Buy us a coffee](https://img.shields.io/badge/Donate-Buy%20us%20a%20coffee-ffd557.svg)](https://www.buymeacoffee.com/christofpichler)
 
