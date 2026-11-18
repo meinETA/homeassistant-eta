@@ -131,8 +131,6 @@ If the sensors on the ETA unit change (e.g. new hardware is added), you can refr
 - Newer ETA units: `8–15` (if stable)
 - If you see API errors/timeouts, reduce the value step by step.
 
-> **Renamed or deleted sensors:** if a sensor you added is renamed on the ETA terminal, the integration cannot automatically link the new name to the existing entity. The old entity is orphaned and the new name appears in the list to be added again. To keep the history, rename the new entity back to the old entity id manually.
-
 ## Error Events
 
 The integration publishes an event whenever the ETA terminal reports a new error, or an active error is cleared. These can be handled in automations.
