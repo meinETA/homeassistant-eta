@@ -52,7 +52,7 @@ Your ETA plant on a dashboard, like on the touch display: detected automatically
 
 The integration ships a dashboard card that shows the plant like the ETA touch display: storage, boiler, buffer, heating circuits and fresh water module with live values and animated pipes. No extra installation is needed; the card is loaded automatically.
 
-- **Add it:** edit a dashboard, add a card and pick **ETA Plant (Beta)**. A panel view gives the best result.
+- **Add it:** edit a dashboard, add a card and pick **ETA Plant**. A panel view gives the best result.
 - **Detection:** the plant layout is detected automatically from the selected sensors. If a value is missing on the card, add the matching sensor in the integration options.
 - **Control tab:** switch the boiler and heating circuits on or off and select heat, setback or time program. This needs the corresponding switches (e.g. *On/Off button*) to be selected in the integration options.
 - **Card settings:** plant (if several are configured), name, language and an icon per block (e.g. the exact boiler model).

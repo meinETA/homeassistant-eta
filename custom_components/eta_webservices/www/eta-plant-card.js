@@ -754,7 +754,7 @@
       <label>Name der Anlage<input id="title" value="${esc(this._config.title || "")}" placeholder="${esc((this._topo && this._topo.title) || "ETA")}"></label>
       ${rows || "<p>Anlage wird geladen …</p>"}
       <div class="report">
-        <b>Anlage melden (Beta)</b>
+        <b>Anlage melden</b>
         <p>Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ erstellt ein Issue, in dem die Anlagendaten
         schon eingetragen sind. Sie enthalten nur Objekt-Nummern, Parameter-Adressen und Einheiten, keine Namen, keine Werte,
         keine IP. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst.
@@ -851,8 +851,8 @@
     window.customCards = window.customCards || [];
     window.customCards.push({
       type: "eta-plant-card",
-      name: "ETA Plant (Beta)",
-      description: "Übersicht der ETA-Heizanlage mit Live-Werten. Beta: Rückmeldungen bitte als GitHub-Issue.",
+      name: "ETA Plant",
+      description: "Übersicht der ETA-Heizanlage mit Live-Werten und Bedienung.",
     });
   }
 })();
