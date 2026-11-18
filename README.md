@@ -1,6 +1,4 @@
-<img src="custom_components/eta_webservices/www/icons/Kessel/eSH_eTWIN/FUB_eSH-eTWIN_BE-P4.webp" alt="ETA eSH-eTWIN" title="ETA eSH-eTWIN" align="right" height="80px"/>
-<img src="custom_components/eta_webservices/www/icons/Kessel/TWIN/SH_TWIN_neu.webp" alt="ETA SH-P TWIN" title="ETA SH-P TWIN" align="right" height="80px"/>
-<img src="custom_components/eta_webservices/www/icons/Kessel/Pellets/PU_PC_neu.webp" alt="ETA PU / PC" title="ETA PU / PC" align="right" height="80px"/>
+<img src="images/header-boilers.webp" alt="ETA boilers" title="ETA PU / PC, SH-P TWIN, eSH-eTWIN" align="right" height="80px"/>
 <img src="custom_components/eta_webservices/brand/logo.png" alt="ETA" title="ETA" align="right" height="44px"/>
 
 # ETA Heating for<br>Home Assistant
@@ -243,4 +241,4 @@ Originally created by [nigl](https://github.com/nigl/homeassistant_eta_integrati
 
 Released under the [MIT License](LICENSE).
 
-Exception: the icons in `custom_components/eta_webservices/www/icons/` are the property of ETA Heiztechnik GmbH, are not licensed under MIT and may only be used as part of this integration. See the [NOTICE](custom_components/eta_webservices/www/icons/NOTICE) file in that directory. The same applies to the ETA logo in `custom_components/eta_webservices/brand/` and to the plant card screenshots (`images/plant-card-*.png`), which show these icons.
+Exception: the icons in `custom_components/eta_webservices/www/icons/` are the property of ETA Heiztechnik GmbH, are not licensed under MIT and may only be used as part of this integration. See the [NOTICE](custom_components/eta_webservices/www/icons/NOTICE) file in that directory. The same applies to the ETA logo in `custom_components/eta_webservices/brand/` and to the plant card screenshots and header image (`images/plant-card-*.png`, `images/header-boilers.webp`), which show these icons.

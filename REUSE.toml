@@ -7,7 +7,7 @@ SPDX-FileCopyrightText = "ETA Heiztechnik GmbH"
 SPDX-License-Identifier = "LicenseRef-ETA-Icons"
 
 [[annotations]]
-path = "images/plant-card-*.png"
+path = ["images/plant-card-*.png", "images/header-boilers.webp"]
 precedence = "override"
 SPDX-FileCopyrightText = "ETA Heiztechnik GmbH"
 SPDX-License-Identifier = "LicenseRef-ETA-Icons"
