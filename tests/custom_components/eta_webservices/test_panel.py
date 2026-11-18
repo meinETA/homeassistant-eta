@@ -3,7 +3,7 @@
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.eta_webservices import panel
-from custom_components.eta_webservices.const import DOMAIN, SIDEBAR_PANEL, STABLE_ID
+from custom_components.eta_webservices.const import DOMAIN, STABLE_ID
 
 
 def _entry(**data):
@@ -17,11 +17,9 @@ def test_panel_url_uses_stable_id():
 
 
 def test_sidebar_default_and_override(hass):
-    """Off for existing installs, on for new ones, stored choice wins."""
+    """On by default, the stored choice wins."""
     hass.data[panel._DATA] = {}
-    old = _entry(**{STABLE_ID: "a"})
-    new = _entry(**{STABLE_ID: "b", SIDEBAR_PANEL: True})
-    assert not panel.sidebar_enabled(hass, old)  # existing installs: off
-    assert panel.sidebar_enabled(hass, new)  # new installs: on
-    hass.data[panel._DATA][new.entry_id] = {"sidebar": False}
-    assert not panel.sidebar_enabled(hass, new)
+    entry = _entry(**{STABLE_ID: "a"})
+    assert panel.sidebar_enabled(hass, entry)
+    hass.data[panel._DATA][entry.entry_id] = {"sidebar": False}
+    assert not panel.sidebar_enabled(hass, entry)

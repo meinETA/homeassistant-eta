@@ -29,7 +29,7 @@ OPTIONS_ACTION_UPDATE_SELECTED = "update_selected_entities"
 OPTIONS_ACTION_REDISCOVER_AND_UPDATE = "rediscover_and_update_entities"
 OPTIONS_ACTION_RENAME_ENTITIES = "rename_entities_to_named_scheme"
 OPTIONS_ACTION_SIDEBAR = "sidebar_panel"
-# entry.data default for the sidebar panel (on for new installs)
+# sidebar panel on/off (on unless switched off in the options)
 SIDEBAR_PANEL = "sidebar_panel"
 # Old stable id, staged by the opt-in migration; consumed once in async_setup_entry.
 RENAME_PENDING_FROM = "rename_pending_from"

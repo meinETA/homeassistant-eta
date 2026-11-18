@@ -571,9 +571,6 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
             # User is done, create the config entry.
             self.data.setdefault(MAX_PARALLEL_REQUESTS, DEFAULT_MAX_PARALLEL_REQUESTS)
             self.data.setdefault(UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
-            self.data.setdefault(
-                SIDEBAR_PANEL, True
-            )  # new installs: plant in the sidebar
             return self.async_create_entry(
                 title=self.data.get(CONF_NAME) or f"ETA at {self.data[CONF_HOST]}",
                 data=self.data,

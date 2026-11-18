@@ -37,7 +37,7 @@ def panel_url(entry: ConfigEntry) -> str:
 def sidebar_enabled(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Return whether the entry shows a sidebar entry."""
     stored = hass.data[_DATA].get(entry.entry_id, {})
-    return stored.get("sidebar", bool(entry.data.get(SIDEBAR_PANEL, False)))
+    return stored.get("sidebar", bool(entry.data.get(SIDEBAR_PANEL, True)))
 
 
 def _save(hass: HomeAssistant) -> None:
