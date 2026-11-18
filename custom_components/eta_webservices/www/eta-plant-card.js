@@ -4,7 +4,7 @@
   const H = 860;
   const FLOOR = 610;
   // bump when icon files change, so browsers do not keep stale images
-  const ICON_REV = "2026-11-18c";
+  const ICON_REV = "2026-11-18d";
 
   // type -> [icon file, icon width on the 1600px canvas, aspect w/h]
   const ICONS = {
@@ -224,6 +224,7 @@
   .pill u{text-decoration:none;color:#ffc400;font-size:22px;margin-left:3px}
   .tank{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:column;
         justify-content:space-around;align-items:center;padding:18% 0 6%}
+  .tank.many .pill{font-size:19px;padding:3px 9px}
   .empty{padding:40px;font-size:24px}
   .tabs{display:flex;gap:6px}
   .tabs button{font:inherit;font-size:21px;font-weight:600;color:#ddd;background:#1b1b1b;border:1px solid #444;
@@ -377,12 +378,15 @@
       for (const g of this._geo) {
         const b = g.b;
         let shown = (TOP_VALUES[b.type] || []).filter((r) => b.roles[r]).map((r) => b.roles[r]);
-        const hasInner = b.type === "buffer" && ["top", "middle", "bottom"].some((r) => b.roles[r]);
+        // buffer sensors top to bottom: all numbered sensors if present, else top / middle / bottom
+        const numbered = Object.keys(b.roles).filter((r) => /^sensor_\d+$/.test(r)).sort((x, y) => +x.slice(7) - +y.slice(7));
+        const inner = numbered.length ? numbered : ["top", "middle", "bottom"].filter((r) => b.roles[r]);
+        const hasInner = b.type === "buffer" && inner.length > 0;
         if (!shown.length && !hasInner) shown = this._autoValues(b); // no known roles: pick measurements
         shown = shown.slice(0, Math.max(1, Math.floor(colW / 110))); // narrow columns: fewer value boxes
         const vals = shown.map((e) => `<div class="pill" data-e="${e}"></div>`).join("");
         const tank = b.type === "buffer"
-          ? `<div class="tank">${["top", "middle", "bottom"].filter((r) => b.roles[r])
+          ? `<div class="tank${inner.length > 4 ? " many" : ""}">${inner
               .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("")}</div>`
           : "";
         html += `<div class="blk" data-b="${b.id}" style="left:${g.cx - colW / 2}px;width:${colW}px">
@@ -525,8 +529,9 @@
       const g = this._geo;
       const find = (t) => g.find((x) => x.b.type === t);
       const silo = find("silo") || find("chip_store");
-      const boiler = find("boiler");
-      const buffer = find("buffer");
+      const boilers = g.filter((x) => x.b.type === "boiler");
+      const buffers = g.filter((x) => x.b.type === "buffer");
+      const boiler = boilers[0];
       const consumers = g.filter((x) => CONSUMERS.includes(x.b.type));
       const T = 9;
       const ys = FLOOR - 300; // supply line height, above the consumers and their values
@@ -551,13 +556,21 @@
       if (silo && boiler) {
         s += group(silo.b.id, `<div class="band" style="left:${silo.right}px;top:${FLOOR - 70}px;width:${boiler.left - silo.right}px"><i></i></div>`);
       }
-      if (boiler && buffer) {
-        const ysb = FLOOR - 190; // boiler <-> buffer at device height
-        s += group(boiler.b.id,
-          line([[boiler.right, ysb], [buffer.left, ysb]], "vl") +
-          line([[buffer.left, ysb + 34], [boiler.right, ysb + 34]], "rl"));
+      // producers chain at device height: boiler 1 -> boiler 2 -> buffer 1 -> buffer 2;
+      // every piece carries flow when any boiler pump runs
+      const chain = [...boilers, ...buffers];
+      const ysb = FLOOR - 190;
+      const allBoilers = boilers.map((x) => x.b.id).join(",");
+      for (let i = 1; i < chain.length; i++) {
+        const a = chain[i - 1];
+        const b = chain[i];
+        const key = a.b.type === "boiler" && b.b.type === "boiler" ? a.b.id : allBoilers;
+        if (!key) continue;
+        s += group(key,
+          line([[a.right, ysb], [b.left, ysb]], "vl") +
+          line([[b.left, ysb + 34], [a.right, ysb + 34]], "rl"));
       }
-      const src = buffer || boiler;
+      const src = buffers[buffers.length - 1] || boilers[boilers.length - 1];
       if (src) {
         consumers.forEach((c, i) => {
           const a = c.anchors;
@@ -676,9 +689,7 @@
         return b.roles.status ? !this._isIdle(b.roles.status) : false;
       };
       root.querySelectorAll("[data-flow]").forEach((el) => {
-        const key = el.dataset.flow;
-        const b = this._blocks.find((x) => x.id === key);
-        const on = active(b);
+        const on = el.dataset.flow.split(",").some((key) => active(this._blocks.find((x) => x.id === key)));
         if (el._on !== on) { el.classList.toggle("on", on); el.classList.toggle("off", !on); el._on = on; }
       });
       root.querySelectorAll("img[data-type=heating_circuit]").forEach((img) => {
@@ -692,8 +703,8 @@
     }
   }
 
-  // Target of the "report plant" button (test: dev repo).
-  const REPORT_REPO = "meinETA/dev-meinETA-ha";
+  // Target of the "report plant" button.
+  const REPORT_REPO = "meinETA/homeassistant-eta";
 
   class EtaPlantCardEditor extends HTMLElement {
     setConfig(config) {

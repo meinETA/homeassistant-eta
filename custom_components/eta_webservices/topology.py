@@ -145,6 +145,10 @@ BLOCK_ORDER = (
 )
 _HIDDEN = {"diagnostics", "system"}
 
+# Buffer sensors "Fühler 1 (oben)", "Fühler 2", ... numbered top to bottom; they
+# get an extra role sensor_<n> besides top/middle/bottom.
+_BUFFER_SENSOR_RE = re.compile(r"^0/113(2[7-9]|3[0-5])/0$")
+
 _URI_RE = re.compile(r"^(\d+)_(\d+)_(\d+)_(\d+)_(\d+)$")
 
 
@@ -225,6 +229,8 @@ def build_blocks(
         if role:
             block.roles[role] = entity_id
             best[(key, role)] = prio
+        if block_type == "buffer" and (m := _BUFFER_SENSOR_RE.match(address)):
+            block.roles[f"sensor_{int(m.group(1)) - 26}"] = entity_id
 
     def sort_key(block: Block) -> tuple[int, str]:
         try:

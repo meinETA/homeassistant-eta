@@ -74,7 +74,11 @@ def test_build_blocks_roles_and_order() -> None:
     assert boiler.name == "Kessel"
     assert boiler.roles == {"temperature": "sensor.k_temp", "status": "sensor.k_status"}
     assert "sensor.k_other" in boiler.entities
-    assert blocks[2].roles == {"top": "sensor.pu_top", "charge": "sensor.pu_charge"}
+    assert blocks[2].roles == {
+        "top": "sensor.pu_top",
+        "sensor_1": "sensor.pu_top",
+        "charge": "sensor.pu_charge",
+    }
     assert plant == {"outside": "sensor.outside"}
 
 
@@ -145,3 +149,21 @@ def test_heating_circuit_control_roles():
         "slot_0_0": "sensor.hk_mon_1",
         "slot_6_2": "sensor.hk_sun_3",
     }
+
+
+def test_buffer_with_four_sensors():
+    """All numbered buffer sensors get a sensor_<n> role in top-down order."""
+    rows = [
+        (f"eta_{STABLE}_264_10601_0_{11327 + n}_0", f"sensor.f{n + 1}", None)
+        for n in range(4)
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    roles = blocks[0].roles
+    assert [roles[f"sensor_{n}"] for n in range(1, 5)] == [
+        "sensor.f1",
+        "sensor.f2",
+        "sensor.f3",
+        "sensor.f4",
+    ]
+    assert roles["top"] == "sensor.f1"
+    assert roles["bottom"] == "sensor.f3"
