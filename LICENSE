@@ -23,6 +23,7 @@ SOFTWARE.
 ---
 
 Exception: the icons in custom_components/eta_webservices/www/icons/
+and the ETA logo in custom_components/eta_webservices/brand/
 are the property of ETA Heiztechnik GmbH, are not licensed under MIT
 and may only be used as part of this integration.
-See the NOTICE file in that directory.
+See custom_components/eta_webservices/www/icons/NOTICE.

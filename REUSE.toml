@@ -11,3 +11,9 @@ path = "images/plant-card-*.png"
 precedence = "override"
 SPDX-FileCopyrightText = "ETA Heiztechnik GmbH"
 SPDX-License-Identifier = "LicenseRef-ETA-Icons"
+
+[[annotations]]
+path = "custom_components/eta_webservices/brand/**"
+precedence = "override"
+SPDX-FileCopyrightText = "ETA Heiztechnik GmbH"
+SPDX-License-Identifier = "LicenseRef-ETA-Icons"

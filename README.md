@@ -1,9 +1,9 @@
-<img src="custom_components/eta_webservices/www/icons/Kessel/HackVR/HackVR_gelb.webp" alt="ETA HACK VR" title="ETA HACK VR" align="right" height="90px"/>
-<img src="custom_components/eta_webservices/www/icons/Kessel/TWIN/SH_TWIN_neu.webp" alt="ETA SH-P TWIN" title="ETA SH-P TWIN" align="right" height="90px"/>
-<img src="custom_components/eta_webservices/www/icons/Kessel/Pellets/PU_PC_neu.webp" alt="ETA PU / PC" title="ETA PU / PC" align="right" height="90px"/>
+<img src="custom_components/eta_webservices/www/icons/Kessel/eSH_eTWIN/FUB_eSH-eTWIN_BE-P4.webp" alt="ETA eSH-eTWIN" title="ETA eSH-eTWIN" align="right" height="80px"/>
+<img src="custom_components/eta_webservices/www/icons/Kessel/TWIN/SH_TWIN_neu.webp" alt="ETA SH-P TWIN" title="ETA SH-P TWIN" align="right" height="80px"/>
+<img src="custom_components/eta_webservices/www/icons/Kessel/Pellets/PU_PC_neu.webp" alt="ETA PU / PC" title="ETA PU / PC" align="right" height="80px"/>
 <img src="custom_components/eta_webservices/brand/logo.png" alt="ETA" title="ETA" align="right" height="44px"/>
 
-# ETA Heating for Home Assistant
+# ETA Heating for<br>Home Assistant
 
 [![GitHub Release](https://img.shields.io/github/v/release/meinETA/homeassistant-eta?style=for-the-badge&label=Release)](https://github.com/meinETA/homeassistant-eta/releases)
 [![Downloads](https://img.shields.io/github/downloads/meinETA/homeassistant-eta/total?style=for-the-badge&label=Downloads)](https://github.com/meinETA/homeassistant-eta/releases)
@@ -11,7 +11,6 @@
 [![HACS](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
 [![License: MIT](https://img.shields.io/badge/Licence-MIT-orange.svg)](LICENSE)
-![Made with Python](https://img.shields.io/badge/Made%20with-Python-orange.svg)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.5%2B-41BDF5.svg)](https://www.home-assistant.io/)
 
 <a href="https://www.buymeacoffee.com/christofpichler"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-orange.png" alt="Buy me a coffee" height="44"></a>
@@ -64,10 +63,10 @@ Layouts that are not covered yet will be added based on reports.
 
 Every ETA function block becomes a device, and its entities are grouped into the standard Home Assistant cards (Sensors, Configuration, Diagnostic):
 
-<p align="center"><img src="images/devices_overview.png" alt="ETA Heating devices in Home Assistant" width="760"></p>
+<img src="images/devices_overview.png" alt="ETA Heating devices in Home Assistant" width="760">
 
 |            Sensors             |              Diagnostic              |
-| :----------------------------: | :----------------------------------: |
+| :----------------------------- | :----------------------------------- |
 | ![Sensors](images/sensors.png) | ![Diagnostic](images/diagnostic.png) |
 
 ## Prerequisites
@@ -107,7 +106,7 @@ Go to **Settings → Devices & Services → Add Integration**, search for **ETA 
 
 During setup the integration discovers everything on your unit and shows the counts per category, so you can pick exactly what you want (or add everything at once):
 
-<p align="center"><img src="images/setup_choose_entities.png" alt="Choosing entities during setup" width="520"></p>
+<img src="images/setup_choose_entities.png" alt="Choosing entities during setup" width="520">
 
 > **Note:** After you enter host and port, the integration scans every available endpoint once. On large systems (~800 entities) this initial scan can take **8–15 minutes** — please be patient. This only happens when adding the integration or when you explicitly rediscover; normal operation only polls the entities you selected.
 
@@ -217,7 +216,7 @@ template:
 
 You can also create the same helper from the UI:
 
-<p align="center"><img src="images/template_sensor.png" alt="Template helper" width="380"></p>
+<img src="images/template_sensor.png" alt="Template helper" width="380">
 
 Then add the new sensor to the gas sources of your Energy Dashboard.
 
@@ -246,4 +245,4 @@ Originally created by [nigl](https://github.com/nigl/homeassistant_eta_integrati
 
 Released under the [MIT License](LICENSE).
 
-Exception: the icons in `custom_components/eta_webservices/www/icons/` are the property of ETA Heiztechnik GmbH, are not licensed under MIT and may only be used as part of this integration. See the [NOTICE](custom_components/eta_webservices/www/icons/NOTICE) file in that directory. The same applies to the plant card screenshots (`images/plant-card-*.png`), which show these icons.
+Exception: the icons in `custom_components/eta_webservices/www/icons/` are the property of ETA Heiztechnik GmbH, are not licensed under MIT and may only be used as part of this integration. See the [NOTICE](custom_components/eta_webservices/www/icons/NOTICE) file in that directory. The same applies to the ETA logo in `custom_components/eta_webservices/brand/` and to the plant card screenshots (`images/plant-card-*.png`), which show these icons.
