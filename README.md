@@ -16,7 +16,7 @@ Home Assistant integration for **ETA heating systems** (pellet, wood, and combin
 
 ## Contents
 
-[Features](#features) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Moving from the previous repository](#moving-from-the-previous-repository) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Troubleshooting](#troubleshooting)
+[Features](#features) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Moving from the previous repository](#moving-from-the-previous-repository) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Plant card (beta)](#plant-card-beta) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Troubleshooting](#troubleshooting)
 
 ## Features
 
@@ -165,6 +165,18 @@ Parameters with a unit of `°C`, `kg` or `%` can be written back to the unit. Af
 
 The integration provides services to write values to the unit. See the [wiki](https://github.com/meinETA/homeassistant-eta/wiki/Custom-Services) for details.
 
+## Plant Card (Beta)
+
+The integration ships a dashboard card that shows the plant like the ETA touch display: storage, boiler, buffer, heating circuits and fresh water module with live values and animated pipes. No extra installation is needed; the card is loaded automatically.
+
+- **Add it:** edit a dashboard, add a card and pick **ETA Plant (Beta)**. A panel view gives the best result.
+- **Detection:** the plant layout is detected automatically from the selected sensors. If a value is missing on the card, add the matching sensor in the integration options.
+- **Control tab:** switch the boiler and heating circuits on or off and select heat, setback or time program. This needs the corresponding switches (e.g. *On/Off button*) to be selected in the integration options.
+- **Card settings:** plant (if several are configured), name, language and an icon per block (e.g. the exact boiler model).
+- **Report a problem:** if the plant is not shown correctly, use **Open GitHub issue** in the card settings. It opens an issue with an anonymized description of the plant (object numbers, parameter addresses and units only; no names, values or IP addresses). Nothing is sent until the issue is submitted on GitHub, and issues are public.
+
+The card is in beta; layouts that are not covered yet will be added based on reports.
+
 ## Integrating the ETA Unit into the Energy Dashboard
 
 You can add the ETA unit to the Energy Dashboard by converting the total pellet consumption (kg) to energy (kWh) and adding it as a gas source.
@@ -218,3 +230,5 @@ Originally created by [nigl](https://github.com/nigl/homeassistant_eta_integrati
 ## License
 
 Released under the [MIT License](LICENSE).
+
+Exception: the icons in `custom_components/eta_webservices/www/icons/` are the property of ETA Heiztechnik GmbH, are not licensed under MIT and may only be used as part of this integration. See the [NOTICE](custom_components/eta_webservices/www/icons/NOTICE) file in that directory.

@@ -1,0 +1,18 @@
+ETA icons and images
+
+All icons and images in this directory are the property of
+ETA Heiztechnik GmbH. All rights reserved.
+
+They are NOT covered by the MIT license of this repository.
+
+These files may only be used as part of the ETA Heating integration
+(https://github.com/meinETA/homeassistant-eta) and its bundled
+dashboard card, in the form distributed by this repository.
+
+Any other use is not permitted. This includes in particular:
+- copying them into other integrations, add-ons, cards or themes,
+- redistributing them separately or as part of other projects,
+- using them in derived or modified works.
+
+Attribution alone (for example adding "© ETA Heiztechnik GmbH")
+does not grant any right to use these files.
