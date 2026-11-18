@@ -1,9 +1,14 @@
 """Tests for the plant topology detection."""
 
+import json
+from pathlib import Path
+import re
+
 from custom_components.eta_webservices.topology import (
     block_type_for_object,
     build_blocks,
     build_report,
+    manual_report,
     parse_unique_id,
 )
 
@@ -167,3 +172,69 @@ def test_buffer_with_four_sensors():
     ]
     assert roles["top"] == "sensor.f1"
     assert roles["bottom"] == "sensor.f3"
+
+
+def test_status_display_addresses() -> None:
+    """Newer firmware exposes status texts only under 0/0/194xx."""
+    rows = [
+        _row("/40/10021/0/0/19402", "sensor.boiler_status"),
+        _row("/120/10101/0/0/19404", "sensor.hc_status"),
+        _row("/120/10111/0/0/19406", "sensor.dhw_status"),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    roles = {b.id: b.roles.get("status") for b in blocks}
+    assert roles == {
+        "40/10021": "sensor.boiler_status",
+        "120/10101": "sensor.hc_status",
+        "120/10111": "sensor.dhw_status",
+    }
+
+
+def test_roles_json_is_consistent() -> None:
+    """roles.json: valid object ids and addresses, no duplicates, known types."""
+    path = Path(__file__).parents[3] / "custom_components/eta_webservices/roles.json"
+    rules = json.loads(path.read_text(encoding="utf-8"))
+    types = set(rules["blocks"].values())
+    for obj in rules["blocks"]:
+        assert re.fullmatch(r"\d+\*?", obj), obj
+    for block_type, pairs in rules["roles"].items():
+        assert block_type in types, block_type
+        addresses = [address for address, _ in pairs]
+        assert len(addresses) == len(set(addresses)), block_type
+        for address, role in pairs:
+            assert re.fullmatch(r"\d+/\d+/\d+", address), address
+            assert re.fullmatch(r"[a-z_]+", role), role
+
+
+def test_manual_report_has_addresses_only() -> None:
+    """Hand-picked values are reported as object and address, no entity ids."""
+    uid = _row("/40/10021/0/0/19999", "sensor.x")[0]
+    result = manual_report(
+        [["boiler", "pressure", "sensor.x"], ["boiler", "status", "sensor.gone"]],
+        {"sensor.x": uid},
+        STABLE,
+    )
+    assert result == [
+        {
+            "type": "boiler",
+            "role": "pressure",
+            "object": "10021",
+            "address": "0/0/19999",
+        }
+    ]
+
+
+def test_writable_twin_provides_role() -> None:
+    """A "_writable" twin (plain entity disabled) still fills the slot role."""
+    uri = "/264/10101/12113/0/1082"
+    uid = _row(uri, "x")[0]
+    rows = [(f"{uid}_writable", "sensor.slot_w", None)]
+    blocks, _ = build_blocks(rows, STABLE)
+    assert blocks[0].roles["slot_0_0"] == "sensor.slot_w"
+    # both enabled: the twin wins regardless of order
+    for order in (
+        [(uid, "sensor.slot", None), *rows],
+        [*rows, (uid, "sensor.slot", None)],
+    ):
+        blocks, _ = build_blocks(order, STABLE)
+        assert blocks[0].roles["slot_0_0"] == "sensor.slot_w"

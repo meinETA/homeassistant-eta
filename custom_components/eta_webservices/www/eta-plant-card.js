@@ -4,7 +4,7 @@
   const H = 860;
   const FLOOR = 610;
   // bump when icon files change, so browsers do not keep stale images
-  const ICON_REV = "2026-11-18e";
+  const ICON_REV = "2026-11-19a";
 
   // type -> [icon file, icon width on the 1600px canvas, aspect w/h]
   const ICONS = {
@@ -122,11 +122,12 @@
     "Austragungen_Befuellungen/Hack_Austragung/Ruehrwerk.webp": [0.045,0.194,0.999,0.867],
     "FUBs/System/System.webp": [0.08,0.068,0.916,0.927],
   };
-  // pipe connections inside the icon: [x, y, "h"|"v"] as image fractions
+  // pipe connections inside the icon: [x, y, dir] as image fractions; dir "h" leaves sideways,
+  // "v" downwards, "u" straight up (behind the image) to the return line
   const ANCHORS = {
     "FUBs/Heizkreise/Radiator_ein.webp": { in: [0.014, 0.239, "h"], out: [0.141, 0.985, "v"] },
     "FUBs/Heizkreise/Radiator_aus.webp": { in: [0.014, 0.239, "h"], out: [0.141, 0.985, "v"] },
-    "FUBs/Heizkreise/FBH_ein.webp": { in: [0.0, 0.72, "h"], out: [0.02, 0.88, "h"] },
+    "FUBs/Heizkreise/FBH_ein.webp": { in: [0.0, 0.72, "h"], out: [0.805, 0.44, "u"] },
     "FUBs/Externe_Waermeanforderung/Externe_Waermeanforderung.webp": { in: [0.03, 0.184, "h"], out: [0.013, 0.827, "h"] },
     "FUBs/FWM/FWM_Brauchwasser.webp": { in: [0.07, 0.719, "h"], out: [0.056, 0.207, "h"] },
   };
@@ -168,17 +169,25 @@
       silo: "Silo", chip_store: "Hackgutlager", boiler: "Kessel", buffer: "Puffer", heating_circuit: "Heizkreis",
       fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul",
       external_demand: "Ext. Anforderung", external_heat: "Fremdwärme",
-      outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
+      no_blocks: "Keine Anlagenteile erkannt. Wähle in den Integrationsoptionen die Entitäten von Kessel, Heizkreis usw. aus oder melde deine Anlage über das Zahnrad.", outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
       heat: "Heizen", lower: "Absenken", auto: "Zeitautomatik", ask_off: "wirklich ausschalten?",
       no_ctl: "Keine Schalter gefunden. In den Optionen der Integration die Schalter (z. B. Ein/Aus Taste) auswählen.",
+      times: "Heizzeiten", days: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"], from: "von", to: "bis",
+      apply: "Übernehmen für", only_day: "nur diesen Tag", workdays: "Mo–Fr", weekend: "Sa–So", all_days: "alle Tage",
+      save: "Speichern", cancel: "Abbrechen", saving: "Wird geschrieben …", ro: "Nur lesbar. Bearbeiten ab ETA-API 1.2: Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → „Ausgewählte Entitäten aktualisieren“ → Heizzeiten unter „Schreibbare Sensoren“ auswählen.",
+      bad_slot: "Ungültiges Zeitfenster: Beginn muss vor dem Ende liegen.",
     },
     en: {
       silo: "Storage", chip_store: "Chip store", boiler: "Boiler", buffer: "Buffer", heating_circuit: "Heating circuit",
       fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module",
       external_demand: "Ext. demand", external_heat: "External heat",
-      outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
+      no_blocks: "No plant parts detected. Select the boiler, heating circuit, ... entities in the integration options or report your plant via the gear.", outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
       heat: "Heat", lower: "Setback", auto: "Time program", ask_off: "really switch off?",
       no_ctl: "No switches found. Select the switches (e.g. On/Off button) in the integration options.",
+      times: "Heating times", days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], from: "from", to: "to",
+      apply: "Apply to", only_day: "this day only", workdays: "Mon–Fri", weekend: "Sat–Sun", all_days: "all days",
+      save: "Save", cancel: "Cancel", saving: "Writing …", ro: "Read only. Editing from ETA API 1.2: Settings → Devices & services → ETA Heating → Configure → \u201cUpdate selected entities\u201d → select the heating times under \u201cPossible writable sensors\u201d.",
+      bad_slot: "Invalid time slot: start must be before end.",
     },
   };
   // value roles shown above the icon
@@ -196,6 +205,64 @@
   const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "unavailable", "unknown"];
   const ON = ["ein", "an", "on", "true", "läuft", "running"];
   const CONSUMERS = ["heating_circuit", "external_demand", "fwm", "dhw", "unknown"];
+
+  // roles a user can assign by hand in the editor, per block type: [role, German label, English label, kind]
+  const EDIT_ROLES = {
+    plant: [["outside", "Außentemperatur", "Outside temperature", "temp"]],
+    boiler: [["temperature", "Kesseltemperatur", "Boiler temperature", "temp"], ["pressure", "Druck", "Pressure", "bar"],
+      ["hopper", "Vorratsbehälter", "Hopper", "level"], ["status", "Status", "Status", "text"],
+      ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"]],
+    silo: [["stock", "Vorrat", "Stock", "level"], ["status", "Status", "Status", "text"], ["auger", "Förderung", "Conveyor", "onoff"]],
+    chip_store: [["auger", "Förderung", "Conveyor", "onoff"], ["discharge", "Austragung", "Discharge", "onoff"]],
+    buffer: [["top", "Oben", "Top", "temp"], ["middle", "Mitte", "Middle", "temp"], ["bottom", "Unten", "Bottom", "temp"],
+      ["charge", "Ladezustand", "Charge", "level"], ["status", "Status", "Status", "text"]],
+    heating_circuit: [["flow", "Vorlauftemperatur", "Flow temperature", "temp"], ["status", "Status", "Status", "text"],
+      ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"],
+      ["heat", "Taste Heizen", "Heat button", "switch"], ["lower", "Taste Absenken", "Setback button", "switch"],
+      ["auto", "Taste Zeitautomatik", "Time program button", "switch"]],
+    dhw: [["temperature", "Warmwassertemperatur", "Hot water temperature", "temp"], ["status", "Status", "Status", "text"],
+      ["pump", "Pumpe", "Pump", "onoff"]],
+    solar: [["collector", "Kollektor", "Collector", "temp"], ["storage_top", "Speicher oben", "Storage top", "temp"],
+      ["status", "Status", "Status", "text"], ["pump", "Pumpe", "Pump", "onoff"]],
+    external_heat: [["temperature", "Temperatur", "Temperature", "temp"], ["storage", "Speicher", "Storage", "temp"],
+      ["pump", "Pumpe", "Pump", "onoff"]],
+    fwm: [["hot_water", "Warmwasser", "Hot water", "temp"], ["primary_flow", "Vorlauf primär", "Primary flow", "temp"],
+      ["primary_return", "Rücklauf primär", "Primary return", "temp"], ["status", "Status", "Status", "text"],
+      ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"]],
+    external_demand: [["status", "Status", "Status", "text"]],
+    unknown: [["temperature", "Temperatur", "Temperature", "temp"], ["status", "Status", "Status", "text"]],
+  };
+  // block types a user can add by hand
+  const ADD_TYPES = ["boiler", "silo", "buffer", "heating_circuit", "dhw", "solar", "fwm", "external_heat"];
+
+  // manual settings of the editor on top of the detected topology:
+  // roles {block: {role: entity | "-" (none)}}, names {block: text}, hidden [block], extra [{id, type}]
+  const applyConfig = (topo, cfg) => {
+    if (!topo) return topo;
+    const ov = cfg.roles || {};
+    const names = cfg.names || {};
+    const hidden = new Set(cfg.hidden || []);
+    const blocks = topo.blocks.map((b) => ({ ...b, roles: { ...b.roles }, entities: [...b.entities] }));
+    (cfg.extra || []).forEach((x) => blocks.push({ id: x.id, type: x.type, object: "", name: null, roles: {}, entities: [], manual: true }));
+    blocks.forEach((b) => {
+      const o = ov[b.id] || {};
+      Object.entries(o).forEach(([role, e]) => {
+        if (e === "-") delete b.roles[role];
+        else if (e) {
+          b.roles[role] = e;
+          if (!b.entities.includes(e)) b.entities.push(e);
+        }
+      });
+      // a hand-picked top / middle / bottom sensor replaces the numbered buffer sensors
+      if (b.type === "buffer" && ["top", "middle", "bottom"].some((r) => r in o)) {
+        Object.keys(b.roles).filter((r) => /^sensor_\d+$/.test(r)).forEach((r) => delete b.roles[r]);
+      }
+      if (names[b.id]) b.label = names[b.id];
+    });
+    const plant = { ...(topo.plant || {}) };
+    Object.entries(ov.plant || {}).forEach(([role, e]) => { if (e === "-") delete plant[role]; else if (e) plant[role] = e; });
+    return { ...topo, plant, blocks: blocks.filter((b) => !hidden.has(b.id)) };
+  };
 
   const css = `
   :host{display:block}
@@ -254,6 +321,7 @@
         justify-content:space-around;align-items:center;padding:18% 0 6%}
   .tank.many .pill{font-size:19px;padding:3px 9px}
   .empty{padding:40px;font-size:24px}
+  .pill,.chip,.hdr .m{cursor:pointer}
   .tabs{display:flex;gap:6px}
   .tabs button{font:inherit;font-size:21px;font-weight:600;color:#ddd;background:#1b1b1b;border:1px solid #444;
     border-radius:9px;padding:7px 20px;cursor:pointer}
@@ -292,7 +360,23 @@
   .ts .now{z-index:1;position:absolute;top:-6px;height:34px;width:3px;margin-left:-1px;background:#fff;box-shadow:0 0 4px #000}
   .ts .ax{position:absolute;left:0;right:0;top:26px;font-size:14px;color:#aaa}
   .ts .ax span{position:absolute;transform:translateX(-50%)}
-  .ts .ax span:first-child{transform:none}.ts .ax span:last-child{transform:translateX(-100%)}`;
+  .ts .ax span:first-child{transform:none}.ts .ax span:last-child{transform:translateX(-100%)}
+  .dlg{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;
+    font-family:Roboto,Arial,sans-serif}
+  .dlg .in{background:#1d1d1d;color:#eee;border:1px solid #ffc400;border-radius:12px;padding:18px 20px;width:min(440px,92vw);
+    max-height:90vh;overflow:auto;box-sizing:border-box}
+  .dlg h2{margin:0 0 12px;font-size:19px;color:#ffc400}
+  .dlg .dy{display:flex;gap:4px;margin-bottom:14px}
+  .dlg .dy button{flex:1;padding:7px 0;border-radius:7px;border:1px solid #444;background:#2a2a2a;color:#ddd;cursor:pointer;font-size:14px}
+  .dlg .dy button.act{background:#ffc400;color:#1a1a1a;border-color:#ffc400;font-weight:700}
+  .dlg .sl{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:15px}
+  .dlg input,.dlg select{background:#2a2a2a;color:#eee;border:1px solid #555;border-radius:6px;padding:6px;font-size:15px;color-scheme:dark}
+  .dlg input[type=number]{width:64px}
+  .dlg .ap{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;font-size:15px}
+  .dlg .bt{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+  .dlg .bt button{padding:8px 16px;border-radius:8px;border:1px solid #555;background:#2a2a2a;color:#eee;cursor:pointer;font-size:15px}
+  .dlg .bt .ok{background:#ffc400;color:#1a1a1a;border-color:#ffc400;font-weight:700}
+  .dlg .msg{margin-top:10px;font-size:13px;color:#ffb3b3}.dlg .hint{font-size:13px;color:#aaa;margin-top:10px}`;
 
   // icons ship with the integration (served by card.py under /eta_webservices_static)
   const ICON_BASE = "/eta_webservices_static/icons";
@@ -306,10 +390,12 @@
     setConfig(config) {
       const prevEntry = this._config && this._config.entry;
       this._config = { ...config };
-      if (this._topo && prevEntry === this._config.entry && this._hass) {
+      if (this._raw && prevEntry === this._config.entry && this._hass) {
+        this._topo = applyConfig(this._raw, this._config);
         this._build(); // keep the known plant, only re-render
       } else {
         this._topo = null;
+        this._raw = null;
         this._built = false;
       }
     }
@@ -338,7 +424,8 @@
       try {
         const all = await this._hass.callWS({ type: "eta_webservices/topology" });
         const want = this._config.entry;
-        this._topo = (want && all.find((e) => e.entry_id === want || e.title === want)) || all[0] || null;
+        this._raw = (want && all.find((e) => e.entry_id === want || e.title === want)) || all[0] || null;
+        this._topo = applyConfig(this._raw, this._config);
       } catch (err) {
         this._topo = null;
         this._error = String(err && err.message ? err.message : err);
@@ -406,6 +493,7 @@
       });
 
       let html = `<div class="pg plant"><div class="floor"></div>${this._pipes()}`;
+      if (!blocks.length) html += `<div class="empty">${this._t("no_blocks")}</div>`;
       for (const g of this._geo) {
         const b = g.b;
         let shown = (TOP_VALUES[b.type] || []).filter((r) => b.roles[r]).map((r) => b.roles[r]);
@@ -448,9 +536,7 @@
       }));
       cv.querySelectorAll(".ts").forEach((el) => el.addEventListener("click", () => {
         const b = this._blocks.find((x) => x.id === el.dataset.ts);
-        const day = (new Date().getDay() + 6) % 7;
-        const entityId = b && (b.roles[`slot_${day}_0`] || b.roles.slot_0_0);
-        if (entityId) this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId }, bubbles: true, composed: true }));
+        if (b) this._openTimes(b);
       }));
       cv.querySelectorAll(".md").forEach((el) => el.addEventListener("click", () => {
         if (el.classList.contains("act")) return;
@@ -469,6 +555,16 @@
         this._call(el, el.dataset.md, "turn_on", ends);
         this._update();
       }));
+      // every value and status chip opens its own entity, the rest of the block the status
+      cv.querySelectorAll("[data-e],[data-chip]").forEach((el) => el.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: el.dataset.e || el.dataset.chip }, bubbles: true, composed: true }));
+      }));
+      const outEl = cv.querySelector("#outside");
+      if (outEl) outEl.addEventListener("click", () => {
+        const out = this._topo.plant && this._topo.plant.outside;
+        if (out) this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: out }, bubbles: true, composed: true }));
+      });
       cv.querySelectorAll(".blk").forEach((el) => {
         el.addEventListener("click", () => {
           const b = this._blocks.find((x) => x.id === el.dataset.b);
@@ -542,6 +638,90 @@
       return z > a ? [a, z] : null;
     }
 
+    // "06:00 - 21:00" or "06:00 - 21:00 21" -> {a, z, t}; empty slot = 00:00 - 00:00
+    _slotVal(entityId) {
+      const st = entityId && this._hass.states[entityId];
+      const m = st && String(st.state).match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\D*([\d.,]+)?/);
+      const pad = (h, mi) => `${String(h).padStart(2, "0")}:${mi}`;
+      if (!m) return { a: "00:00", z: "00:00", t: null };
+      return { a: pad(m[1], m[2]), z: pad(m[3], m[4]), t: m[5] ? Number(m[5].replace(",", ".")) : null };
+    }
+
+    // heating times editor: one weekday, three slots, optionally copied to other days
+    _openTimes(b) {
+      const root = this.shadowRoot;
+      const t = (k) => this._t(k);
+      let day = (new Date().getDay() + 6) % 7;
+      const ent = (d, n) => b.roles[`slot_${d}_${n}`];
+      const feat = (e) => Number(((this._hass.states[e] || {}).attributes || {}).supported_features || 0);
+      const dlg = document.createElement("div");
+      dlg.className = "dlg";
+      root.appendChild(dlg);
+      const close = () => dlg.remove();
+      const render = () => {
+        const writable = [0, 1, 2].some((n) => feat(ent(day, n)));
+        const rows = [0, 1, 2].map((n) => {
+          const e = ent(day, n);
+          if (!e) return "";
+          const v = this._slotVal(e);
+          const dis = feat(e) ? "" : "disabled";
+          const temp = feat(e) & 2 ? `<input type="number" step="0.5" data-t="${n}" value="${v.t ?? ""}" ${dis}> °C` : "";
+          return `<div class="sl">${n + 1}. ${t("from")} <input type="time" step="900" data-a="${n}" value="${v.a}" ${dis}>
+            ${t("to")} <input type="time" step="900" data-z="${n}" value="${v.z === "24:00" ? "23:59" : v.z}" ${dis}> ${temp}</div>`;
+        }).join("");
+        dlg.innerHTML = `<div class="in"><h2>${t("times")} – ${this._name(b)}</h2>
+          <div class="dy">${t("days").map((d, i) => `<button data-d="${i}" class="${i === day ? "act" : ""}">${d}</button>`).join("")}</div>
+          ${rows}
+          ${writable ? `<div class="ap">${t("apply")} <select id="ap">
+            <option value="day">${t("only_day")}</option><option value="wd">${t("workdays")}</option>
+            <option value="we">${t("weekend")}</option><option value="all">${t("all_days")}</option></select></div>`
+            : `<div class="hint">${t("ro")}</div>`}
+          <div class="msg"></div>
+          <div class="bt"><button class="no">${t("cancel")}</button>${writable ? `<button class="ok">${t("save")}</button>` : ""}</div></div>`;
+        dlg.querySelectorAll(".dy button").forEach((x) => x.addEventListener("click", () => { day = +x.dataset.d; render(); }));
+        dlg.querySelector(".no").addEventListener("click", close);
+        const ok = dlg.querySelector(".ok");
+        if (ok) ok.addEventListener("click", () => save(ok));
+      };
+      const save = async (ok) => {
+        const msg = dlg.querySelector(".msg");
+        const val = (sel) => { const x = dlg.querySelector(sel); return x ? x.value : ""; };
+        const slots = [0, 1, 2].map((n) => ({
+          a: val(`[data-a="${n}"]`) || "00:00", z: val(`[data-z="${n}"]`) || "00:00", t: val(`[data-t="${n}"]`),
+        }));
+        if (slots.some((x) => x.a > x.z)) { msg.textContent = t("bad_slot"); return; }
+        const ap = val("#ap");
+        const days = { day: [day], wd: [0, 1, 2, 3, 4], we: [5, 6], all: [0, 1, 2, 3, 4, 5, 6] }[ap] || [day];
+        ok.disabled = true;
+        msg.style.color = "#aaa";
+        msg.textContent = t("saving");
+        try {
+          for (const d of days) {
+            for (const n of [0, 1, 2]) {
+              const e = ent(d, n);
+              const f = feat(e);
+              if (!e || !f) continue;
+              const want = slots[n];
+              const cur = this._slotVal(e);
+              const temp = f & 2 ? Number(String(want.t || cur.t || 0).replace(",", ".")) : null;
+              const z = want.z === "23:59" ? "24:00" : want.z;
+              if (cur.a === want.a && cur.z === z && (temp === null || temp === cur.t)) continue; // unchanged
+              const data = { entity_id: e, begin: `${want.a}:00`, end: `${want.z}:00` };
+              if (temp !== null) data.temperature = temp;
+              await this._hass.callService("eta_webservices", temp !== null ? "write_timeslot_plus_temperature" : "write_timeslot", data);
+            }
+          }
+          close();
+        } catch (err) {
+          ok.disabled = false;
+          msg.style.color = "";
+          msg.textContent = String(err && err.message ? err.message : err);
+        }
+      };
+      dlg.addEventListener("click", (ev) => { if (ev.target === dlg) close(); });
+      render();
+    }
+
     async _call(el, entityId, service, offFirst = []) {
       el.classList.add("busy");
       const dom = (e) => (e.startsWith("switch.") ? "switch" : "homeassistant");
@@ -565,6 +745,7 @@
     }
 
     _name(b) {
+      if (b.label) return esc(b.label);
       let n = (b.name || "").split(">").pop().trim();
       const title = (this._topo.title || "").trim();
       if (title && n.toLowerCase().startsWith(title.toLowerCase() + " ")) n = n.slice(title.length + 1);
@@ -640,10 +821,12 @@
           // the riser of the upper connection sits closer to the icon
           const returnAbove = out && out[2] === "h" && outY < inY;
           const xv = returnAbove ? inX - 64 : inX - 30; // supply riser
-          const xr = returnAbove ? inX - 30 : xv - 34; // return riser
+          const xr = returnAbove ? inX - 30 : xv - 34; // return riser (unused for "u")
           const vl = [[src.right, ys], [xv, ys], [xv, inY], [inX, inY]];
           let rl;
-          if (out && out[2] === "v") {
+          if (out && out[2] === "u") {
+            rl = [[outX, outY], [outX, yr], [src.right, yr]];
+          } else if (out && out[2] === "v") {
             rl = [[outX, outY], [outX, outY + 10], [xr, outY + 10], [xr, yr], [src.right, yr]];
           } else {
             rl = [[outX, outY], [xr, outY], [xr, yr], [src.right, yr]];
@@ -795,7 +978,7 @@
           const want = this._config && this._config.entry;
           this._topo = (want && all.find((e) => e.entry_id === want || e.title === want)) || all[0] || null;
           this._render();
-        });
+        }).catch(() => { this._topo = null; this._all = []; this._render(); });
       }
     }
 
@@ -820,13 +1003,26 @@
         .report{margin-top:20px;padding-top:12px;border-top:1px solid var(--divider-color,#444);font-size:13px}
         .report textarea{width:100%;box-sizing:border-box;font-family:monospace;font-size:11px;margin:8px 0}
         .report button{padding:6px 12px;cursor:pointer}
+        .vals{margin-top:20px;padding-top:12px;border-top:1px solid var(--divider-color,#444);font-size:13px}
+        .vals details{border:1px solid var(--divider-color,#444);border-radius:8px;margin:6px 0;padding:0 10px}
+        .vals summary{cursor:pointer;padding:9px 0;font-size:14px;font-weight:500}
+        .vals summary .tag{font-weight:400;opacity:.65;margin-left:6px}
+        .vals summary .mod{font-size:11px;background:#ffc400;color:#1a1a1a;border-radius:6px;padding:1px 6px;margin-left:6px}
+        .vals .row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0;font-size:14px}
+        .vals .row select,.vals .row input[type=text]{min-width:0;width:62%}
+        .vals .hid{opacity:.5}
+        .vals .ft{display:flex;justify-content:space-between;gap:8px;margin:8px 0 10px}
+        .vals .ft button,.vals .add button{padding:5px 10px;cursor:pointer}
+        .vals .add{display:flex;gap:8px;align-items:center;margin-top:10px}
+        .vals .danger{background:#c62828;color:#fff;border:1px solid #c62828;border-radius:4px}
       </style>
       ${this._all && this._all.length > 1 && !this.fixedEntry ? `<label>Anlage<select id="entry">${this._all.map((e) =>
         `<option value="${e.title}" ${this._topo && this._topo.entry_id === e.entry_id ? "selected" : ""}>${e.title}</option>`).join("")}</select></label>` : ""}
       <label>Sprache<select id="lang">${[["", "Automatisch (HA)"], ["de", "Deutsch"], ["en", "English"]].map(([v, l]) =>
         `<option value="${v}" ${(this._config.language || "") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       <label>Name der Anlage<input id="title" value="${esc(this._config.title || "")}" placeholder="${esc((this._topo && this._topo.title) || "ETA")}"></label>
-      ${rows || "<p>Anlage wird geladen …</p>"}
+      ${rows || `<p>${this._all ? "Keine Anlagenteile mit Icon-Auswahl erkannt." : "Anlage wird geladen …"}</p>`}
+      ${this._topo ? this._valuesHtml() : ""}
       <div class="report">
         <b>Anlage melden</b>
         <p>Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ erstellt ein Issue, in dem die Anlagendaten
@@ -849,6 +1045,7 @@
       const entrySel = this.shadowRoot.getElementById("entry");
       if (entrySel) entrySel.addEventListener("change", (ev) => {
         this._topo = this._all.find((e) => e.title === ev.target.value) || null;
+        this._cands = null;
         const cfg = { ...this._config, entry: ev.target.value };
         delete cfg.icons; // icon choices belong to the previous plant
         this._emit(cfg);
@@ -862,6 +1059,7 @@
         if (!Object.keys(next).length) delete cfg.icons;
         this._emit(cfg);
       }));
+      if (this._topo) this._wireValues();
       const $ = (id) => this.shadowRoot.getElementById(id);
       $("dl").addEventListener("click", async () => {
         await this._makeReport();
@@ -886,8 +1084,216 @@
       });
     }
 
+    // ---- "Werte zuordnen": pick the entity of a value by hand ----
+    _de() {
+      const l = this._config.language || (this._hass.locale && this._hass.locale.language) || this._hass.language || "en";
+      return l.startsWith("de");
+    }
+
+    _blockList() {
+      const b = [{ id: "plant", type: "plant", name: this._de() ? "Ganze Anlage" : "Whole plant", roles: this._topo.plant || {}, entities: [] }];
+      this._topo.blocks.filter((x) => EDIT_ROLES[x.type] || x.type === "unknown").forEach((x) => b.push(x));
+      (this._config.extra || []).forEach((x) => b.push({ id: x.id, type: x.type, name: null, roles: {}, entities: [], manual: true }));
+      return b;
+    }
+
+    _label(b) {
+      const lab = LABELS[this._de() ? "de" : "en"];
+      if (b.type === "plant") return b.name;
+      let n = (b.name || "").split(">").pop().trim().replace(/\[/g, "(").replace(/\]/g, ")");
+      const title = (this._topo.title || "").trim();
+      if (title && n.toLowerCase().startsWith(`${title.toLowerCase()} `)) n = n.slice(title.length + 1);
+      return n || lab[b.type] || b.type;
+    }
+
+    // all ETA entities of this plant: those of the detected blocks plus every entity on the same devices
+    _candidates() {
+      if (this._cands) return this._cands;
+      const ents = this._hass.entities || {};
+      const set = new Set();
+      this._topo.blocks.forEach((b) => b.entities.forEach((e) => set.add(e)));
+      Object.values(this._topo.plant || {}).forEach((e) => set.add(e));
+      const devices = new Set([...set].map((e) => ents[e] && ents[e].device_id).filter(Boolean));
+      Object.values(ents).forEach((x) => {
+        if (x.platform === "eta_webservices" && devices.has(x.device_id) && !x.entity_id.endsWith("_writable")) set.add(x.entity_id);
+      });
+      this._cands = [...set].filter((e) => this._hass.states[e]);
+      return this._cands;
+    }
+
+    _fits(e, kind) {
+      const st = this._hass.states[e];
+      const unit = st.attributes.unit_of_measurement || "";
+      const num = st.state !== "" && !Number.isNaN(Number(st.state));
+      const dom = e.split(".")[0];
+      if (kind === "temp") return unit === "°C" || unit === "K";
+      if (kind === "bar") return unit === "bar";
+      if (kind === "level") return ["kg", "%", "t"].includes(unit);
+      if (kind === "switch") return dom === "switch";
+      if (kind === "text") return dom === "sensor" && !num && !unit;
+      if (kind === "onoff") return dom === "switch" || dom === "binary_sensor" || (dom === "sensor" && !unit);
+      return true;
+    }
+
+    _optText(e) {
+      const st = this._hass.states[e];
+      const name = String(st.attributes.friendly_name || e).split(">").slice(-2).map((x) => x.trim()).join(" › ");
+      const unit = st.attributes.unit_of_measurement || "";
+      const v = String(st.state).length > 24 ? `${String(st.state).slice(0, 24)}…` : st.state;
+      return `${name} – ${v}${unit ? ` ${unit}` : ""}`;
+    }
+
+    _valuesHtml() {
+      const de = this._de();
+      const ov = this._config.roles || {};
+      const hidden = new Set(this._config.hidden || []);
+      const open = this._open || (this._open = new Set());
+      const items = this._blockList().map((b) => {
+        const changed = Object.keys(ov[b.id] || {}).length || (this._config.names || {})[b.id] || hidden.has(b.id);
+        const tag = b.type === "plant" ? "" : `<span class="tag">${LABELS[de ? "de" : "en"][b.type] || ""}</span>`;
+        return `<details data-bid="${b.id}" ${open.has(b.id) ? "open" : ""}>
+          <summary class="${hidden.has(b.id) ? "hid" : ""}">${esc(this._label(b))}${tag}${changed ? `<span class="mod">${de ? "angepasst" : "changed"}</span>` : ""}</summary>
+          <div class="body">${open.has(b.id) ? this._blockBody(b) : ""}</div></details>`;
+      }).join("");
+      const types = ADD_TYPES.map((t) => `<option value="${t}">${LABELS[de ? "de" : "en"][t]}</option>`).join("");
+      return `<div class="vals"><b>${de ? "Werte manuell zuordnen" : "Assign values manually"}</b>
+        <p>${de
+          ? "Fehlt ein Wert, steht er an der falschen Stelle oder fehlt ein ganzes Anlagenteil? Klappe das Anlagenteil auf und wähle den passenden Wert aus der Liste. „Automatisch“ verwendet die Erkennung der Karte."
+          : "Is a value missing, in the wrong place, or is a whole plant part missing? Open the plant part and pick the right value from the list. \u201cAutomatic\u201d uses the card's detection."}</p>
+        <label class="row">${de ? "Werte per Entity-ID eingeben (zum Einfügen)" : "Enter values as entity ID (for pasting)"}
+          <input type="checkbox" id="txtmode" ${this._txt ? "checked" : ""}></label>
+        ${this._txt ? `<datalist id="ents">${this._candidates().map((e) => `<option value="${e}">${esc(this._optText(e))}</option>`).join("")}</datalist>` : ""}
+        ${items}
+        <div class="add">${de ? "Anlagenteil hinzufügen:" : "Add plant part:"} <select id="addtype">${types}</select>
+          <button id="addbtn">${de ? "Hinzufügen" : "Add"}</button></div>
+        ${this.fixedEntry ? "" : `<div class="ft"><span></span><button id="resetall" class="danger">${de ? "Alles zurücksetzen" : "Reset everything"}</button></div>`}</div>`;
+    }
+
+    _blockBody(b) {
+      const de = this._de();
+      const o = (this._config.roles || {})[b.id] || {};
+      const cands = this._candidates();
+      const own = new Set(b.entities || []);
+      const rows = (EDIT_ROLES[b.type] || EDIT_ROLES.unknown).map(([role, lde, len, kind]) => {
+        const cur = o[role] || "";
+        const det = b.roles[role];
+        const auto = det && this._hass.states[det] ? this._optText(det) : (de ? "nichts erkannt" : "nothing detected");
+        const fit = cands.filter((e) => this._fits(e, kind));
+        fit.sort((x, y) => (own.has(y) - own.has(x)) || this._optText(x).localeCompare(this._optText(y)));
+        const rest = cands.filter((e) => !fit.includes(e)).sort((x, y) => this._optText(x).localeCompare(this._optText(y)));
+        const opt = (e) => `<option value="${e}" ${cur === e ? "selected" : ""}>${esc(this._optText(e))}</option>`;
+        if (this._txt) {
+          const bad = cur && cur !== "-" && !this._hass.states[cur];
+          return `<label class="row">${de ? lde : len}<input type="text" list="ents" data-role="${role}" value="${esc(cur)}"
+            placeholder="${de ? "leer = automatisch" : "empty = automatic"} (${esc(det || "–")})"
+            ${bad ? `style="border-color:#e53935" title="${de ? "Entität nicht gefunden" : "Entity not found"}"` : ""}></label>`;
+        }
+        return `<label class="row">${de ? lde : len}<select data-role="${role}">
+          <option value="">${de ? "Automatisch" : "Automatic"} (${esc(auto)})</option>
+          <option value="-" ${cur === "-" ? "selected" : ""}>${de ? "– nicht anzeigen –" : "– do not show –"}</option>
+          ${fit.length ? `<optgroup label="${de ? "Passende Werte" : "Matching values"}">${fit.map(opt).join("")}</optgroup>` : ""}
+          ${rest.length ? `<optgroup label="${de ? "Alle anderen Werte" : "All other values"}">${rest.map(opt).join("")}</optgroup>` : ""}
+        </select></label>`;
+      }).join("");
+      if (b.type === "plant") return rows;
+      const name = (this._config.names || {})[b.id] || "";
+      const hidden = (this._config.hidden || []).includes(b.id);
+      return `<label class="row">${de ? "Name" : "Name"}<input type="text" data-name value="${esc(name)}" placeholder="${esc(this._label(b))}"></label>
+        ${rows}
+        <label class="row">${de ? "Auf der Karte anzeigen" : "Show on the card"}<input type="checkbox" data-show ${hidden ? "" : "checked"}></label>
+        <div class="ft"><button data-reset>${de ? "Alles auf automatisch" : "Reset to automatic"}</button>
+          ${b.manual ? `<button data-remove>${de ? "Anlagenteil entfernen" : "Remove plant part"}</button>` : ""}</div>`;
+    }
+
+    _wireValues() {
+      const root = this.shadowRoot;
+      const set = (patch) => {
+        const cfg = { ...this._config, ...patch };
+        ["roles", "names", "hidden", "extra"].forEach((k) => {
+          const v = cfg[k];
+          if (!v || (Array.isArray(v) ? !v.length : !Object.keys(v).length)) delete cfg[k];
+        });
+        this._emit(cfg);
+        this._render();
+      };
+      root.querySelectorAll(".vals details").forEach((d) => {
+        const bid = d.dataset.bid;
+        d.addEventListener("toggle", () => {
+          if (d.open) this._open.add(bid); else this._open.delete(bid);
+          const body = d.querySelector(".body");
+          if (d.open && !body.childElementCount) { this._render(); }
+        });
+        d.querySelectorAll("[data-role]").forEach((sel) => sel.addEventListener("change", () => {
+          const roles = { ...(this._config.roles || {}) };
+          const o = { ...(roles[bid] || {}) };
+          const v = sel.value.trim();
+          if (v) o[sel.dataset.role] = v; else delete o[sel.dataset.role];
+          if (Object.keys(o).length) roles[bid] = o; else delete roles[bid];
+          set({ roles });
+        }));
+        const nm = d.querySelector("[data-name]");
+        if (nm) nm.addEventListener("change", () => {
+          const names = { ...(this._config.names || {}) };
+          if (nm.value.trim()) names[bid] = nm.value.trim(); else delete names[bid];
+          set({ names });
+        });
+        const show = d.querySelector("[data-show]");
+        if (show) show.addEventListener("change", () => {
+          const hidden = (this._config.hidden || []).filter((x) => x !== bid);
+          if (!show.checked) hidden.push(bid);
+          set({ hidden });
+        });
+        const reset = d.querySelector("[data-reset]");
+        if (reset) reset.addEventListener("click", () => {
+          const roles = { ...(this._config.roles || {}) };
+          const names = { ...(this._config.names || {}) };
+          delete roles[bid];
+          delete names[bid];
+          set({ roles, names, hidden: (this._config.hidden || []).filter((x) => x !== bid) });
+        });
+        const rm = d.querySelector("[data-remove]");
+        if (rm) rm.addEventListener("click", () => {
+          const roles = { ...(this._config.roles || {}) };
+          const names = { ...(this._config.names || {}) };
+          delete roles[bid];
+          delete names[bid];
+          this._open.delete(bid);
+          set({ roles, names, extra: (this._config.extra || []).filter((x) => x.id !== bid),
+            hidden: (this._config.hidden || []).filter((x) => x !== bid) });
+        });
+      });
+      const txt = root.getElementById("txtmode");
+      if (txt) txt.addEventListener("change", () => { this._txt = txt.checked; this._render(); });
+      const all = root.getElementById("resetall");
+      if (all) all.addEventListener("click", () => this.resetValues());
+      const add = root.getElementById("addbtn");
+      if (add) add.addEventListener("click", () => {
+        const id = `manual_${Date.now().toString(36)}`;
+        this._open.add(id);
+        set({ extra: [...(this._config.extra || []), { id, type: root.getElementById("addtype").value }] });
+      });
+    }
+
+    // back to the automatic detection: drops all manual values, names, hidden and added parts
+    resetValues() {
+      if (!window.confirm(this._de()
+        ? "Alle manuellen Zuordnungen, Namen, ausgeblendeten und hinzugefügten Anlagenteile löschen und wieder die automatische Erkennung verwenden?"
+        : "Delete all manual values, names, hidden and added plant parts and use the automatic detection again?")) return;
+      const cfg = { ...this._config };
+      ["roles", "names", "hidden", "extra"].forEach((k) => delete cfg[k]);
+      this._open = new Set();
+      this._emit(cfg);
+      this._render();
+    }
+
     async _makeReport() {
-      const rep = await this._hass.callWS({ type: "eta_webservices/report", entry_id: this._topo && this._topo.entry_id });
+      // hand-picked values tell us which addresses the detection is missing
+      const manual = [];
+      const types = Object.fromEntries(this._blockList().map((b) => [b.id, b.type]));
+      Object.entries(this._config.roles || {}).forEach(([bid, o]) => Object.entries(o).forEach(([role, e]) => {
+        if (e && e !== "-" && types[bid]) manual.push([types[bid], role, e]);
+      }));
+      const rep = await this._hass.callWS({ type: "eta_webservices/report", entry_id: this._topo && this._topo.entry_id, manual });
       this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, ...rep }, null, 1);
     }
 
@@ -960,6 +1366,7 @@
         .act{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
         .act button{padding:8px 16px;border-radius:8px;border:1px solid var(--divider-color,#444);background:none;color:inherit;cursor:pointer;font:inherit}
         .act .save{background:var(--primary-color,#03a9f4);border-color:transparent;color:#fff}
+        .act .reset{background:#c62828;border-color:transparent;color:#fff}
       </style>
       <div class="bar"><ha-menu-button></ha-menu-button><span class="sp"></span>${this._hass.user && this._hass.user.is_admin
         ? `<button class="gear" title="Einstellungen"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg></button>` : ""}</div>
@@ -981,7 +1388,7 @@
       const dlg = document.createElement("div");
       dlg.className = "dlg";
       dlg.innerHTML = `<div><h2>Einstellungen</h2><div class="ed"></div>
-        <div class="act"><button class="cancel">Abbrechen</button><button class="save">Speichern</button></div></div>`;
+        <div class="act"><button class="reset">Alles zurücksetzen</button><span class="sp"></span><button class="cancel">Abbrechen</button><button class="save">Speichern</button></div></div>`;
       this._editor = document.createElement("eta-plant-card-editor");
       this._editor.fixedEntry = true;
       this._editor.setConfig(draft);
@@ -994,6 +1401,7 @@
       dlg.querySelector(".ed").appendChild(this._editor);
       const close = () => { dlg.remove(); this._editor = null; };
       dlg.querySelector(".cancel").addEventListener("click", () => { this._card.setConfig(saved); close(); });
+      dlg.querySelector(".reset").addEventListener("click", () => this._editor.resetValues());
       dlg.querySelector(".save").addEventListener("click", async () => {
         const { entry, ...config } = draft;
         await this._hass.callWS({ type: "eta_webservices/panel_config/save", entry_id: this._entry, config });
@@ -1017,7 +1425,7 @@
     window.customCards = window.customCards || [];
     window.customCards.push({
       type: "eta-plant-card",
-      name: "ETA Plant",
+      name: (document.documentElement.lang || navigator.language || "").startsWith("de") ? "ETA Anlage" : "ETA Plant",
       description: "Übersicht der ETA-Heizanlage mit Live-Werten und Bedienung.",
     });
   }

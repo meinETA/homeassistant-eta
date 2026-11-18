@@ -58,7 +58,7 @@
         "step": {
             "init": {
                 "title": "Optionen",
-                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.\n\n**ETA Plant in der Seitenleiste**: Zeigt die Anlagenkarte ETA Plant als eigenen Eintrag in der Seitenleiste, ohne dass du ein Dashboard anlegen musst.",
+                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.\n\n**ETA Anlage in der Seitenleiste**: Zeigt die Anlagenkarte ETA Anlage als eigenen Eintrag in der Seitenleiste, ohne dass du ein Dashboard anlegen musst.",
                 "data": {
                     "options_update_action": "Aktion"
                 }
@@ -98,8 +98,8 @@
                 }
             },
             "sidebar": {
-                "title": "ETA Plant in der Seitenleiste",
-                "description": "Zeigt die Anlagenkarte ETA Plant als eigenen Eintrag in der Home-Assistant-Seitenleiste. Name, Sprache und Icons stellst du dort über das Zahnrad ein (nur Admins).",
+                "title": "ETA Anlage in der Seitenleiste",
+                "description": "Zeigt die Anlagenkarte ETA Anlage als eigenen Eintrag in der Home-Assistant-Seitenleiste. Name, Sprache und Icons stellst du dort über das Zahnrad ein (nur Admins).",
                 "data": {
                     "sidebar_panel": "In Seitenleiste anzeigen"
                 }
@@ -150,7 +150,7 @@
                 "update_selected_entities": "Ausgewählte Entitäten aktualisieren",
                 "rediscover_and_update_entities": "Verfügbare Entitäten neu suchen und Auswahl aktualisieren",
                 "rename_entities_to_named_scheme": "Auf das namensbasierte Schema migrieren (v2)",
-                "sidebar_panel": "ETA Plant in der Seitenleiste"
+                "sidebar_panel": "ETA Anlage in der Seitenleiste"
             }
         }
     },

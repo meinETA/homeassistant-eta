@@ -51,7 +51,11 @@ def ws_topology(
 
 
 @websocket_api.websocket_command(
-    {vol.Required("type"): f"{DOMAIN}/report", vol.Optional("entry_id"): str}
+    {
+        vol.Required("type"): f"{DOMAIN}/report",
+        vol.Optional("entry_id"): str,
+        vol.Optional("manual", default=[]): [[str]],
+    }
 )
 @callback
 def ws_report(
@@ -60,4 +64,6 @@ def ws_report(
     msg: dict[str, Any],
 ) -> None:
     """Return the anonymized plant report (no names, ids or values)."""
-    connection.send_result(msg["id"], async_get_report(hass, msg.get("entry_id")))
+    connection.send_result(
+        msg["id"], async_get_report(hass, msg.get("entry_id"), msg["manual"])
+    )

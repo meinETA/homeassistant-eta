@@ -107,6 +107,10 @@ def ws_panel_get(
     connection.send_result(msg["id"], stored.get("card", {}))
 
 
+# card settings the gear may store: name, language, icons and manual values
+_CARD_KEYS = ("title", "language", "icons", "roles", "names", "hidden", "extra")
+
+
 @websocket_api.require_admin
 @websocket_api.websocket_command(
     {
@@ -122,9 +126,7 @@ def ws_panel_save(
     msg: dict[str, Any],
 ) -> None:
     """Store the card settings of the sidebar panel (admins only)."""
-    config = {
-        k: v for k, v in msg["config"].items() if k in ("title", "language", "icons")
-    }
+    config = {k: v for k, v in msg["config"].items() if k in _CARD_KEYS}
     hass.data[_DATA].setdefault(msg["entry_id"], {})["card"] = config
     _save(hass)
     entry = hass.config_entries.async_get_entry(msg["entry_id"])

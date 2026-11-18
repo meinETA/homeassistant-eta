@@ -9,6 +9,8 @@ Menu names are not used, so detection works independent of language.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
+from pathlib import Path
 import re
 from typing import Any
 
@@ -17,107 +19,24 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import DOMAIN, STABLE_ID
 
-# Object id (second URI segment) -> block type.
-_BLOCK_BY_OBJECT: dict[str, str] = {
-    "10021": "boiler",
-    "10891": "boiler",
-    "10561": "boiler",
-    "10201": "silo",
-    "10211": "silo",  # pellet store with suction switching unit
-    "10221": "solar",
-    "10241": "system",
-    "10251": "buffer",
-    "10601": "buffer",
-    "10291": "external_heat",
-    "10311": "external_demand",
-    "10531": "fwm",
-    "10911": "diagnostics",
-    "10961": "pv",
-}
-_BLOCK_BY_PREFIX: tuple[tuple[str, str], ...] = (
-    ("1010", "heating_circuit"),
-    ("1011", "dhw"),
+# Detection rules: object id -> block type ("1010*" = prefix) and, per block
+# type, [address below the object (segments 3..5), role]. Several addresses may
+# serve one role; the first one present wins (older firmware exposes some
+# values only under a display address). New addresses go into roles.json.
+_RULES: dict[str, Any] = json.loads(
+    (Path(__file__).parent / "roles.json").read_text(encoding="utf-8")
 )
-
-# Block type -> [(address below the object (segments 3..5), role)].
-# Several addresses may serve one role; the first one present wins (older
-# firmware exposes some values only under a display address).
+_BLOCK_BY_OBJECT: dict[str, str] = {
+    obj: block_type for obj, block_type in _RULES["blocks"].items() if "*" not in obj
+}
+_BLOCK_BY_PREFIX: tuple[tuple[str, str], ...] = tuple(
+    (obj.rstrip("*"), block_type)
+    for obj, block_type in _RULES["blocks"].items()
+    if obj.endswith("*")
+)
 ROLES: dict[str, list[tuple[str, str]]] = {
-    "boiler": [
-        ("0/11109/0", "temperature"),
-        ("0/0/12161", "temperature"),
-        ("0/0/12180", "pressure"),
-        ("0/0/12011", "hopper"),
-        ("0/0/12000", "status"),
-        ("0/11123/0", "pump"),
-        ("0/11195/0", "pump"),
-        ("0/11160/0", "return"),
-        # chip/pellet discharge handled by the boiler itself (no own store FUB)
-        ("0/2203/0", "auger"),
-        ("0/0/12058", "discharge"),
-        ("0/0/12080", "switch"),
-    ],
-    "silo": [
-        ("0/0/12015", "stock"),
-        ("0/0/12423", "status"),
-        ("0/11029/0", "auger"),
-    ],
-    "buffer": [
-        ("0/11327/0", "top"),
-        ("0/0/12242", "top"),
-        ("0/11328/0", "middle"),
-        ("0/11329/0", "bottom"),
-        ("0/0/12244", "bottom"),
-        ("0/0/12528", "charge"),
-        ("0/0/12208", "status"),
-    ],
-    "heating_circuit": [
-        ("0/11060/0", "flow"),
-        ("0/0/12241", "flow"),
-        ("0/0/12090", "status"),
-        ("0/11124/0", "pump"),
-        ("0/0/12092", "mode"),
-        ("0/0/12080", "switch"),
-        ("0/0/12125", "heat"),
-        ("0/0/12126", "auto"),
-        ("0/0/12230", "lower"),
-        ("0/0/12218", "come"),
-        ("0/0/12231", "go"),
-    ],
-    "dhw": [
-        ("0/11129/0", "temperature"),
-        ("0/0/12271", "temperature"),
-        ("0/0/12129", "temperature"),
-        ("0/0/12274", "pump"),
-    ],
-    "solar": [
-        ("0/11139/0", "collector"),
-        ("0/0/12275", "collector"),
-        ("0/0/12784", "storage_top"),
-        ("0/0/12781", "storage_bottom"),
-        ("0/0/12278", "pump"),
-        ("0/0/12183", "status"),
-    ],
-    "external_heat": [
-        ("0/0/12161", "temperature"),
-        ("0/0/12491", "storage"),
-        ("0/11088/0", "pump"),
-    ],
-    "fwm": [
-        ("0/11148/0", "hot_water"),
-        ("0/11243/0", "primary_flow"),
-        ("0/11186/0", "primary_return"),
-        ("0/0/12195", "status"),
-        ("0/11280/0", "pump"),
-        ("0/0/12080", "switch"),
-    ],
-    "external_demand": [
-        ("0/0/19416", "status"),
-    ],
-    "system": [
-        ("0/11127/0", "outside"),
-        ("0/0/12197", "outside"),
-    ],
+    block_type: [(address, role) for address, role in pairs]
+    for block_type, pairs in _RULES["roles"].items()
 }
 # Heating times: weekday d (0 = Monday) has three time slots at 1082 + 4 * d + n.
 ROLES["heating_circuit"] += [
@@ -162,11 +81,21 @@ def block_type_for_object(obj: str) -> str | None:
     return None
 
 
-def parse_unique_id(unique_id: str, stable: str) -> tuple[str, str, str] | None:
-    """Split an entity unique_id into (node, object, address) or None."""
+def parse_unique_id(
+    unique_id: str, stable: str, writable: bool = False
+) -> tuple[str, str, str] | None:
+    """Split an entity unique_id into (node, object, address) or None.
+
+    "_writable" twins are skipped unless writable is set; then they map to
+    the address of the value they write.
+    """
     prefix = f"eta_{stable}_"
-    if not unique_id.startswith(prefix) or unique_id.endswith("_writable"):
+    if not unique_id.startswith(prefix):
         return None
+    if unique_id.endswith("_writable"):
+        if not writable:
+            return None
+        unique_id = unique_id.removesuffix("_writable")
     match = _URI_RE.match(unique_id[len(prefix) :])
     if not match:
         return None
@@ -207,15 +136,21 @@ def build_blocks(
     blocks: dict[str, Block] = {}
     plant: dict[str, str] = {}
     best: dict[tuple[str, str], int] = {}
+    # selecting a value as writable adds a "_writable" twin and disables the
+    # plain entity: the twin then provides the role (heating times need it to
+    # be editable); with both present, the twin wins for the same address
+    entries = sorted(entries, key=lambda row: row[0].endswith("_writable"))
     for unique_id, entity_id, device_name in entries:
-        parsed = parse_unique_id(unique_id, stable)
+        parsed = parse_unique_id(unique_id, stable, writable=True)
         if parsed is None:
             continue
+        twin = unique_id.endswith("_writable")
         node, obj, address = parsed
         block_type = block_type_for_object(obj) or "unknown"
         role, prio = _ROLE_INDEX.get(block_type, {}).get(address, (None, 0))
         key = f"{node}/{obj}"
-        if role and best.get((key, role), prio + 1) <= prio:
+        have = best.get((key, role), prio + 1) if role else 0
+        if role and (have < prio or (have == prio and not twin)):
             role = None  # a preferred address already provides this role
         if block_type in _HIDDEN:
             if role and (role not in plant or best.get(("plant", role), 99) > prio):
@@ -225,7 +160,8 @@ def build_blocks(
         block = blocks.setdefault(key, Block(id=key, type=block_type, object=obj))
         if block.name is None and device_name:
             block.name = device_name
-        block.entities.append(entity_id)
+        if entity_id not in block.entities:
+            block.entities.append(entity_id)
         if role:
             block.roles[role] = entity_id
             best[(key, role)] = prio
@@ -310,8 +246,16 @@ def async_get_topology(hass: HomeAssistant) -> list[dict[str, Any]]:
 
 
 @callback
-def async_get_report(hass: HomeAssistant, entry_id: str | None) -> dict[str, Any]:
-    """Return the anonymized report for one config entry (first if None)."""
+def async_get_report(
+    hass: HomeAssistant,
+    entry_id: str | None,
+    manual: list[list[str]] | None = None,
+) -> dict[str, Any]:
+    """Return the anonymized report for one config entry (first if None).
+
+    manual: [block type, role, entity id] picked by hand in the card editor;
+    reported as addresses only, so missing detection rules become visible.
+    """
     ent_reg = er.async_get(hass)
     entries = hass.config_entries.async_entries(DOMAIN)
     entry = next((e for e in entries if e.entry_id == entry_id), None) or (
@@ -322,9 +266,33 @@ def async_get_report(hass: HomeAssistant, entry_id: str | None) -> dict[str, Any
     stable = entry.data.get(STABLE_ID) or str(entry.data.get("host", "")).replace(
         ".", "_"
     )
+    regs = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
     rows = [
         (reg.unique_id, reg.entity_id, None, reg.unit_of_measurement)
-        for reg in er.async_entries_for_config_entry(ent_reg, entry.entry_id)
+        for reg in regs
         if reg.disabled_by is None
     ]
-    return {"objects": build_report(rows, stable)}
+    uid_of = {reg.entity_id: reg.unique_id for reg in regs}
+    return {
+        "objects": build_report(rows, stable),
+        "manual": manual_report(manual or [], uid_of, stable),
+    }
+
+
+def manual_report(
+    manual: list[list[str]], uid_of: dict[str, str], stable: str
+) -> list[dict[str, str]]:
+    """Turn hand-picked [block type, role, entity id] into addresses."""
+    result = []
+    for item in manual:
+        if len(item) != 3:
+            continue
+        block_type, role, entity_id = item
+        parsed = parse_unique_id(uid_of.get(entity_id, ""), stable)
+        if parsed is None:
+            continue
+        _node, obj, address = parsed
+        result.append(
+            {"type": block_type, "role": role, "object": obj, "address": address}
+        )
+    return result

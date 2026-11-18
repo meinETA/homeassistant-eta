@@ -27,6 +27,8 @@ Your ETA plant on a dashboard, like on the touch display: detected automatically
 | Wood chip boiler | Control tab |
 | --- | --- |
 | ![Plant card: wood chip boiler with buffer and external demand](images/plant-card-chips.png) | ![Plant card: control tab with boiler, heating circuits and heating times](images/plant-card-control.png) |
+| **Heating times** | |
+| ![Plant card: editing the heating times of a heating circuit](images/plant-card-times.png) | |
 
 ## Contents
 
@@ -52,7 +54,9 @@ The integration ships a dashboard card that shows the plant like the ETA touch d
 - **Add it:** edit a dashboard, add a card and pick **ETA Plant**. A panel view gives the best result.
 - **Sidebar:** alternatively, show the card as its own sidebar entry, no dashboard needed: `Configure` → **ETA Plant in the sidebar**. On by default. Admins change name, language and icons there via the gear; the sidebar shows the plant name.
 - **Detection:** the plant layout is detected automatically from the selected sensors. If a value is missing on the card, add the matching sensor in the integration options.
+- **Assign values manually:** if a value is still missing or wrong, pick the right entity per value in the card settings (from a list or by pasting the entity ID), rename, hide or add plant parts. **Reset everything** returns to the automatic detection.
 - **Control tab:** switch the boiler and heating circuits on or off and select heat, setback or time program. This needs the corresponding switches (e.g. *On/Off button*) to be selected in the integration options.
+- **Heating times:** click the time bar of a heating circuit to edit its three time slots per day, for one day, Mon–Fri, Sat–Sun or all days. Needs ETA API 1.2 or newer and the time slots selected as writable sensors; otherwise they are read only.
 - **Card settings:** plant (if several are configured), name, language and an icon per block (e.g. the exact boiler model).
 - **Report a problem:** if the plant is not shown correctly, use **Open GitHub issue** in the card settings. It opens an issue with an anonymized description of the plant (object numbers, parameter addresses and units only; no names, values or IP addresses). Nothing is sent until the issue is submitted on GitHub, and issues are public.
 
