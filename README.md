@@ -1,16 +1,36 @@
+<img src="custom_components/eta_webservices/www/icons/Kessel/HackVR/HackVR_gelb.webp" alt="ETA HACK VR" title="ETA HACK VR" align="right" height="90px"/>
+<img src="custom_components/eta_webservices/www/icons/Kessel/SH/SH_neu.webp" alt="ETA SH" title="ETA SH" align="right" height="90px"/>
+<img src="custom_components/eta_webservices/www/icons/Kessel/ePE/ePE_HW.webp" alt="ETA ePE" title="ETA ePE" align="right" height="90px"/>
+<img src="custom_components/eta_webservices/www/icons/Kessel/Pellets/PU_PC_neu.webp" alt="ETA PU / PC" title="ETA PU / PC" align="right" height="90px"/>
+<img src="custom_components/eta_webservices/brand/logo.png" alt="ETA" title="ETA" align="right" height="44px"/>
+
 # ETA Heating for Home Assistant
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
-[![GitHub release](https://img.shields.io/github/v/release/meinETA/homeassistant-eta?display_name=tag)](https://github.com/meinETA/homeassistant-eta/releases)
-[![Downloads](https://img.shields.io/github/downloads/meinETA/homeassistant-eta/total?label=downloads)](https://github.com/meinETA/homeassistant-eta/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/meinETA/homeassistant-eta?style=for-the-badge&label=Release)](https://github.com/meinETA/homeassistant-eta/releases)
+[![Downloads](https://img.shields.io/github/downloads/meinETA/homeassistant-eta/total?style=for-the-badge&label=Downloads)](https://github.com/meinETA/homeassistant-eta/releases)
+[![Contributors](https://img.shields.io/github/contributors/meinETA/homeassistant-eta?style=for-the-badge&label=Contributors)](https://github.com/meinETA/homeassistant-eta/graphs/contributors)
+[![Issues](https://img.shields.io/github/issues/meinETA/homeassistant-eta?style=for-the-badge&label=Issues)](https://github.com/meinETA/homeassistant-eta/issues)
+[![HACS](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+
+[![License: MIT](https://img.shields.io/badge/Licence-MIT-orange.svg)](LICENSE)
+![Made with Python](https://img.shields.io/badge/Made%20with-Python-orange.svg)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.5%2B-41BDF5.svg)](https://www.home-assistant.io/)
-[![License: MIT](https://img.shields.io/github/license/meinETA/homeassistant-eta.svg)](LICENSE)
 [![Buy us a coffee](https://img.shields.io/badge/Donate-Buy%20us%20a%20coffee-ffd557.svg)](https://www.buymeacoffee.com/christofpichler)
 
 Home Assistant integration for **ETA heating systems** (pellet, wood, and combined boilers). It reads sensors, states and counters from your ETA unit, and lets you switch and set writable parameters — all discovered automatically over the local [ETA REST API](https://www.meineta.at/javax.faces.resource/downloads/ETA-RESTful-v1.2.pdf.xhtml?ln=default&v=0), no cloud required.
 
 [![Open your Home Assistant instance and open this repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=meinETA&repository=homeassistant-eta&category=integration)
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=eta_webservices)
+
+### Plant card (beta)
+
+Your ETA plant on a dashboard, like on the touch display: detected automatically, with live values, animated pipes and a control tab. See [Plant card (beta)](#plant-card-beta).
+
+![Plant card: pellet boiler with storage, buffer, heating circuit and fresh water module](images/plant-card-pellets.png)
+
+| Wood chip boiler | Control tab |
+| --- | --- |
+| ![Plant card: wood chip boiler with buffer and external demand](images/plant-card-chips.png) | ![Plant card: control tab with boiler, heating circuits and heating times](images/plant-card-control.png) |
 
 ![ETA Heating devices in Home Assistant](images/devices_overview.png)
 
@@ -231,4 +251,4 @@ Originally created by [nigl](https://github.com/nigl/homeassistant_eta_integrati
 
 Released under the [MIT License](LICENSE).
 
-Exception: the icons in `custom_components/eta_webservices/www/icons/` are the property of ETA Heiztechnik GmbH, are not licensed under MIT and may only be used as part of this integration. See the [NOTICE](custom_components/eta_webservices/www/icons/NOTICE) file in that directory.
+Exception: the icons in `custom_components/eta_webservices/www/icons/` are the property of ETA Heiztechnik GmbH, are not licensed under MIT and may only be used as part of this integration. See the [NOTICE](custom_components/eta_webservices/www/icons/NOTICE) file in that directory. The same applies to the plant card screenshots (`images/plant-card-*.png`), which show these icons.
