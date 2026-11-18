@@ -55,6 +55,12 @@ from .migration_restore import (
     async_remove_snapshot,
     async_restore_registries,
 )
+from .panel import (
+    async_forget_entry,
+    async_remove_panel,
+    async_setup_panels,
+    async_update_panel,
+)
 from .services import async_setup_services
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -224,6 +230,7 @@ async def async_setup(hass: core.HomeAssistant, config: ConfigType) -> bool:
     """Register the dashboard card and its topology API."""
     integration = await async_get_integration(hass, DOMAIN)
     await async_setup_card(hass, str(integration.version))
+    await async_setup_panels(hass)
     return True
 
 
@@ -285,6 +292,7 @@ async def async_setup_entry(
     hass.async_create_task(pending_coordinator.async_refresh())
 
     await async_setup_services(hass, entry)
+    async_update_panel(hass, entry)
 
     return True
 
@@ -502,5 +510,13 @@ async def async_unload_entry(
     if unload_ok:
         # Remove config entry from domain.
         hass.data[DOMAIN].pop(entry.entry_id)
+        async_remove_panel(hass, entry)
 
     return unload_ok
+
+
+async def async_remove_entry(
+    hass: core.HomeAssistant, entry: config_entries.ConfigEntry
+) -> None:
+    """Forget the sidebar settings of a deleted entry."""
+    async_forget_entry(hass, entry.entry_id)

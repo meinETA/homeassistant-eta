@@ -18,6 +18,7 @@ from .topology import async_get_report, async_get_topology
 
 CARD_URL_BASE = f"/{DOMAIN}_static"
 CARD_FILE = "eta-plant-card.js"
+CARD_JS_URL = f"{DOMAIN}_card_js_url"
 _WWW = Path(__file__).parent / "www"
 
 
@@ -28,7 +29,8 @@ async def async_setup_card(hass: HomeAssistant, version: str) -> None:
     )
     # Content hash in the URL: browsers reload the card whenever it changes.
     digest = await hass.async_add_executor_job(_file_digest, _WWW / CARD_FILE)
-    add_extra_js_url(hass, f"{CARD_URL_BASE}/{CARD_FILE}?v={version}-{digest}")
+    hass.data[CARD_JS_URL] = f"{CARD_URL_BASE}/{CARD_FILE}?v={version}-{digest}"
+    add_extra_js_url(hass, hass.data[CARD_JS_URL])
     websocket_api.async_register_command(hass, ws_topology)
     websocket_api.async_register_command(hass, ws_report)
 

@@ -4,7 +4,7 @@
   const H = 860;
   const FLOOR = 610;
   // bump when icon files change, so browsers do not keep stale images
-  const ICON_REV = "2026-11-18d";
+  const ICON_REV = "2026-11-18e";
 
   // type -> [icon file, icon width on the 1600px canvas, aspect w/h]
   const ICONS = {
@@ -130,9 +130,32 @@
     "FUBs/Externe_Waermeanforderung/Externe_Waermeanforderung.webp": { in: [0.03, 0.184, "h"], out: [0.013, 0.827, "h"] },
     "FUBs/FWM/FWM_Brauchwasser.webp": { in: [0.07, 0.719, "h"], out: [0.056, 0.207, "h"] },
   };
+  // pellet hose entry per boiler image (fraction of the image): first solid pixel from the left
+  const FEED = {
+    "Kessel/Pellets/PU_PC_neu.webp": [0.056, 0.298],
+    "Kessel/Pellets/PU_PC_grau.webp": [0.056, 0.299],
+    "Kessel/Pellets/PEK.webp": [0.065, 0.303],
+    "Kessel/Pellets/ePEK.webp": [0.062, 0.303],
+    "Kessel/ePE/ePE_HW.webp": [0.257, 0.308],
+    "Kessel/ePE_BW/ePE_BW.webp": [0.136, 0.301],
+    "Kessel/SH/SH_neu.webp": [0.077, 0.307],
+    "Kessel/SH/SH.webp": [0.086, 0.311],
+    "Kessel/TWIN/SH_TWIN_neu.webp": [0.086, 0.282],
+    "Kessel/TWIN/SH_TWIN.webp": [0.086, 0.285],
+    "Kessel/eSH/FUB_eSH_BE-P3.webp": [0.159, 0.293],
+    "Kessel/eSH/FUB_eSH_BE-P4.webp": [0.159, 0.293],
+    "Kessel/eSH_eTWIN/FUB_eSH-eTWIN_BE-P3.webp": [0.020, 0.281],
+    "Kessel/eSH_eTWIN/FUB_eSH-eTWIN_BE-P4.webp": [0.020, 0.281],
+    "Kessel/eTWIN/FUB_eTWIN_BE-P3.webp": [0.018, 0.284],
+    "Kessel/eTWIN/FUB_eTWIN_BE-P4.webp": [0.018, 0.284],
+    "Kessel/eHack/eHack.webp": [0.427, 0.315],
+    "Kessel/Hack/Hack.webp": [0.424, 0.306],
+    "Kessel/HackVR/HackVR_gelb.webp": [0.211, 0.300],
+    "Kessel/HackVR/HackVR_grau.webp": [0.211, 0.300],
+  };
   // visible height of the device on the 1600px canvas, per block type
   const TARGET_H = {
-    silo: 175, chip_store: 200, boiler: 300, buffer: 330, heating_circuit: 140, fwm: 170,
+    silo: 220, chip_store: 200, boiler: 300, buffer: 330, heating_circuit: 140, fwm: 170,
     dhw: 290, solar: 220, unknown: 150, external_demand: 150, external_heat: 150,
   };
   // default icon per ETA object id where the type alone is ambiguous
@@ -201,7 +224,12 @@
   .on .p.h i{animation:mx .9s linear infinite}.on .p.v i{animation:my .9s linear infinite}
   .on .p.rev i{animation-direction:reverse}
   .off .p i{display:none}.off .p{opacity:.65}
-  .band{position:absolute;height:10px;overflow:hidden;background:#3a3a3a}
+  .p.pe{background:#4a4a4a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);--dc:#ffc400}
+  .p.pe.h i{background:radial-gradient(circle at 3px 2px,#ffc400 0 2.2px,transparent 2.6px) 0 0/8px 4px repeat-x}
+  .p.pe.v i{background:radial-gradient(circle at 2px 3px,#ffc400 0 2.2px,transparent 2.6px) 0 0/4px 8px repeat-y}
+  .on .p.pe.h i{animation:mx .6s linear infinite}.on .p.pe.v i{animation:my .6s linear infinite}
+  .on .p.pe.rev i{animation-direction:reverse}
+  .band{position:absolute;height:16px;border-radius:4px;overflow:hidden;background:#3a3a3a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
   .band i{position:absolute;left:-20px;right:-20px;top:0;bottom:0;will-change:transform;
     background:repeating-linear-gradient(45deg,#ffc400 0 9px,#2a2400 9px 14px)}
   .on .band i{animation:mb 1.2s linear infinite}.off .band i{display:none}
@@ -258,7 +286,10 @@
   .ts .bar{position:absolute;left:0;right:0;top:0;height:22px;border-radius:6px;background:#3a3a3a;overflow:hidden;
     box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}
   .ts .w{position:absolute;top:0;bottom:0;background:linear-gradient(#ffd31a,#ffb800)}
-  .ts .now{position:absolute;top:-6px;height:34px;width:3px;margin-left:-1px;background:#fff;box-shadow:0 0 4px #000}
+  .ts .bar::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(90deg,rgba(255,255,255,.8) 0 1px,transparent 1px 25%) left bottom/100% 11px no-repeat,
+      repeating-linear-gradient(90deg,rgba(255,255,255,.55) 0 1px,transparent 1px calc(100% / 24)) left bottom/100% 6px no-repeat}
+  .ts .now{z-index:1;position:absolute;top:-6px;height:34px;width:3px;margin-left:-1px;background:#fff;box-shadow:0 0 4px #000}
   .ts .ax{position:absolute;left:0;right:0;top:26px;font-size:14px;color:#aaa}
   .ts .ax span{position:absolute;transform:translateX(-50%)}
   .ts .ax span:first-child{transform:none}.ts .ax span:last-child{transform:translateX(-100%)}`;
@@ -422,7 +453,21 @@
         if (entityId) this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId }, bubbles: true, composed: true }));
       }));
       cv.querySelectorAll(".md").forEach((el) => el.addEventListener("click", () => {
-        if (!this._isOn(el.dataset.md)) this._call(el, el.dataset.md, "turn_on");
+        if (el.classList.contains("act")) return;
+        // the other mode keys only update with the next poll: show the chosen one alone until then
+        this._pending = this._pending || {};
+        this._pending[el.closest(".tile").dataset.tile] = { md: el.dataset.md, until: Date.now() + 180000 };
+        // ETA keeps "Auto" on while a heat/setback key overrides it: writing "on" again
+        // changes nothing, so the active override keys are switched off first
+        const ends = [];
+        if (el.dataset.mode === "auto") {
+          el.closest(".modes").querySelectorAll(".md").forEach((o) => {
+            if (o === el) return;
+            [o.dataset.md, o.dataset.also].filter((e) => e && this._isOn(e)).forEach((e) => ends.push(e));
+          });
+        }
+        this._call(el, el.dataset.md, "turn_on", ends);
+        this._update();
       }));
       cv.querySelectorAll(".blk").forEach((el) => {
         el.addEventListener("click", () => {
@@ -472,9 +517,9 @@
         const target = (r) => (temp[r] && b.roles[temp[r]]) || b.roles[r];
         const m = modes.filter(([r]) => target(r)).map(([r, ic]) => {
           const also = temp[r] && b.roles[temp[r]] && b.roles[r] ? ` data-also="${b.roles[r]}"` : "";
-          return `<button class="md" data-md="${target(r)}"${also}><i>${ic}</i>${this._t(r)}</button>`;
+          return `<button class="md" data-mode="${r}" data-md="${target(r)}"${also}><i>${ic}</i>${this._t(r)}</button>`;
         }).join("");
-        return `<div class="tile">
+        return `<div class="tile" data-tile="${b.id}">
           <div class="th">${geo[b.id] ? `<img src="${iconSrc(geo[b.id].file)}">` : ""}
             <div class="tx"><div class="tn">${name}</div>${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}</div>
             ${b.roles.switch ? `<div class="tg" data-sw="${b.roles.switch}" data-n="${name}">0<b></b>I</div>` : ""}
@@ -497,11 +542,12 @@
       return z > a ? [a, z] : null;
     }
 
-    async _call(el, entityId, service) {
+    async _call(el, entityId, service, offFirst = []) {
       el.classList.add("busy");
+      const dom = (e) => (e.startsWith("switch.") ? "switch" : "homeassistant");
       try {
-        const domain = entityId.startsWith("switch.") ? "switch" : "homeassistant";
-        await this._hass.callService(domain, service, { entity_id: entityId });
+        for (const e of offFirst) await this._hass.callService(dom(e), "turn_off", { entity_id: e });
+        await this._hass.callService(dom(entityId), service, { entity_id: entityId });
       } finally {
         setTimeout(() => el.classList.remove("busy"), 1500);
       }
@@ -554,7 +600,19 @@
       const group = (key, inner) => `<div class="g" data-flow="${key}">${inner}</div>`;
       let s = "";
       if (silo && boiler) {
-        s += group(silo.b.id, `<div class="band" style="left:${silo.right}px;top:${FLOOR - 70}px;width:${boiler.left - silo.right}px"><i></i></div>`);
+        if (silo.b.type === "silo") {
+          // pellet suction hose: from the store up into the upper side of the boiler (hopper)
+          const y0 = silo.top + (silo.bottom - silo.top) * 0.4;
+          const f = FEED[boiler.file];
+          const xe = f ? boiler.x0 + f[0] * boiler.w : boiler.left;
+          const yb = f ? boiler.y0 + f[1] * boiler.h : boiler.top + (boiler.bottom - boiler.top) * 0.16;
+          const xm = silo.right + Math.max(14, (Math.min(xe, boiler.left + 40) - silo.right) / 2);
+          s += group(silo.b.id, line([[silo.right - 6, y0], [xm, y0], [xm, yb], [xe + 3, yb]], "pe"));
+        } else {
+          // wood chip discharge auger at floor level
+          const y = Math.min(silo.bottom, boiler.bottom) - 34;
+          s += group(silo.b.id, `<div class="band" style="left:${silo.right - 10}px;top:${y}px;width:${boiler.left - silo.right + 20}px"><i></i></div>`);
+        }
       }
       // producers chain at device height: boiler 1 -> boiler 2 -> buffer 1 -> buffer 2;
       // every piece carries flow when any boiler pump runs
@@ -626,6 +684,10 @@
       return `${v}<u>${unit}</u>`;
     }
 
+    _modeOn(el) {
+      return this._isOn(el.dataset.md) || (el.dataset.also ? this._isOn(el.dataset.also) : false);
+    }
+
     _isOn(entityId) {
       const st = this._hass.states[entityId];
       if (!st) return false;
@@ -661,9 +723,19 @@
         const on = this._isOn(el.dataset.sw);
         if (el._on !== on) { el.classList.toggle("on", on); el._on = on; }
       });
-      root.querySelectorAll(".md").forEach((el) => {
-        const on = this._isOn(el.dataset.md) || (el.dataset.also ? this._isOn(el.dataset.also) : false);
-        if (el._on !== on) { el.classList.toggle("act", on); el._on = on; }
+      root.querySelectorAll(".modes").forEach((row) => {
+        const key = row.closest(".tile").dataset.tile;
+        const btns = [...row.querySelectorAll(".md")];
+        // one mode lights up: heat / setback override the time program, which ETA keeps "on" meanwhile
+        const cur = (btns.find((el) => this._modeOn(el)) || {}).dataset;
+        const p = this._pending && this._pending[key];
+        // after a click the chosen key shows until the next poll confirms it (or times out)
+        if (p && (Date.now() > p.until || (cur && cur.md === p.md))) delete this._pending[key];
+        const show = (this._pending && this._pending[key] && this._pending[key].md) || (cur && cur.md);
+        btns.forEach((el) => {
+          const on = el.dataset.md === show;
+          if (el._on !== on) { el.classList.toggle("act", on); el._on = on; }
+        });
       });
       const now = new Date();
       const day = (now.getDay() + 6) % 7;
@@ -685,7 +757,9 @@
       const active = (b) => {
         if (!b) return false;
         if (b.roles.pump) return this._isOn(b.roles.pump);
-        if (b.roles.auger) return this._isOn(b.roles.auger);
+        if (b.roles.auger && this._isOn(b.roles.auger)) return true;
+        if (b.roles.discharge && this._isOn(b.roles.discharge)) return true;
+        if (b.roles.auger) return b.roles.status ? !this._isIdle(b.roles.status) : false;
         return b.roles.status ? !this._isIdle(b.roles.status) : false;
       };
       root.querySelectorAll("[data-flow]").forEach((el) => {
@@ -747,7 +821,7 @@
         .report textarea{width:100%;box-sizing:border-box;font-family:monospace;font-size:11px;margin:8px 0}
         .report button{padding:6px 12px;cursor:pointer}
       </style>
-      ${this._all && this._all.length > 1 ? `<label>Anlage<select id="entry">${this._all.map((e) =>
+      ${this._all && this._all.length > 1 && !this.fixedEntry ? `<label>Anlage<select id="entry">${this._all.map((e) =>
         `<option value="${e.title}" ${this._topo && this._topo.entry_id === e.entry_id ? "selected" : ""}>${e.title}</option>`).join("")}</select></label>` : ""}
       <label>Sprache<select id="lang">${[["", "Automatisch (HA)"], ["de", "Deutsch"], ["en", "English"]].map(([v, l]) =>
         `<option value="${v}" ${(this._config.language || "") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
@@ -840,6 +914,98 @@
       this._config = config;
       this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
     }
+  }
+
+  // Sidebar entry (one per plant): the card full screen; admins change its settings via the gear.
+  class EtaPlantPanel extends HTMLElement {
+    set hass(hass) {
+      this._hass = hass;
+      if (this._card) this._card.hass = hass;
+      if (this._editor) this._editor.hass = hass;
+      if (this._menu) this._menu.hass = hass;
+      this._init();
+    }
+
+    set narrow(narrow) {
+      this._narrow = narrow;
+      if (this._menu) this._menu.narrow = narrow;
+    }
+
+    set panel(panel) {
+      this._panel = panel;
+      this._init();
+    }
+
+    async _init() {
+      if (this._started || !this._hass || !this._panel) return;
+      this._started = true;
+      this._entry = this._panel.config.entry_id;
+      let stored = {};
+      try {
+        stored = await this._hass.callWS({ type: "eta_webservices/panel_config", entry_id: this._entry });
+      } catch (err) { /* no settings yet */ }
+      this._cfg = { ...stored, entry: this._entry };
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.innerHTML = `<style>
+        :host{display:block;min-height:100vh;background:var(--primary-background-color,#111)}
+        .bar{display:flex;align-items:center;height:48px;padding:0 8px}
+        .sp{flex:1}
+        .gear{background:none;border:0;color:var(--primary-text-color,#ddd);cursor:pointer;padding:8px;line-height:0;border-radius:50%}
+        .gear:hover{background:rgba(127,127,127,.2)}
+        .body{padding:0 12px 12px}
+        .dlg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10}
+        .dlg>div{background:var(--card-background-color,#1c1c1c);color:var(--primary-text-color,#ddd);border-radius:16px;
+          padding:20px 24px;width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto;box-sizing:border-box}
+        .dlg h2{margin:0 0 8px;font-size:20px}
+        .act{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+        .act button{padding:8px 16px;border-radius:8px;border:1px solid var(--divider-color,#444);background:none;color:inherit;cursor:pointer;font:inherit}
+        .act .save{background:var(--primary-color,#03a9f4);border-color:transparent;color:#fff}
+      </style>
+      <div class="bar"><ha-menu-button></ha-menu-button><span class="sp"></span>${this._hass.user && this._hass.user.is_admin
+        ? `<button class="gear" title="Einstellungen"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg></button>` : ""}</div>
+      <div class="body"></div>`;
+      this._menu = this.shadowRoot.querySelector("ha-menu-button");
+      this._menu.hass = this._hass;
+      this._menu.narrow = this._narrow;
+      this._card = document.createElement("eta-plant-card");
+      this._card.setConfig(this._cfg);
+      this._card.hass = this._hass;
+      this.shadowRoot.querySelector(".body").appendChild(this._card);
+      const gear = this.shadowRoot.querySelector(".gear");
+      if (gear) gear.addEventListener("click", () => this._openEditor());
+    }
+
+    _openEditor() {
+      const saved = this._cfg;
+      let draft = { ...saved };
+      const dlg = document.createElement("div");
+      dlg.className = "dlg";
+      dlg.innerHTML = `<div><h2>Einstellungen</h2><div class="ed"></div>
+        <div class="act"><button class="cancel">Abbrechen</button><button class="save">Speichern</button></div></div>`;
+      this._editor = document.createElement("eta-plant-card-editor");
+      this._editor.fixedEntry = true;
+      this._editor.setConfig(draft);
+      this._editor.hass = this._hass;
+      this._editor.addEventListener("config-changed", (ev) => {
+        ev.stopPropagation();
+        draft = { ...ev.detail.config, entry: this._entry };
+        this._card.setConfig(draft); // live preview
+      });
+      dlg.querySelector(".ed").appendChild(this._editor);
+      const close = () => { dlg.remove(); this._editor = null; };
+      dlg.querySelector(".cancel").addEventListener("click", () => { this._card.setConfig(saved); close(); });
+      dlg.querySelector(".save").addEventListener("click", async () => {
+        const { entry, ...config } = draft;
+        await this._hass.callWS({ type: "eta_webservices/panel_config/save", entry_id: this._entry, config });
+        this._cfg = draft;
+        close();
+      });
+      this.shadowRoot.appendChild(dlg);
+    }
+  }
+
+  if (!customElements.get("eta-plant-panel")) {
+    customElements.define("eta-plant-panel", EtaPlantPanel);
   }
 
   if (!customElements.get("eta-plant-card-editor")) {
