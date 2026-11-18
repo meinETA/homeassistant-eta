@@ -1,6 +1,5 @@
 <img src="custom_components/eta_webservices/www/icons/Kessel/HackVR/HackVR_gelb.webp" alt="ETA HACK VR" title="ETA HACK VR" align="right" height="90px"/>
-<img src="custom_components/eta_webservices/www/icons/Kessel/SH/SH_neu.webp" alt="ETA SH" title="ETA SH" align="right" height="90px"/>
-<img src="custom_components/eta_webservices/www/icons/Kessel/ePE/ePE_HW.webp" alt="ETA ePE" title="ETA ePE" align="right" height="90px"/>
+<img src="custom_components/eta_webservices/www/icons/Kessel/TWIN/SH_TWIN_neu.webp" alt="ETA SH-P TWIN" title="ETA SH-P TWIN" align="right" height="90px"/>
 <img src="custom_components/eta_webservices/www/icons/Kessel/Pellets/PU_PC_neu.webp" alt="ETA PU / PC" title="ETA PU / PC" align="right" height="90px"/>
 <img src="custom_components/eta_webservices/brand/logo.png" alt="ETA" title="ETA" align="right" height="44px"/>
 
