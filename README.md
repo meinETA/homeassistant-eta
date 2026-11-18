@@ -8,23 +8,23 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/meinETA/homeassistant-eta?style=for-the-badge&label=Release)](https://github.com/meinETA/homeassistant-eta/releases)
 [![Downloads](https://img.shields.io/github/downloads/meinETA/homeassistant-eta/total?style=for-the-badge&label=Downloads)](https://github.com/meinETA/homeassistant-eta/releases)
-[![Contributors](https://img.shields.io/github/contributors/meinETA/homeassistant-eta?style=for-the-badge&label=Contributors)](https://github.com/meinETA/homeassistant-eta/graphs/contributors)
 [![Issues](https://img.shields.io/github/issues/meinETA/homeassistant-eta?style=for-the-badge&label=Issues)](https://github.com/meinETA/homeassistant-eta/issues)
 [![HACS](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
 [![License: MIT](https://img.shields.io/badge/Licence-MIT-orange.svg)](LICENSE)
 ![Made with Python](https://img.shields.io/badge/Made%20with-Python-orange.svg)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.5%2B-41BDF5.svg)](https://www.home-assistant.io/)
-[![Buy us a coffee](https://img.shields.io/badge/Donate-Buy%20us%20a%20coffee-ffd557.svg)](https://www.buymeacoffee.com/christofpichler)
+
+<a href="https://www.buymeacoffee.com/christofpichler"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-orange.png" alt="Buy me a coffee" height="44"></a>
 
 Home Assistant integration for **ETA heating systems** (pellet, wood, and combined boilers). It reads sensors, states and counters from your ETA unit, and lets you switch and set writable parameters — all discovered automatically over the local [ETA REST API](https://www.meineta.at/javax.faces.resource/downloads/ETA-RESTful-v1.2.pdf.xhtml?ln=default&v=0), no cloud required.
 
 [![Open your Home Assistant instance and open this repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=meinETA&repository=homeassistant-eta&category=integration)
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=eta_webservices)
 
-### Plant card (beta)
+### Your plant on the dashboard
 
-Your ETA plant on a dashboard, like on the touch display: detected automatically, with live values, animated pipes and a control tab. See [Plant card (beta)](#plant-card-beta).
+Your ETA plant on a dashboard, like on the touch display: detected automatically, with live values, animated pipes and a control tab. See [Plant card](#plant-card).
 
 ![Plant card: pellet boiler with storage, buffer, heating circuit and fresh water module](images/plant-card-pellets.png)
 
@@ -32,11 +32,9 @@ Your ETA plant on a dashboard, like on the touch display: detected automatically
 | --- | --- |
 | ![Plant card: wood chip boiler with buffer and external demand](images/plant-card-chips.png) | ![Plant card: control tab with boiler, heating circuits and heating times](images/plant-card-control.png) |
 
-![ETA Heating devices in Home Assistant](images/devices_overview.png)
-
 ## Contents
 
-[Features](#features) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Moving from the previous repository](#moving-from-the-previous-repository) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Plant card (beta)](#plant-card-beta) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Troubleshooting](#troubleshooting)
+[Features](#features) · [Plant card](#plant-card) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Moving from the previous repository](#moving-from-the-previous-repository) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Troubleshooting](#troubleshooting)
 
 ## Features
 
@@ -51,9 +49,23 @@ Your ETA plant on a dashboard, like on the touch display: detected automatically
 - **Stable entity identities**: entity ids stay stable across firmware updates, terminal language changes and IP changes.
 - **Energy Dashboard** ready ([details](#integrating-the-eta-unit-into-the-energy-dashboard)).
 
+## Plant Card
+
+The integration ships a dashboard card that shows the plant like the ETA touch display: storage, boiler, buffer, heating circuits and fresh water module with live values and animated pipes. No extra installation is needed; the card is loaded automatically.
+
+- **Add it:** edit a dashboard, add a card and pick **ETA Plant (Beta)**. A panel view gives the best result.
+- **Detection:** the plant layout is detected automatically from the selected sensors. If a value is missing on the card, add the matching sensor in the integration options.
+- **Control tab:** switch the boiler and heating circuits on or off and select heat, setback or time program. This needs the corresponding switches (e.g. *On/Off button*) to be selected in the integration options.
+- **Card settings:** plant (if several are configured), name, language and an icon per block (e.g. the exact boiler model).
+- **Report a problem:** if the plant is not shown correctly, use **Open GitHub issue** in the card settings. It opens an issue with an anonymized description of the plant (object numbers, parameter addresses and units only; no names, values or IP addresses). Nothing is sent until the issue is submitted on GitHub, and issues are public.
+
+Layouts that are not covered yet will be added based on reports.
+
 ## Screenshots
 
 Every ETA function block becomes a device, and its entities are grouped into the standard Home Assistant cards (Sensors, Configuration, Diagnostic):
+
+<p align="center"><img src="images/devices_overview.png" alt="ETA Heating devices in Home Assistant" width="760"></p>
 
 |            Sensors             |              Diagnostic              |
 | :----------------------------: | :----------------------------------: |
@@ -96,17 +108,13 @@ Go to **Settings → Devices & Services → Add Integration**, search for **ETA 
 
 During setup the integration discovers everything on your unit and shows the counts per category, so you can pick exactly what you want (or add everything at once):
 
-![Choosing entities during setup](images/setup_choose_entities.png)
+<p align="center"><img src="images/setup_choose_entities.png" alt="Choosing entities during setup" width="520"></p>
 
 > **Note:** After you enter host and port, the integration scans every available endpoint once. On large systems (~800 entities) this initial scan can take **8–15 minutes** — please be patient. This only happens when adding the integration or when you explicitly rediscover; normal operation only polls the entities you selected.
 
 ## Moving from the Previous Repository
 
 Coming from `Tidone/homeassistant_eta_integration`? Update it to version 1.4.3 first, then follow the [migration guide](docs/migration.md). Your selection, entity IDs, devices and history are restored without a new scan.
-
-## Related Integrations
-
-- [eta-flow](https://github.com/orazefabian/eta-flow) — an animated heat-flow card for visualizing an ETA heating system.
 
 ## Updating the List of Sensors
 
@@ -185,18 +193,6 @@ Parameters with a unit of `°C`, `kg` or `%` can be written back to the unit. Af
 
 The integration provides services to write values to the unit. See the [wiki](https://github.com/meinETA/homeassistant-eta/wiki/Custom-Services) for details.
 
-## Plant Card (Beta)
-
-The integration ships a dashboard card that shows the plant like the ETA touch display: storage, boiler, buffer, heating circuits and fresh water module with live values and animated pipes. No extra installation is needed; the card is loaded automatically.
-
-- **Add it:** edit a dashboard, add a card and pick **ETA Plant (Beta)**. A panel view gives the best result.
-- **Detection:** the plant layout is detected automatically from the selected sensors. If a value is missing on the card, add the matching sensor in the integration options.
-- **Control tab:** switch the boiler and heating circuits on or off and select heat, setback or time program. This needs the corresponding switches (e.g. *On/Off button*) to be selected in the integration options.
-- **Card settings:** plant (if several are configured), name, language and an icon per block (e.g. the exact boiler model).
-- **Report a problem:** if the plant is not shown correctly, use **Open GitHub issue** in the card settings. It opens an issue with an anonymized description of the plant (object numbers, parameter addresses and units only; no names, values or IP addresses). Nothing is sent until the issue is submitted on GitHub, and issues are public.
-
-The card is in beta; layouts that are not covered yet will be added based on reports.
-
 ## Integrating the ETA Unit into the Energy Dashboard
 
 You can add the ETA unit to the Energy Dashboard by converting the total pellet consumption (kg) to energy (kWh) and adding it as a gas source.
@@ -222,7 +218,7 @@ template:
 
 You can also create the same helper from the UI:
 
-![template helper](images/template_sensor.png)
+<p align="center"><img src="images/template_sensor.png" alt="Template helper" width="380"></p>
 
 Then add the new sensor to the gas sources of your Energy Dashboard.
 
