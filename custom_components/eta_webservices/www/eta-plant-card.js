@@ -1,0 +1,847 @@
+/* ETA Heating – plant overview card (prototype). */
+(() => {
+  const W = 1600;
+  const H = 860;
+  const FLOOR = 610;
+  // bump when icon files change, so browsers do not keep stale images
+  const ICON_REV = "2026-11-18c";
+
+  // type -> [icon file, icon width on the 1600px canvas, aspect w/h]
+  const ICONS = {
+    silo: ["Austragungen_Befuellungen/Pelletslager/Pelletslager.webp", 290, 1.4206],
+    chip_store: ["Austragungen_Befuellungen/Hack_Austragung/Ruehrwerk.webp", 290, 1],
+    boiler: ["Kessel/Pellets/PU_PC_neu.webp", 290, 904 / 924],
+    buffer: ["FUBs/PufferFlex/Puffer.webp", 230, 720 / 1040],
+    heating_circuit: ["FUBs/Heizkreise/Radiator_ein.webp", 230, 640 / 400],
+    fwm: ["FUBs/FWM/FWM.webp", 250, 1080 / 860],
+    dhw: ["FUBs/Warmwasser/WW.webp", 200, 720 / 1040],
+    external_demand: ["FUBs/Externe_Waermeanforderung/Externe_Waermeanforderung.webp", 220, 1000 / 684],
+    solar: ["FUBs/Solar/Solar.webp", 240, 1],
+    unknown: ["FUBs/System/System.webp", 170, 1200 / 1000],
+    external_heat: ["FUBs/System/System.webp", 170, 1200 / 1000],
+  };
+  // selectable icons per block type: [label, file, aspect w/h]
+  const STORE_CHOICES = [
+      ["Pelletslager", "Austragungen_Befuellungen/Pelletslager/Pelletslager.webp", 1557 / 1096],
+      ["Saugsystem 3-fach", "Austragungen_Befuellungen/Pellets_Umschalteinheit/3fach.webp", 300 / 300],
+      ["Saugsystem 4-fach", "Austragungen_Befuellungen/Pellets_Umschalteinheit/4fach.webp", 300 / 300],
+      ["Saugsystem 8-fach", "Austragungen_Befuellungen/Pellets_Umschalteinheit/8fach.webp", 300 / 300],
+      ["Hackgut Rührwerk", "Austragungen_Befuellungen/Hack_Austragung/Ruehrwerk.webp", 1200 / 1200],
+      ["Hackgut Schnecke", "Austragungen_Befuellungen/Hack_Austragung/Schnecke.webp", 300 / 300],
+      ["Rührer", "Austragungen_Befuellungen/Ruehrer/Ruehrer.webp", 300 / 300],
+      ["Pendelschnecke", "Austragungen_Befuellungen/Pendelschnecke/Grundbild_1er.webp", 300 / 300],
+      ["Pendelschnecke 2-fach", "Austragungen_Befuellungen/Pendelschnecke/Grundbild_2er.webp", 300 / 300],
+      ["Schubboden", "Austragungen_Befuellungen/Schubboden/Schubboden_1er.webp", 300 / 300],
+      ["Schubboden 2-fach", "Austragungen_Befuellungen/Schubboden/Schubboden_2er.webp", 300 / 300],
+      ["Schubboden 3-fach", "Austragungen_Befuellungen/Schubboden/Schubboden_3er.webp", 300 / 300],
+  ];
+  const ICON_CHOICES = {
+    silo: STORE_CHOICES,
+    chip_store: STORE_CHOICES,
+    boiler: [
+      ["PU / PC", "Kessel/Pellets/PU_PC_neu.webp", 904 / 924],
+      ["PU / PC grau", "Kessel/Pellets/PU_PC_grau.webp", 904 / 924],
+      ["PE-K", "Kessel/Pellets/PEK.webp", 840 / 1000],
+      ["ePE-K", "Kessel/Pellets/ePEK.webp", 884 / 932],
+      ["ePE (gelb)", "Kessel/ePE/ePE_HW.webp", 904 / 924],
+      ["ePE BW (weiß)", "Kessel/ePE_BW/ePE_BW.webp", 560 / 880],
+      ["SH", "Kessel/SH/SH_neu.webp", 780 / 980],
+      ["SH alt", "Kessel/SH/SH.webp", 780 / 980],
+      ["SH-TWIN", "Kessel/TWIN/SH_TWIN_neu.webp", 1020 / 920],
+      ["SH-TWIN alt", "Kessel/TWIN/SH_TWIN.webp", 1020 / 920],
+      ["eSH (P3)", "Kessel/eSH/FUB_eSH_BE-P3.webp", 904 / 900],
+      ["eSH (P4)", "Kessel/eSH/FUB_eSH_BE-P4.webp", 1132 / 1124],
+      ["eSH-TWIN (P3)", "Kessel/eSH_eTWIN/FUB_eSH-eTWIN_BE-P3.webp", 904 / 900],
+      ["eSH-TWIN (P4)", "Kessel/eSH_eTWIN/FUB_eSH-eTWIN_BE-P4.webp", 1132 / 1124],
+      ["eTWIN (P3)", "Kessel/eTWIN/FUB_eTWIN_BE-P3.webp", 904 / 900],
+      ["eTWIN (P4)", "Kessel/eTWIN/FUB_eTWIN_BE-P4.webp", 1132 / 1124],
+      ["eHACK", "Kessel/eHack/eHack.webp", 1000 / 1000],
+      ["HACK", "Kessel/Hack/Hack.webp", 1000 / 1000],
+      ["HACK VR (gelb)", "Kessel/HackVR/HackVR_gelb.webp", 1180 / 900],
+      ["HACK VR (grau)", "Kessel/HackVR/HackVR_grau.webp", 1180 / 900],
+    ],
+    buffer: [
+      ["Puffer", "FUBs/PufferFlex/Puffer.webp", 720 / 1040],
+      ["Puffer mit Wendel", "FUBs/PufferFlex/Puffer_Wendel.webp", 720 / 1040],
+      ["Kombispeicher", "FUBs/PufferFlex/Kombi.webp", 300 / 300],
+    ],
+    heating_circuit: [
+      ["Heizkörper", "FUBs/Heizkreise/Radiator_ein.webp", 640 / 400],
+      ["Fußbodenheizung", "FUBs/Heizkreise/FBH_ein.webp", 640 / 400],
+    ],
+    fwm: [
+      ["Frischwassermodul", "FUBs/FWM/FWM.webp", 1080 / 860],
+      ["FWM Brauchwasser", "FUBs/FWM/FWM_Brauchwasser.webp", 1080 / 860],
+    ],
+  };
+  // visible bounds of each icon (fractions of the image), from the PNG alpha
+  const BBOX = {
+    "Austragungen_Befuellungen/Pellets_Umschalteinheit/3fach.webp": [0.000,0.060,1.000,0.950],
+    "Austragungen_Befuellungen/Pellets_Umschalteinheit/4fach.webp": [0.000,0.060,1.000,0.950],
+    "Austragungen_Befuellungen/Pellets_Umschalteinheit/8fach.webp": [0.000,0.060,1.000,0.950],
+    "Austragungen_Befuellungen/Hack_Austragung/Schnecke.webp": [0.007,0.023,0.980,0.993],
+    "Austragungen_Befuellungen/Ruehrer/Ruehrer.webp": [0.000,0.080,1.000,0.910],
+    "Austragungen_Befuellungen/Pendelschnecke/Grundbild_1er.webp": [0.150,0.160,0.850,0.847],
+    "Austragungen_Befuellungen/Pendelschnecke/Grundbild_2er.webp": [0.150,0.160,0.850,0.847],
+    "Austragungen_Befuellungen/Schubboden/Schubboden_1er.webp": [0.000,0.220,1.000,0.843],
+    "Austragungen_Befuellungen/Schubboden/Schubboden_2er.webp": [0.000,0.220,1.000,0.843],
+    "Austragungen_Befuellungen/Schubboden/Schubboden_3er.webp": [0.000,0.220,1.000,0.843],
+
+    "Austragungen_Befuellungen/Pelletslager/Pelletslager.webp": [0.008,0.011,0.992,0.989],
+    "Kessel/Pellets/PU_PC_neu.webp": [0.059,0.057,0.852,0.921],
+    "Kessel/Pellets/PU_PC_grau.webp": [0.059,0.057,0.927,0.924],
+    "Kessel/Pellets/PEK.webp": [0.068,0.069,0.921,0.91],
+    "Kessel/Pellets/ePEK.webp": [0.063,0.06,0.921,0.926],
+    "Kessel/ePE/ePE_HW.webp": [0.231,0.079,0.715,0.903],
+    "Kessel/ePE_BW/ePE_BW.webp": [0.095,0.06,0.875,0.925],
+    "Kessel/SH/SH_neu.webp": [0.078,0.07,0.736,0.92],
+    "Kessel/SH/SH.webp": [0.068,0.07,0.777,0.934],
+    "Kessel/TWIN/SH_TWIN_neu.webp": [0.087,0.032,0.876,0.927],
+    "Kessel/TWIN/SH_TWIN.webp": [0.087,0.027,0.9,0.952],
+    "Kessel/eSH/FUB_eSH_BE-P3.webp": [0.16,0.046,0.772,0.931],
+    "Kessel/eSH/FUB_eSH_BE-P4.webp": [0.161,0.045,0.773,0.931],
+    "Kessel/eSH_eTWIN/FUB_eSH-eTWIN_BE-P3.webp": [0.024,0.019,0.892,0.958],
+    "Kessel/eSH_eTWIN/FUB_eSH-eTWIN_BE-P4.webp": [0.024,0.019,0.892,0.958],
+    "Kessel/eTWIN/FUB_eTWIN_BE-P3.webp": [0.019,0.026,0.884,0.964],
+    "Kessel/eTWIN/FUB_eTWIN_BE-P4.webp": [0.019,0.025,0.885,0.964],
+    "Kessel/eHack/eHack.webp": [0.061,0.092,0.934,0.892],
+    "Kessel/Hack/Hack.webp": [0.061,0.069,0.918,0.918],
+    "Kessel/HackVR/HackVR_gelb.webp": [0.042,0.046,0.942,0.958],
+    "Kessel/HackVR/HackVR_grau.webp": [0.042,0.046,0.941,0.958],
+    "FUBs/PufferFlex/Puffer.webp": [0.156,0.071,0.836,0.929],
+    "FUBs/PufferFlex/Puffer_Wendel.webp": [0.157,0.073,0.838,0.93],
+    "FUBs/PufferFlex/Kombi.webp": [0.103,0.033,0.923,0.933],
+    "FUBs/Heizkreise/Radiator_ein.webp": [0.014,0.133,0.967,0.985],
+    "FUBs/Heizkreise/Radiator_aus.webp": [0.014,0.133,0.967,0.985],
+    "FUBs/Heizkreise/FBH_ein.webp": [0.0,0.18,0.956,0.95],
+    "FUBs/FWM/FWM.webp": [0.234,0.131,0.469,0.803],
+    "FUBs/FWM/FWM_Brauchwasser.webp": [0.056,0.131,0.913,0.916],
+    "FUBs/Warmwasser/WW.webp": [0.139,0.078,0.858,0.906],
+    "FUBs/Solar/Solar.webp": [0.09,0.053,0.898,0.894],
+    "FUBs/Externe_Waermeanforderung/Externe_Waermeanforderung.webp": [0.013,0.089,0.958,0.909],
+    "Austragungen_Befuellungen/Hack_Austragung/Ruehrwerk.webp": [0.045,0.194,0.999,0.867],
+    "FUBs/System/System.webp": [0.08,0.068,0.916,0.927],
+  };
+  // pipe connections inside the icon: [x, y, "h"|"v"] as image fractions
+  const ANCHORS = {
+    "FUBs/Heizkreise/Radiator_ein.webp": { in: [0.014, 0.239, "h"], out: [0.141, 0.985, "v"] },
+    "FUBs/Heizkreise/Radiator_aus.webp": { in: [0.014, 0.239, "h"], out: [0.141, 0.985, "v"] },
+    "FUBs/Heizkreise/FBH_ein.webp": { in: [0.0, 0.72, "h"], out: [0.02, 0.88, "h"] },
+    "FUBs/Externe_Waermeanforderung/Externe_Waermeanforderung.webp": { in: [0.03, 0.184, "h"], out: [0.013, 0.827, "h"] },
+    "FUBs/FWM/FWM_Brauchwasser.webp": { in: [0.07, 0.719, "h"], out: [0.056, 0.207, "h"] },
+  };
+  // visible height of the device on the 1600px canvas, per block type
+  const TARGET_H = {
+    silo: 175, chip_store: 200, boiler: 300, buffer: 330, heating_circuit: 140, fwm: 170,
+    dhw: 290, solar: 220, unknown: 150, external_demand: 150, external_heat: 150,
+  };
+  // default icon per ETA object id where the type alone is ambiguous
+  const DEFAULT_BY_OBJECT = {
+    "10561": ["Kessel/Hack/Hack.webp", 1],
+  };
+  const ICON_OFF = { heating_circuit: "FUBs/Heizkreise/Radiator_aus.webp" };
+  const LABELS = {
+    de: {
+      silo: "Silo", chip_store: "Hackgutlager", boiler: "Kessel", buffer: "Puffer", heating_circuit: "Heizkreis",
+      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul",
+      external_demand: "Ext. Anforderung", external_heat: "Fremdwärme",
+      outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
+      heat: "Heizen", lower: "Absenken", auto: "Zeitautomatik", ask_off: "wirklich ausschalten?",
+      no_ctl: "Keine Schalter gefunden. In den Optionen der Integration die Schalter (z. B. Ein/Aus Taste) auswählen.",
+    },
+    en: {
+      silo: "Storage", chip_store: "Chip store", boiler: "Boiler", buffer: "Buffer", heating_circuit: "Heating circuit",
+      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module",
+      external_demand: "Ext. demand", external_heat: "External heat",
+      outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
+      heat: "Heat", lower: "Setback", auto: "Time program", ask_off: "really switch off?",
+      no_ctl: "No switches found. Select the switches (e.g. On/Off button) in the integration options.",
+    },
+  };
+  // value roles shown above the icon
+  const TOP_VALUES = {
+    silo: ["stock"],
+    chip_store: ["discharge"],
+    boiler: ["temperature", "pressure", "hopper"],
+    buffer: ["charge"],
+    heating_circuit: ["flow"],
+    fwm: ["hot_water", "primary_flow"],
+    dhw: ["temperature"],
+    solar: ["collector"],
+    external_heat: ["temperature"],
+  };
+  const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "unavailable", "unknown"];
+  const ON = ["ein", "an", "on", "true", "läuft", "running"];
+  const CONSUMERS = ["heating_circuit", "external_demand", "fwm", "dhw", "unknown"];
+
+  const css = `
+  :host{display:block}
+  ha-card{display:block;overflow:hidden;background:#111;border:2px solid #f5b800;border-radius:14px}
+  .box{position:relative;width:100%}
+  .cv{position:absolute;left:0;top:0;width:${W}px;height:${H}px;transform-origin:0 0;
+      font-family:"Helvetica Neue",Arial,sans-serif;color:#f2f2f2;
+      background:repeating-linear-gradient(90deg,rgba(255,255,255,.012) 0 2px,rgba(0,0,0,.02) 2px 4px),
+        linear-gradient(180deg,#262626,#181818 40%,#121212)}
+  .hdr{position:absolute;left:0;right:0;top:0;height:64px;display:flex;align-items:center;gap:24px;padding:0 28px;
+       background:linear-gradient(#2c2c2c,#1a1a1a);border-bottom:3px solid #f5b800}
+  .hdr h1{font-size:28px;font-weight:600;margin:0;flex:1;display:flex;align-items:center;gap:14px}
+  .beta{font-size:15px;font-weight:700;letter-spacing:1px;color:#1a1a1a;background:#ffc400;border-radius:6px;padding:3px 8px}
+  .hdr .m{font-size:22px;color:#ddd}.hdr .m b{color:#ffc400;font-weight:500}
+  .floor{position:absolute;left:0;right:0;top:${FLOOR - 20}px;bottom:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,0) 30%);border-top:1px solid rgba(255,255,255,.06)}
+  .g{position:absolute;left:0;top:0}
+  .p{position:absolute;border-radius:5px;overflow:hidden}
+  .p.vl{background:#9c1f17}.p.rl{background:#1d4f9e}
+  .p i{position:absolute;will-change:transform}
+  .p.h i{left:-24px;right:-24px;top:2.5px;height:4px;
+    background:repeating-linear-gradient(90deg,transparent 0 12px,var(--dc) 12px 19px,transparent 19px 24px)}
+  .p.v i{top:-24px;bottom:-24px;left:2.5px;width:4px;
+    background:repeating-linear-gradient(180deg,transparent 0 12px,var(--dc) 12px 19px,transparent 19px 24px)}
+  .p.vl{--dc:#ff8a7a}.p.rl{--dc:#7fb2ff}
+  .on .p.h i{animation:mx .9s linear infinite}.on .p.v i{animation:my .9s linear infinite}
+  .on .p.rev i{animation-direction:reverse}
+  .off .p i{display:none}.off .p{opacity:.65}
+  .band{position:absolute;height:10px;overflow:hidden;background:#3a3a3a}
+  .band i{position:absolute;left:-20px;right:-20px;top:0;bottom:0;will-change:transform;
+    background:repeating-linear-gradient(45deg,#ffc400 0 9px,#2a2400 9px 14px)}
+  .on .band i{animation:mb 1.2s linear infinite}.off .band i{display:none}
+  @keyframes mx{to{transform:translateX(24px)}}
+  @keyframes my{to{transform:translateY(24px)}}
+  @keyframes mb{to{transform:translateX(19.8px)}}
+  .blk{position:absolute;top:64px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
+  .vals{display:flex;align-items:flex-end;gap:8px;padding-bottom:14px}
+  .stack{height:${FLOOR - 64}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+  .icon{display:flex;align-items:flex-end;position:relative}
+  .icon img{display:block;position:relative}
+  .shadow{position:absolute;left:8%;right:8%;bottom:-12px;height:26px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(0,0,0,.7),transparent 70%)}
+  .cv{contain:layout paint}
+  .name{font-size:22px;font-weight:600;margin-top:40px;text-align:center;max-width:300px}
+  .chip{margin-top:8px;padding:6px 16px;border-radius:9px;font-size:19px;font-weight:600;color:#1a1a1a;
+        background:linear-gradient(90deg,#ffd31a,#ffc000);max-width:300px;text-align:center}
+  .chip.idle{background:linear-gradient(90deg,#8a8a8a,#6f6f6f);color:#111}
+  .pill{padding:6px 12px;border-radius:10px;background:#1d1d1d;border:1px solid #3b3b3b;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 4px 10px rgba(0,0,0,.5);font-size:26px;font-weight:500;white-space:nowrap}
+  .pill u{text-decoration:none;color:#ffc400;font-size:22px;margin-left:3px}
+  .tank{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:column;
+        justify-content:space-around;align-items:center;padding:18% 0 6%}
+  .empty{padding:40px;font-size:24px}
+  .tabs{display:flex;gap:6px}
+  .tabs button{font:inherit;font-size:21px;font-weight:600;color:#ddd;background:#1b1b1b;border:1px solid #444;
+    border-radius:9px;padding:7px 20px;cursor:pointer}
+  .tabs button.act{color:#1a1a1a;background:linear-gradient(90deg,#ffd31a,#ffc000);border-color:#ffc000}
+  .pg{position:absolute;left:0;top:0;right:0;bottom:0}
+  .pg.hide{display:none}
+  .tiles{position:absolute;left:0;right:0;top:64px;bottom:0;padding:30px 28px;display:flex;flex-wrap:wrap;
+    gap:26px;align-content:flex-start;overflow-y:auto}
+  .tile{width:490px;box-sizing:border-box;background:#1b1b1b;border:1px solid #3b3b3b;border-radius:14px;padding:18px 20px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 6px 16px rgba(0,0,0,.5)}
+  .th{display:flex;align-items:center;gap:16px}
+  .th img{height:96px;width:110px;object-fit:contain}
+  .th .tx{flex:1;min-width:0}
+  .tn{font-size:24px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .th .chip{display:inline-block;margin-top:8px;font-size:17px;padding:4px 12px}
+  .tg{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:700;color:#bbb;cursor:pointer;user-select:none}
+  .tg b{width:76px;height:36px;border-radius:18px;background:#555;position:relative;transition:background .2s}
+  .tg b:after{content:"";position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:50%;
+    background:linear-gradient(#eee,#aaa);transition:left .2s}
+  .tg.on b{background:linear-gradient(90deg,#ffd31a,#ffc000)}.tg.on b:after{left:44px}
+  .modes{display:flex;gap:12px;margin-top:18px}
+  .md{flex:1;font:inherit;font-size:18px;font-weight:600;color:#ddd;background:#232323;border:1px solid #444;border-radius:12px;
+    padding:12px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .md i{font-style:normal;line-height:0}
+  .md.act{color:#ffc400;border-color:#ffc400;background:#2b2610}
+  .tile .vrow{display:flex;gap:10px;margin-top:14px}
+  .tile .pill{font-size:22px}
+  .busy{opacity:.5;pointer-events:none}
+  .ts{position:relative;margin-top:18px;height:46px;cursor:pointer}
+  .ts .bar{position:absolute;left:0;right:0;top:0;height:22px;border-radius:6px;background:#3a3a3a;overflow:hidden;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}
+  .ts .w{position:absolute;top:0;bottom:0;background:linear-gradient(#ffd31a,#ffb800)}
+  .ts .now{position:absolute;top:-6px;height:34px;width:3px;margin-left:-1px;background:#fff;box-shadow:0 0 4px #000}
+  .ts .ax{position:absolute;left:0;right:0;top:26px;font-size:14px;color:#aaa}
+  .ts .ax span{position:absolute;transform:translateX(-50%)}
+  .ts .ax span:first-child{transform:none}.ts .ax span:last-child{transform:translateX(-100%)}`;
+
+  // icons ship with the integration (served by card.py under /eta_webservices_static)
+  const ICON_BASE = "/eta_webservices_static/icons";
+  const iconSrc = (file) => `${ICON_BASE}/${file}?r=${ICON_REV}`;
+  // icon choices saved by earlier versions used .png names
+  const webp = (file) => (file ? String(file).replace(/\.png$/, ".webp") : file);
+
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+  class EtaPlantCard extends HTMLElement {
+    setConfig(config) {
+      const prevEntry = this._config && this._config.entry;
+      this._config = { ...config };
+      if (this._topo && prevEntry === this._config.entry && this._hass) {
+        this._build(); // keep the known plant, only re-render
+      } else {
+        this._topo = null;
+        this._built = false;
+      }
+    }
+
+    static getConfigElement() {
+      return document.createElement("eta-plant-card-editor");
+    }
+
+    static getStubConfig() {
+      return {};
+    }
+
+    getCardSize() {
+      return 8;
+    }
+
+    set hass(hass) {
+      this._hass = hass;
+      if (!this._topo && !this._loading) this._load();
+      if (this._built && this._builtLang !== this._lang()) this._build(); // HA language changed
+      else if (this._built) this._update();
+    }
+
+    async _load() {
+      this._loading = true;
+      try {
+        const all = await this._hass.callWS({ type: "eta_webservices/topology" });
+        const want = this._config.entry;
+        this._topo = (want && all.find((e) => e.entry_id === want || e.title === want)) || all[0] || null;
+      } catch (err) {
+        this._topo = null;
+        this._error = String(err && err.message ? err.message : err);
+      }
+      this._loading = false;
+      this._build();
+    }
+
+    _lang() {
+      const lang = this._config.language || (this._hass.locale && this._hass.locale.language) || this._hass.language || "en";
+      return lang.startsWith("de") ? "de" : "en";
+    }
+
+    _t(key) {
+      const lang = this._lang();
+      return (LABELS[lang.startsWith("de") ? "de" : "en"] || LABELS.en)[key] || key;
+    }
+
+    _build() {
+      if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+      const root = this.shadowRoot;
+      root.innerHTML = `<style>${css}</style><ha-card><div class="box"><div class="cv"></div></div></ha-card>`;
+      const cv = root.querySelector(".cv");
+      if (!this._topo) {
+        cv.innerHTML = `<div class="empty">ETA: ${this._error || "keine Anlage gefunden"}</div>`;
+        this._fit();
+        return;
+      }
+      const blocks = this._topo.blocks.filter((b) => ICONS[b.type] || b.type === "unknown");
+      // boilers with their own discharge (wood chips) get a virtual store in front
+      if (!blocks.some((b) => b.type === "silo")) {
+        const bi = blocks.findIndex((b) => b.type === "boiler" && b.roles.auger);
+        if (bi >= 0) {
+          const bo = blocks[bi];
+          const roles = { auger: bo.roles.auger };
+          if (bo.roles.discharge) roles.discharge = bo.roles.discharge;
+          blocks.splice(bi, 0, { id: `${bo.id}/store`, type: "chip_store", object: "", name: null, roles, entities: [] });
+        }
+      }
+      this._blocks = blocks;
+      const n = Math.max(blocks.length, 1);
+      const colW = W / n;
+      const scale = Math.min(1, colW / 330);
+      this._geo = blocks.map((b, i) => {
+        let [file, iw, aspect] = ICONS[b.type] || ICONS.unknown;
+        if (DEFAULT_BY_OBJECT[b.object]) [file, aspect] = DEFAULT_BY_OBJECT[b.object];
+        const pick = webp((this._config.icons || {})[b.id]);
+        const choice = pick && (ICON_CHOICES[b.type] || []).find((c) => c[1] === pick);
+        if (pick) { file = pick; aspect = choice ? choice[2] : aspect; }
+        const bx = BBOX[file] || [0, 0, 1, 1];
+        // same visible device height per type, independent of the image margins
+        let h = (TARGET_H[b.type] || TARGET_H.unknown) / (bx[3] - bx[1]);
+        let w = h * aspect;
+        const maxVisW = colW * 0.85;
+        const visW = (bx[2] - bx[0]) * w;
+        if (visW > maxVisW) { w *= maxVisW / visW; h *= maxVisW / visW; }
+        const cx = colW * (i + 0.5);
+        const x0 = cx - w / 2;
+        const sink = (1 - bx[3]) * h; // transparent margin below the device
+        const y0 = FLOOR - h + sink;
+        return {
+          b, file, cx, w, h, x0, y0, sink, left: x0 + bx[0] * w, right: x0 + bx[2] * w,
+          top: y0 + bx[1] * h, bottom: y0 + bx[3] * h, anchors: ANCHORS[file],
+        };
+      });
+
+      let html = `<div class="pg plant"><div class="floor"></div>${this._pipes()}`;
+      for (const g of this._geo) {
+        const b = g.b;
+        let shown = (TOP_VALUES[b.type] || []).filter((r) => b.roles[r]).map((r) => b.roles[r]);
+        const hasInner = b.type === "buffer" && ["top", "middle", "bottom"].some((r) => b.roles[r]);
+        if (!shown.length && !hasInner) shown = this._autoValues(b); // no known roles: pick measurements
+        shown = shown.slice(0, Math.max(1, Math.floor(colW / 110))); // narrow columns: fewer value boxes
+        const vals = shown.map((e) => `<div class="pill" data-e="${e}"></div>`).join("");
+        const tank = b.type === "buffer"
+          ? `<div class="tank">${["top", "middle", "bottom"].filter((r) => b.roles[r])
+              .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("")}</div>`
+          : "";
+        html += `<div class="blk" data-b="${b.id}" style="left:${g.cx - colW / 2}px;width:${colW}px">
+          <div class="stack"><div class="vals">${vals}</div>
+          <div class="icon" style="margin-bottom:${-g.sink}px"><div class="shadow" style="bottom:${g.sink - 12}px"></div><img data-type="${b.type}" src="${iconSrc(g.file)}" style="width:${g.w}px">${tank}</div></div>
+          <div class="name">${this._name(b)}</div>
+          ${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}
+        </div>`;
+      }
+      const ctl = this._controlHtml();
+      const tab = ctl && this._tab === "ctl" ? "ctl" : "plant";
+      html += `</div><div class="pg ctl ${tab === "ctl" ? "" : "hide"}">${ctl || ""}</div>`;
+      html = html.replace('<div class="pg plant">', `<div class="pg plant ${tab === "plant" ? "" : "hide"}">`);
+      html += `<div class="hdr"><h1>${esc(this._config.title || this._topo.title || "ETA")}<span class="beta">BETA</span></h1>
+        ${ctl ? `<div class="tabs"><button data-tab="plant" class="${tab === "plant" ? "act" : ""}">${this._t("tab_plant")}</button><button data-tab="ctl" class="${tab === "ctl" ? "act" : ""}">${this._t("tab_ctl")}</button></div>` : ""}
+        <span class="m" id="outside"></span></div>`;
+      cv.innerHTML = html;
+      cv.querySelectorAll(".tabs button").forEach((btn) => btn.addEventListener("click", () => {
+        this._tab = btn.dataset.tab;
+        cv.querySelectorAll(".tabs button").forEach((x) => x.classList.toggle("act", x === btn));
+        cv.querySelector(".pg.plant").classList.toggle("hide", this._tab !== "plant");
+        cv.querySelector(".pg.ctl").classList.toggle("hide", this._tab !== "ctl");
+      }));
+      // on/off opens the HA dialog of the switch entity: switching happens there,
+      // so the user sees which entity is behind it and nothing toggles by accident
+      cv.querySelectorAll(".tg").forEach((el) => el.addEventListener("click", () => {
+        this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: el.dataset.sw }, bubbles: true, composed: true }));
+      }));
+      cv.querySelectorAll(".ts").forEach((el) => el.addEventListener("click", () => {
+        const b = this._blocks.find((x) => x.id === el.dataset.ts);
+        const day = (new Date().getDay() + 6) % 7;
+        const entityId = b && (b.roles[`slot_${day}_0`] || b.roles.slot_0_0);
+        if (entityId) this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId }, bubbles: true, composed: true }));
+      }));
+      cv.querySelectorAll(".md").forEach((el) => el.addEventListener("click", () => {
+        if (!this._isOn(el.dataset.md)) this._call(el, el.dataset.md, "turn_on");
+      }));
+      cv.querySelectorAll(".blk").forEach((el) => {
+        el.addEventListener("click", () => {
+          const b = this._blocks.find((x) => x.id === el.dataset.b);
+          const entityId = b.roles.status || Object.values(b.roles)[0] || b.entities[0];
+          if (!entityId) return;
+          this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId }, bubbles: true, composed: true }));
+        });
+      });
+      this._built = true;
+      this._builtLang = this._lang();
+      if (!this._ro) {
+        this._ro = new ResizeObserver(() => this._fit());
+        this._ro.observe(this);
+        window.addEventListener("resize", () => this._fit());
+      }
+      this._fit();
+      this._update();
+    }
+
+    // second tab: boiler / heating circuit control via the integration's switches
+    _controlHtml() {
+      const tiles = this._blocks.filter((b) => b.roles.switch || b.roles.heat || b.roles.auto || b.roles.lower);
+      if (!tiles.length) {
+        const any = this._blocks.some((b) => ["boiler", "heating_circuit"].includes(b.type));
+        return any ? `<div class="tiles"><div class="empty">${this._t("no_ctl")}</div></div>` : null;
+      }
+      const geo = Object.fromEntries(this._geo.map((g) => [g.b.id, g]));
+      const svg = (body) => `<svg viewBox="0 0 40 40" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round">${body}</svg>`;
+      const rays = [0, 45, 90, 135, 180, 225, 270, 315].map((d) => {
+        const r = (d * Math.PI) / 180;
+        return `<line x1="${20 + 12 * Math.cos(r)}" y1="${20 + 12 * Math.sin(r)}" x2="${20 + 17 * Math.cos(r)}" y2="${20 + 17 * Math.sin(r)}"/>`;
+      }).join("");
+      const modes = [
+        ["heat", svg(`<circle cx="20" cy="20" r="7" fill="currentColor"/>${rays}`)],
+        // crescent lit on the left side, as on the ETA terminal
+        ["lower", svg(`<path d="M24 4.5A16 16 0 1 0 35.5 24 13 13 0 0 1 24 4.5Z" fill="currentColor" stroke="none"/>`)],
+        ["auto", svg(`<circle cx="20" cy="20" r="15"/><path d="M20 10v10l7 4"/>`)],
+      ];
+      return `<div class="tiles">${tiles.map((b) => {
+        const name = this._name(b);
+        const vals = (TOP_VALUES[b.type] || []).filter((r) => b.roles[r]).slice(0, 2)
+          .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("");
+        // temporary keys when available: "Heizen" = ETA "Kommen" (until the next setback time),
+        // "Absenken" = ETA "Gehen" (until the next heating time)
+        const temp = { heat: "come", lower: "go" };
+        const target = (r) => (temp[r] && b.roles[temp[r]]) || b.roles[r];
+        const m = modes.filter(([r]) => target(r)).map(([r, ic]) => {
+          const also = temp[r] && b.roles[temp[r]] && b.roles[r] ? ` data-also="${b.roles[r]}"` : "";
+          return `<button class="md" data-md="${target(r)}"${also}><i>${ic}</i>${this._t(r)}</button>`;
+        }).join("");
+        return `<div class="tile">
+          <div class="th">${geo[b.id] ? `<img src="${iconSrc(geo[b.id].file)}">` : ""}
+            <div class="tx"><div class="tn">${name}</div>${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}</div>
+            ${b.roles.switch ? `<div class="tg" data-sw="${b.roles.switch}" data-n="${name}">0<b></b>I</div>` : ""}
+          </div>
+          ${vals ? `<div class="vrow">${vals}</div>` : ""}
+          ${m ? `<div class="modes">${m}</div>` : ""}
+          ${b.roles.slot_0_0 || b.roles.slot_6_2 ? `<div class="ts" data-ts="${b.id}"><div class="bar"></div>
+            <div class="ax">${[0, 6, 12, 18, 24].map((h) => `<span style="left:${h / 24 * 100}%">${h}</span>`).join("")}</div></div>` : ""}
+        </div>`;
+      }).join("")}</div>`;
+    }
+
+    // "06:00 - 21:00" or "06:00 - 21:00: 21 °C" -> [start, end] in minutes, null if empty
+    _slot(entityId) {
+      const st = entityId && this._hass.states[entityId];
+      const m = st && String(st.state).match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+      if (!m) return null;
+      const a = +m[1] * 60 + +m[2];
+      const z = +m[3] * 60 + +m[4];
+      return z > a ? [a, z] : null;
+    }
+
+    async _call(el, entityId, service) {
+      el.classList.add("busy");
+      try {
+        const domain = entityId.startsWith("switch.") ? "switch" : "homeassistant";
+        await this._hass.callService(domain, service, { entity_id: entityId });
+      } finally {
+        setTimeout(() => el.classList.remove("busy"), 1500);
+      }
+    }
+
+    // up to two meaningful measurements of a block without known roles
+    _autoValues(b) {
+      const units = ["°C", "%", "bar", "kg"];
+      return (b.entities || []).filter((e) => {
+        const st = this._hass.states[e];
+        if (!st || Number.isNaN(Number(st.state))) return false;
+        return units.includes(st.attributes.unit_of_measurement) && !e.endsWith("_writable");
+      }).sort((x, y) => units.indexOf(this._hass.states[x].attributes.unit_of_measurement)
+        - units.indexOf(this._hass.states[y].attributes.unit_of_measurement)).slice(0, 2);
+    }
+
+    _name(b) {
+      let n = (b.name || "").split(">").pop().trim();
+      const title = (this._topo.title || "").trim();
+      if (title && n.toLowerCase().startsWith(title.toLowerCase() + " ")) n = n.slice(title.length + 1);
+      return n.replace(/\[/g, "(").replace(/\]/g, ")") || this._t(b.type);
+    }
+
+    _pipes() {
+      const g = this._geo;
+      const find = (t) => g.find((x) => x.b.type === t);
+      const silo = find("silo") || find("chip_store");
+      const boiler = find("boiler");
+      const buffer = find("buffer");
+      const consumers = g.filter((x) => CONSUMERS.includes(x.b.type));
+      const T = 9;
+      const ys = FLOOR - 300; // supply line height, above the consumers and their values
+      const yr = ys + 34; // return runs close below the supply
+      // one straight pipe piece; dir +1 = flow towards (x2,y2)
+      const seg = (x1, y1, x2, y2, cls) => {
+        const hz = y1 === y2;
+        const rev = hz ? x2 < x1 : y2 < y1;
+        const l = Math.min(x1, x2) - T / 2;
+        const t = Math.min(y1, y2) - T / 2;
+        const w = hz ? Math.abs(x2 - x1) + T : T;
+        const h = hz ? T : Math.abs(y2 - y1) + T;
+        return `<div class="p ${cls} ${hz ? "h" : "v"}${rev ? " rev" : ""}" style="left:${l}px;top:${t}px;width:${w}px;height:${h}px"><i></i></div>`;
+      };
+      const line = (pts, cls) => {
+        let out = "";
+        for (let i = 1; i < pts.length; i++) out += seg(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], cls);
+        return out;
+      };
+      const group = (key, inner) => `<div class="g" data-flow="${key}">${inner}</div>`;
+      let s = "";
+      if (silo && boiler) {
+        s += group(silo.b.id, `<div class="band" style="left:${silo.right}px;top:${FLOOR - 70}px;width:${boiler.left - silo.right}px"><i></i></div>`);
+      }
+      if (boiler && buffer) {
+        const ysb = FLOOR - 190; // boiler <-> buffer at device height
+        s += group(boiler.b.id,
+          line([[boiler.right, ysb], [buffer.left, ysb]], "vl") +
+          line([[buffer.left, ysb + 34], [boiler.right, ysb + 34]], "rl"));
+      }
+      const src = buffer || boiler;
+      if (src) {
+        consumers.forEach((c, i) => {
+          const a = c.anchors;
+          const inX = a ? c.x0 + a.in[0] * c.w : c.left;
+          const inY = a ? c.y0 + a.in[1] * c.h : c.top + (c.bottom - c.top) * 0.3;
+          const out = a && a.out;
+          const outX = out ? c.x0 + out[0] * c.w : c.left;
+          const outY = out ? c.y0 + out[1] * c.h : c.top + (c.bottom - c.top) * 0.8;
+          // the riser of the upper connection sits closer to the icon
+          const returnAbove = out && out[2] === "h" && outY < inY;
+          const xv = returnAbove ? inX - 64 : inX - 30; // supply riser
+          const xr = returnAbove ? inX - 30 : xv - 34; // return riser
+          const vl = [[src.right, ys], [xv, ys], [xv, inY], [inX, inY]];
+          let rl;
+          if (out && out[2] === "v") {
+            rl = [[outX, outY], [outX, outY + 10], [xr, outY + 10], [xr, yr], [src.right, yr]];
+          } else {
+            rl = [[outX, outY], [xr, outY], [xr, yr], [src.right, yr]];
+          }
+          s += group(c.b.id, line(vl, "vl") + line(rl, "rl"));
+        });
+      }
+      return s;
+    }
+
+    _fit() {
+      const box = this.shadowRoot && this.shadowRoot.querySelector(".box");
+      const cv = this.shadowRoot && this.shadowRoot.querySelector(".cv");
+      if (!box || !cv) return;
+      const sw = box.clientWidth / W;
+      if (!sw) { requestAnimationFrame(() => this._fit()); return; }
+      // never taller than the visible area below the card top (panel / full screen view)
+      const top = Math.max(0, box.getBoundingClientRect().top + window.scrollY);
+      const avail = window.innerHeight - Math.min(top, window.innerHeight / 2) - 12;
+      const s = avail > 200 ? Math.min(sw, avail / H) : sw;
+      cv.style.transform = `scale(${s})`;
+      cv.style.left = `${(box.clientWidth - W * s) / 2}px`;
+      box.style.height = `${H * s}px`;
+    }
+
+    _fmt(entityId) {
+      const st = this._hass.states[entityId];
+      if (!st) return null;
+      const unit = st.attributes.unit_of_measurement || "";
+      let v = st.state;
+      const num = Number(v);
+      if (v !== "" && !Number.isNaN(num)) {
+        const digits = unit === "bar" ? 2 : 0;
+        v = num.toLocaleString(this._hass.locale ? this._hass.locale.language : undefined, {
+          maximumFractionDigits: digits, minimumFractionDigits: digits,
+        });
+      }
+      return `${v}<u>${unit}</u>`;
+    }
+
+    _isOn(entityId) {
+      const st = this._hass.states[entityId];
+      if (!st) return false;
+      const num = Number(st.state);
+      if (!Number.isNaN(num)) return num > 0;
+      return ON.includes(String(st.state).toLowerCase());
+    }
+
+    _isIdle(entityId) {
+      const st = this._hass.states[entityId];
+      if (!st) return true;
+      const v = String(st.state).toLowerCase();
+      // ETA texts like "Aus Heizgrenze [Absenken]" or "Bereit" count as idle
+      return IDLE.some((w) => v === w || v.startsWith(`${w} `));
+    }
+
+    _update() {
+      const root = this.shadowRoot;
+      if (!root || !this._topo) return;
+      root.querySelectorAll("[data-e]").forEach((el) => {
+        const v = this._fmt(el.dataset.e);
+        const html = v === null ? "–" : v;
+        if (el._v !== html) { el.innerHTML = html; el._v = html; }
+      });
+      root.querySelectorAll("[data-chip]").forEach((el) => {
+        const st = this._hass.states[el.dataset.chip];
+        // ETA status texts like "Ein [Heizen]" -> "Ein Heizen"
+        const txt = st ? String(st.state).replace(/[[\]]/g, " ").replace(/\s+/g, " ").trim() : "–";
+        if (el.textContent !== txt) el.textContent = txt;
+        el.classList.toggle("idle", this._isIdle(el.dataset.chip));
+      });
+      root.querySelectorAll(".tg").forEach((el) => {
+        const on = this._isOn(el.dataset.sw);
+        if (el._on !== on) { el.classList.toggle("on", on); el._on = on; }
+      });
+      root.querySelectorAll(".md").forEach((el) => {
+        const on = this._isOn(el.dataset.md) || (el.dataset.also ? this._isOn(el.dataset.also) : false);
+        if (el._on !== on) { el.classList.toggle("act", on); el._on = on; }
+      });
+      const now = new Date();
+      const day = (now.getDay() + 6) % 7;
+      root.querySelectorAll(".ts").forEach((el) => {
+        const b = this._blocks.find((x) => x.id === el.dataset.ts);
+        if (!b) return;
+        const ranges = [0, 1, 2].map((n) => this._slot(b.roles[`slot_${day}_${n}`])).filter(Boolean);
+        const pos = ((now.getHours() * 60 + now.getMinutes()) / 1440) * 100;
+        const html = ranges.map(([a, z]) => `<div class="w" style="left:${a / 14.4}%;width:${(z - a) / 14.4}%"></div>`).join("")
+          + `<div class="now" style="left:${pos.toFixed(1)}%"></div>`;
+        const bar = el.querySelector(".bar");
+        if (bar._v !== html) { bar.innerHTML = html; bar._v = html; }
+      });
+      const out = this._topo.plant && this._topo.plant.outside;
+      const o = root.getElementById("outside");
+      const outOk = out && this._hass.states[out] && !Number.isNaN(Number(this._hass.states[out].state));
+      if (o) o.innerHTML = outOk ? `${this._t("outside")} <b>${this._fmt(out).replace(/<\/?u>/g, " ")}</b>` : "";
+      // flows
+      const active = (b) => {
+        if (!b) return false;
+        if (b.roles.pump) return this._isOn(b.roles.pump);
+        if (b.roles.auger) return this._isOn(b.roles.auger);
+        return b.roles.status ? !this._isIdle(b.roles.status) : false;
+      };
+      root.querySelectorAll("[data-flow]").forEach((el) => {
+        const key = el.dataset.flow;
+        const b = this._blocks.find((x) => x.id === key);
+        const on = active(b);
+        if (el._on !== on) { el.classList.toggle("on", on); el.classList.toggle("off", !on); el._on = on; }
+      });
+      root.querySelectorAll("img[data-type=heating_circuit]").forEach((img) => {
+        const b = this._blocks.find((x) => x.id === img.closest(".blk").dataset.b);
+        if (b && (this._config.icons || {})[b.id]) return;
+        const off = b && b.roles.pump && !this._isOn(b.roles.pump);
+        const file = off ? ICON_OFF.heating_circuit : ICONS.heating_circuit[0];
+        const src = iconSrc(file);
+        if (!img.src.includes(file)) img.src = src;
+      });
+    }
+  }
+
+  // Target of the "report plant" button (test: dev repo).
+  const REPORT_REPO = "meinETA/dev-meinETA-ha";
+
+  class EtaPlantCardEditor extends HTMLElement {
+    setConfig(config) {
+      this._config = { ...config };
+      this._render();
+    }
+
+    set hass(hass) {
+      this._hass = hass;
+      if (!this._topo && !this._loading) {
+        this._loading = true;
+        hass.callWS({ type: "eta_webservices/topology" }).then((all) => {
+          this._all = all;
+          const want = this._config && this._config.entry;
+          this._topo = (want && all.find((e) => e.entry_id === want || e.title === want)) || all[0] || null;
+          this._render();
+        });
+      }
+    }
+
+    _render() {
+      if (!this._config) return;
+      if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+      const icons = this._config.icons || {};
+      const list = this._topo ? [...this._topo.blocks] : [];
+      if (!list.some((b) => b.type === "silo")) {
+        const bo = list.find((b) => b.type === "boiler" && b.roles.auger);
+        if (bo) list.splice(list.indexOf(bo), 0, { id: `${bo.id}/store`, type: "chip_store", name: "Lager" });
+      }
+      const rows = list.filter((b) => ICON_CHOICES[b.type]).map((b) => {
+        const name = (b.name || b.type).split(">").pop().trim().replace(/\[/g, "(").replace(/\]/g, ")");
+        const opts = ICON_CHOICES[b.type].map(([label, file]) =>
+          `<option value="${file}" ${webp(icons[b.id]) === file ? "selected" : ""}>${label}</option>`).join("");
+        return `<label>${name}<select data-b="${b.id}"><option value="">Standard</option>${opts}</select></label>`;
+      }).join("");
+      this.shadowRoot.innerHTML = `<style>
+        label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0;font-size:14px}
+        select,input{min-width:200px;padding:6px;font-size:14px}
+        .report{margin-top:20px;padding-top:12px;border-top:1px solid var(--divider-color,#444);font-size:13px}
+        .report textarea{width:100%;box-sizing:border-box;font-family:monospace;font-size:11px;margin:8px 0}
+        .report button{padding:6px 12px;cursor:pointer}
+      </style>
+      ${this._all && this._all.length > 1 ? `<label>Anlage<select id="entry">${this._all.map((e) =>
+        `<option value="${e.title}" ${this._topo && this._topo.entry_id === e.entry_id ? "selected" : ""}>${e.title}</option>`).join("")}</select></label>` : ""}
+      <label>Sprache<select id="lang">${[["", "Automatisch (HA)"], ["de", "Deutsch"], ["en", "English"]].map(([v, l]) =>
+        `<option value="${v}" ${(this._config.language || "") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label>Name der Anlage<input id="title" value="${esc(this._config.title || "")}" placeholder="${esc((this._topo && this._topo.title) || "ETA")}"></label>
+      ${rows || "<p>Anlage wird geladen …</p>"}
+      <div class="report">
+        <b>Anlage melden (Beta)</b>
+        <p>Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ erstellt ein Issue, in dem die Anlagendaten
+        schon eingetragen sind. Sie enthalten nur Objekt-Nummern, Parameter-Adressen und Einheiten, keine Namen, keine Werte,
+        keine IP. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst.
+        Das Issue ist öffentlich sichtbar. Achte auf dem Screenshot auf persönliche Namen.</p>
+        <button id="dl">Anlagendatei herunterladen</button> <button id="gh">GitHub-Issue öffnen</button>
+        ${this._report ? `<p>Inhalt der Datei <code>eta-anlage.json</code>:</p><textarea readonly rows="10">${this._report}</textarea>` : ""}
+      </div>`;
+      this.shadowRoot.getElementById("lang").addEventListener("change", (ev) => {
+        const cfg = { ...this._config, language: ev.target.value };
+        if (!cfg.language) delete cfg.language;
+        this._emit(cfg);
+      });
+      this.shadowRoot.getElementById("title").addEventListener("change", (ev) => {
+        const cfg = { ...this._config, title: ev.target.value.trim() };
+        if (!cfg.title) delete cfg.title;
+        this._emit(cfg);
+      });
+      const entrySel = this.shadowRoot.getElementById("entry");
+      if (entrySel) entrySel.addEventListener("change", (ev) => {
+        this._topo = this._all.find((e) => e.title === ev.target.value) || null;
+        const cfg = { ...this._config, entry: ev.target.value };
+        delete cfg.icons; // icon choices belong to the previous plant
+        this._emit(cfg);
+        this._render();
+      });
+      this.shadowRoot.querySelectorAll("select[data-b]").forEach((sel) => sel.addEventListener("change", (ev) => {
+        const next = { ...(this._config.icons || {}) };
+        if (ev.target.value) next[ev.target.dataset.b] = ev.target.value;
+        else delete next[ev.target.dataset.b];
+        const cfg = { ...this._config, icons: next };
+        if (!Object.keys(next).length) delete cfg.icons;
+        this._emit(cfg);
+      }));
+      const $ = (id) => this.shadowRoot.getElementById(id);
+      $("dl").addEventListener("click", async () => {
+        await this._makeReport();
+        this._download();
+        this._render();
+      });
+      $("gh").addEventListener("click", async () => {
+        // open the window synchronously, otherwise the popup blocker kicks in
+        const win = window.open("about:blank", "_blank");
+        await this._makeReport();
+        const base = `https://github.com/${REPORT_REPO}/issues/new?labels=plant-card&title=${encodeURIComponent("Plant card: ")}`;
+        const head = "**What is wrong?**\n\n\n**Screenshot:**\n\n\n";
+        const packed = await this._pack(this._report);
+        let body = `${head}**Plant data** (eta-plant-report v1, gzip+base64):\n\n\`\`\`\n${packed}\n\`\`\`\n`;
+        if (!packed || (base + encodeURIComponent(body)).length > 8000) {
+          this._download(); // too large for the link: attach the file instead
+          body = `${head}**Plant data:** please attach the downloaded file \`eta-anlage.json\`.\n`;
+        }
+        const url = `${base}&body=${encodeURIComponent(body)}`;
+        if (win) win.location.href = url; else window.open(url, "_blank");
+        this._render();
+      });
+    }
+
+    async _makeReport() {
+      const rep = await this._hass.callWS({ type: "eta_webservices/report", entry_id: this._topo && this._topo.entry_id });
+      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, ...rep }, null, 1);
+    }
+
+    async _pack(text) {
+      if (!window.CompressionStream) return null;
+      const min = JSON.stringify(JSON.parse(text));
+      const stream = new Blob([min]).stream().pipeThrough(new CompressionStream("gzip"));
+      const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+      let bin = "";
+      bytes.forEach((b) => { bin += String.fromCharCode(b); });
+      return btoa(bin).replace(/(.{76})/g, "$1\n");
+    }
+
+    _download() {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([this._report], { type: "application/json" }));
+      a.download = "eta-anlage.json";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }
+
+    _emit(config) {
+      this._config = config;
+      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
+    }
+  }
+
+  if (!customElements.get("eta-plant-card-editor")) {
+    customElements.define("eta-plant-card-editor", EtaPlantCardEditor);
+  }
+
+  if (!customElements.get("eta-plant-card")) {
+    customElements.define("eta-plant-card", EtaPlantCard);
+    window.customCards = window.customCards || [];
+    window.customCards.push({
+      type: "eta-plant-card",
+      name: "ETA Plant (Beta)",
+      description: "Übersicht der ETA-Heizanlage mit Live-Werten. Beta: Rückmeldungen bitte als GitHub-Issue.",
+    });
+  }
+})();

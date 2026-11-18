@@ -6,8 +6,15 @@ from typing import Any
 
 from homeassistant import config_entries, core
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
-from homeassistant.helpers import entity_registry as er, issue_registry as ir
+from homeassistant.helpers import (
+    config_validation as cv,
+    entity_registry as er,
+    issue_registry as ir,
+)
+from homeassistant.helpers.typing import ConfigType
+from homeassistant.loader import async_get_integration
 
+from .card import async_setup_card
 from .config_flow import EtaFlowHandler
 from .const import (
     CHOSEN_FLOAT_SENSORS,
@@ -49,6 +56,8 @@ from .migration_restore import (
     async_restore_registries,
 )
 from .services import async_setup_services
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -209,6 +218,13 @@ def _sync_migration_issue(
         translation_key="legacy_scheme_migration",
         translation_placeholders={"old_prefix": f"eta_{stable}_"},
     )
+
+
+async def async_setup(hass: core.HomeAssistant, config: ConfigType) -> bool:
+    """Register the dashboard card and its topology API."""
+    integration = await async_get_integration(hass, DOMAIN)
+    await async_setup_card(hass, str(integration.version))
+    return True
 
 
 async def async_setup_entry(
