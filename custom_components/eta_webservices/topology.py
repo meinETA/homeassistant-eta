@@ -234,6 +234,11 @@ def async_get_topology(hass: HomeAssistant) -> list[dict[str, Any]]:
             device_name = (device.name_by_user or device.name) if device else None
             rows.append((reg_entry.unique_id, reg_entry.entity_id, device_name))
         blocks, plant = build_blocks(rows, stable)
+        # computed values of the integration ("Auswertung" device)
+        prefix = f"eta_{stable}_analytics_"
+        for reg_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
+            if reg_entry.disabled_by is None and reg_entry.unique_id.startswith(prefix):
+                plant[reg_entry.unique_id[len(prefix) :]] = reg_entry.entity_id
         result.append(
             {
                 "entry_id": entry.entry_id,

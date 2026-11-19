@@ -140,6 +140,37 @@
             },
             "latest_error_sensor": {
                 "name": "Neuester aktiver Fehler"
+            },
+            "analytics_ash_fill": {
+                "name": "Aschebox Füllstand"
+            },
+            "analytics_ash_days": {
+                "name": "Aschebox voll in"
+            },
+            "analytics_ash_date": {
+                "name": "Aschebox voll am"
+            },
+            "analytics_pellets_today": {
+                "name": "Pelletsverbrauch heute"
+            },
+            "analytics_pellets_yesterday": {
+                "name": "Pelletsverbrauch gestern"
+            },
+            "analytics_pellets_avg": {
+                "name": "Pelletsverbrauch pro Tag (Ø 14 Tage)"
+            },
+            "analytics_silo_days": {
+                "name": "Pelletslager reicht noch"
+            },
+            "analytics_silo_date": {
+                "name": "Pelletslager leer am"
+            },
+            "analytics_method": {
+                "name": "Prognose-Methode",
+                "state": {
+                    "seasonal": "Vorjahr (saisonal)",
+                    "average": "Ø 14 Tage"
+                }
             }
         }
     },

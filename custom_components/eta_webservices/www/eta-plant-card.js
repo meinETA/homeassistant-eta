@@ -176,6 +176,10 @@
       apply: "Übernehmen für", only_day: "nur diesen Tag", workdays: "Mo–Fr", weekend: "Sa–So", all_days: "alle Tage",
       save: "Speichern", cancel: "Abbrechen", saving: "Wird geschrieben …", ro: "Nur lesbar. Bearbeiten ab ETA-API 1.2: Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → „Ausgewählte Entitäten aktualisieren“ → Heizzeiten unter „Schreibbare Sensoren“ auswählen.",
       bad_slot: "Ungültiges Zeitfenster: Beginn muss vor dem Ende liegen.",
+      ash: "Aschebox", empty_now: "jetzt leeren", d_unit: "Tage",
+      fc_seasonal: "Prognose aus Vorjahr", fc_average: "Prognose aus Ø 14 Tagen",
+      in_days: (n) => `leeren in ca. ${n} ${n === 1 ? "Tag" : "Tagen"}`,
+      in_weeks: (n) => `leeren in ca. ${n} Wochen`, in_months: (n) => `leeren in ca. ${n} Monaten`,
     },
     en: {
       silo: "Storage", chip_store: "Chip store", boiler: "Boiler", buffer: "Buffer", heating_circuit: "Heating circuit",
@@ -188,6 +192,10 @@
       apply: "Apply to", only_day: "this day only", workdays: "Mon–Fri", weekend: "Sat–Sun", all_days: "all days",
       save: "Save", cancel: "Cancel", saving: "Writing …", ro: "Read only. Editing from ETA API 1.2: Settings → Devices & services → ETA Heating → Configure → \u201cUpdate selected entities\u201d → select the heating times under \u201cPossible writable sensors\u201d.",
       bad_slot: "Invalid time slot: start must be before end.",
+      ash: "Ash box", empty_now: "empty now", d_unit: "days",
+      fc_seasonal: "forecast from last year", fc_average: "forecast from 14-day average",
+      in_days: (n) => `empty in approx. ${n} ${n === 1 ? "day" : "days"}`,
+      in_weeks: (n) => `empty in approx. ${n} weeks`, in_months: (n) => `empty in approx. ${n} months`,
     },
   };
   // value roles shown above the icon
@@ -264,6 +272,9 @@
     return { ...topo, plant, blocks: blocks.filter((b) => !hidden.has(b.id)) };
   };
 
+  // ash box symbol (plant view and control tab)
+  const ashSvg = (size) => `<svg viewBox="0 0 40 40" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 13h22l-2 21H11z"/><path d="M6 13h28M16 9h8"/><path d="M12 25h16" stroke-width="5" opacity=".55"/></svg>`;
+
   const css = `
   :host{display:block}
   ha-card{display:block;overflow:hidden;background:#111;border:2px solid #f5b800;border-radius:14px}
@@ -283,6 +294,17 @@
   .p{position:absolute;border-radius:5px;overflow:hidden}
   .p.vl{background:#9c1f17;z-index:3}.p.rl{background:#1d4f9e;z-index:1}
   .gap{position:absolute;z-index:2;background:#141414;pointer-events:none}
+  .ashrow{display:flex;align-items:center;gap:8px;margin:0 auto 18px;cursor:pointer;color:#ffc400;font-size:16px}
+  .ashrow.warn{color:#ff8c00}.ashrow.full{color:#e53935}.ashrow .pc{color:#aaa;min-width:40px}
+  .ashrow.warn .pc,.ashrow.full .pc{color:inherit}
+  .ashbar{width:120px;height:8px;border-radius:4px;background:#3a3a3a;overflow:hidden}
+  .ashbar i,.ash .bar i{display:block;height:100%;width:0;background:#ffc400;transition:width .4s}
+  .ashrow.warn i,.ash.warn .bar i{background:#ff8c00}.ashrow.full i,.ash.full .bar i{background:#e53935}
+  .ash{display:flex;align-items:center;gap:12px;margin-top:16px;cursor:pointer;font-size:18px;color:#ddd}
+  .ash svg{flex:none;color:#ffc400}.ash.warn svg{color:#ff8c00}.ash.full svg{color:#e53935}
+  .ash .col{flex:1;min-width:0}.ash .fc{margin-top:6px;font-size:14px;color:#888}
+  .ash .bar{height:12px;margin-top:8px;border-radius:6px;background:#3a3a3a;overflow:hidden}
+  .ash .tx{min-width:0;white-space:nowrap}.ash .tx b{font-weight:600;color:#fff}.ash .tx span{color:#aaa;margin-left:8px}
   .p i{position:absolute;will-change:transform}
   .p.h i{left:-24px;right:-24px;top:2.5px;height:4px;
     background:repeating-linear-gradient(90deg,transparent 0 12px,var(--dc) 12px 19px,transparent 19px 24px)}
@@ -306,6 +328,7 @@
   @keyframes mb{to{transform:translateX(19.8px)}}
   .blk{position:absolute;z-index:4;top:64px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
   .vals{display:flex;align-items:flex-end;gap:8px;padding-bottom:14px}
+  .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
   .stack{height:${FLOOR - 64}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
   .icon{display:flex;align-items:flex-end;position:relative}
   .icon img{display:block;position:relative}
@@ -493,6 +516,8 @@
         };
       });
 
+      const plant = this._topo.plant || {};
+      const firstBoiler = blocks.find((x) => x.type === "boiler");
       let html = `<div class="pg plant"><div class="floor"></div>${this._pipes()}`;
       if (!blocks.length) html += `<div class="empty">${this._t("no_blocks")}</div>`;
       for (const g of this._geo) {
@@ -503,14 +528,15 @@
         const inner = numbered.length ? numbered : ["top", "middle", "bottom"].filter((r) => b.roles[r]);
         const hasInner = b.type === "buffer" && inner.length > 0;
         if (!shown.length && !hasInner) shown = this._autoValues(b); // no known roles: pick measurements
+        if (b.type === "silo" && plant.silo_days) shown.push(plant.silo_days); // forecast: pellets last approx. n days
         shown = shown.slice(0, Math.max(1, Math.floor(colW / 110))); // narrow columns: fewer value boxes
         const vals = shown.map((e) => `<div class="pill" data-e="${e}"></div>`).join("");
         const tank = b.type === "buffer"
           ? `<div class="tank${inner.length > 4 ? " many" : ""}">${inner
               .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("")}</div>`
           : "";
-        html += `<div class="blk" data-b="${b.id}" style="left:${g.cx - colW / 2}px;width:${colW}px">
-          <div class="stack"><div class="vals">${vals}</div>
+        html += `<div class="blk t-${b.type}" data-b="${b.id}" style="left:${g.cx - colW / 2}px;width:${colW}px">
+          <div class="stack">${b.type === "boiler" && plant.ash_fill && b === firstBoiler ? `<div class="ashrow" data-ash="${plant.ash_fill}">${ashSvg(22)}<div class="ashbar"><i></i></div><span class="pc"></span></div>` : ""}<div class="vals">${vals}</div>
           <div class="icon" style="margin-bottom:${-g.sink}px"><div class="shadow" style="bottom:${g.sink - 12}px"></div><img data-type="${b.type}" src="${iconSrc(g.file)}" style="width:${g.w}px">${tank}</div></div>
           <div class="name">${this._name(b)}</div>
           ${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}
@@ -563,9 +589,9 @@
         this._update();
       }));
       // every value and status chip opens its own entity, the rest of the block the status
-      cv.querySelectorAll("[data-e],[data-chip]").forEach((el) => el.addEventListener("click", (ev) => {
+      cv.querySelectorAll("[data-e],[data-chip],[data-ash]").forEach((el) => el.addEventListener("click", (ev) => {
         ev.stopPropagation();
-        this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: el.dataset.e || el.dataset.chip }, bubbles: true, composed: true }));
+        this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: el.dataset.e || el.dataset.chip || el.dataset.ash }, bubbles: true, composed: true }));
       }));
       const outEl = cv.querySelector("#outside");
       if (outEl) outEl.addEventListener("click", () => {
@@ -594,6 +620,7 @@
     // second tab: boiler / heating circuit control via the integration's switches
     _controlHtml() {
       const tiles = this._blocks.filter((b) => b.roles.switch || b.roles.heat || b.roles.auto || b.roles.lower);
+      const plant = this._topo.plant || {};
       if (!tiles.length) {
         const any = this._blocks.some((b) => ["boiler", "heating_circuit"].includes(b.type));
         return any ? `<div class="tiles"><div class="empty">${this._t("no_ctl")}</div></div>` : null;
@@ -628,6 +655,9 @@
             ${b.roles.switch ? `<div class="tg" data-sw="${b.roles.switch}" data-n="${name}">0<b></b>I</div>` : ""}
           </div>
           ${vals ? `<div class="vrow">${vals}</div>` : ""}
+          ${b.type === "boiler" && plant.ash_fill && b === this._blocks.find((x) => x.type === "boiler")
+            ? `<div class="ash" data-ash="${plant.ash_fill}">${ashSvg(38)}
+                <div class="col"><div class="tx"><b></b><span></span></div><div class="bar"><i></i></div><div class="fc"></div></div></div>` : ""}
           ${m ? `<div class="modes">${m}</div>` : ""}
           ${b.roles.slot_0_0 || b.roles.slot_6_2 ? `<div class="ts" data-ts="${b.id}"><div class="bar"></div>
             <div class="ax">${[0, 6, 12, 18, 24].map((h) => `<span style="left:${h / 24 * 100}%">${h}</span>`).join("")}</div></div>` : ""}
@@ -930,7 +960,17 @@
           maximumFractionDigits: digits, minimumFractionDigits: digits,
         });
       }
+      // forecasts in days: "≈ 41 Tage"
+      if (unit === "d") return `≈ ${v}<u> ${this._t("d_unit")}</u>`;
       return `${v}<u>${unit}</u>`;
+    }
+
+    // "leeren in ca. 3 Wochen" from a number of days
+    _when(days) {
+      if (days <= 0) return this._t("empty_now");
+      if (days < 14) return this._t("in_days")(Math.round(days));
+      if (days < 60) return this._t("in_weeks")(Math.round(days / 7));
+      return this._t("in_months")(Math.round(days / 30));
     }
 
     // switch position on the card: a pending click wins until the poll confirms it
@@ -968,6 +1008,28 @@
         const v = this._fmt(el.dataset.e);
         const html = v === null ? "–" : v;
         if (el._v !== html) { el.innerHTML = html; el._v = html; }
+      });
+      // ash box: bar colour from 80 % (soon) and 100 % (ETA asks to empty it)
+      root.querySelectorAll("[data-ash]").forEach((el) => {
+        const st = this._hass.states[el.dataset.ash];
+        const v = st ? Number(st.state) : NaN;
+        const ok = !Number.isNaN(v);
+        el.classList.toggle("warn", ok && v >= 80 && v < 100);
+        el.classList.toggle("full", ok && v >= 100);
+        el.querySelector("i").style.width = `${ok ? Math.min(Math.max(v, 0), 100) : 0}%`;
+        const pc = el.querySelector(".pc");
+        if (pc) pc.textContent = ok ? `${Math.round(v)} %` : "–";
+        const tx = el.querySelector(".tx");
+        if (tx) {
+          const days = this._hass.states[(this._topo.plant || {}).ash_days];
+          const d = days ? Number(days.state) : NaN;
+          tx.querySelector("b").textContent = `${this._t("ash")} ${ok ? Math.round(v) : "–"} %`;
+          tx.querySelector("span").textContent = ok && v >= 100 ? this._t("empty_now") : Number.isNaN(d) ? "" : this._when(d);
+          const m = this._hass.states[(this._topo.plant || {}).method];
+          const fc = el.querySelector(".fc");
+          const label = m && !Number.isNaN(d) ? this._t(`fc_${m.state}`) : "";
+          if (fc) fc.textContent = label.startsWith("fc_") ? "" : label;
+        }
       });
       root.querySelectorAll("[data-chip]").forEach((el) => {
         const st = this._hass.states[el.dataset.chip];

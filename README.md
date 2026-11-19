@@ -57,10 +57,21 @@ The integration ships a dashboard card that shows the plant like the ETA touch d
 - **Assign values manually:** if a value is still missing or wrong, pick the right entity per value in the card settings (from a list or by pasting the entity ID), rename, hide or add plant parts. **Reset everything** returns to the automatic detection.
 - **Control tab:** switch the boiler and heating circuits on or off and select heat, setback or time program. This needs the corresponding switches (e.g. *On/Off button*) to be selected in the integration options.
 - **Heating times:** click the time bar of a heating circuit to edit its three time slots per day, for one day, Mon–Fri, Sat–Sun or all days. Needs ETA API 1.2 or newer and the time slots selected as writable sensors; otherwise they are read only.
+- **Ash box:** fill level as a bar above the boiler (orange from 80 %, red from 100 % when ETA asks to empty it) and in the control tab with the expected emptying date.
 - **Card settings:** plant (if several are configured), name, language and an icon per block (e.g. the exact boiler model).
 - **Report a problem:** if the plant is not shown correctly, use **Open GitHub issue** in the card settings. It opens an issue with an anonymized description of the plant (object numbers, parameter addresses and units only; no names, values or IP addresses). Nothing is sent until the issue is submitted on GitHub, and issues are public.
 
 Layouts that are not covered yet will be added based on reports.
+
+### Analytics
+
+Computed values on an extra device **ETA > [name] > Auswertung**, created when the needed ETA values are selected:
+
+- **Ash box fill level** (%), from *Verbrauch seit Aschebox leeren* and *Aschebox leeren nach*.
+- **Pellet consumption** today, yesterday and per day (14-day average), from *Gesamtverbrauch*. "Today" resets at midnight, so a statistics graph with "change" per day shows daily bars.
+- **Ash box full in / on** and **pellet store lasts / empty on**: forecasts from the consumption. With most of the last year in Home Assistant's long-term statistics, every coming day uses last year's consumption of the same day (adjusted to the last 14 days), otherwise the 14-day average. **Forecast method** shows which one is used.
+
+Wood chip plants usually report no consumption or stock; they only get the ash box fill level.
 
 ## Screenshots
 

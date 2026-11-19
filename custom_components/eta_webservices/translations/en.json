@@ -140,6 +140,37 @@
             },
             "latest_error_sensor": {
                 "name": "Latest active error"
+            },
+            "analytics_ash_fill": {
+                "name": "Ash box fill level"
+            },
+            "analytics_ash_days": {
+                "name": "Ash box full in"
+            },
+            "analytics_ash_date": {
+                "name": "Ash box full on"
+            },
+            "analytics_pellets_today": {
+                "name": "Pellet consumption today"
+            },
+            "analytics_pellets_yesterday": {
+                "name": "Pellet consumption yesterday"
+            },
+            "analytics_pellets_avg": {
+                "name": "Pellet consumption per day (14-day avg)"
+            },
+            "analytics_silo_days": {
+                "name": "Pellet store lasts"
+            },
+            "analytics_silo_date": {
+                "name": "Pellet store empty on"
+            },
+            "analytics_method": {
+                "name": "Forecast method",
+                "state": {
+                    "seasonal": "Last year (seasonal)",
+                    "average": "14-day average"
+                }
             }
         }
     },
