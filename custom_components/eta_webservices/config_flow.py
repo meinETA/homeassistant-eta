@@ -10,7 +10,7 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import CONN_CLASS_CLOUD_POLL, ConfigFlow, OptionsFlow
+from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.helpers import issue_registry as ir, selector
@@ -330,7 +330,6 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
     VERSION = 9
     _restore_candidate: tuple[str, dict[str, Any]] | None = None
     _restore_offered = False
-    CONNECTION_CLASS = CONN_CLASS_CLOUD_POLL
 
     def __init__(self) -> None:
         """Initialize."""
