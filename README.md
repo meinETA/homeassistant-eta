@@ -58,6 +58,7 @@ The integration ships a dashboard card that shows the plant like the ETA touch d
 - **Assign values manually:** if a value is still missing or wrong, pick the right entity per value in the card settings (from a list or by pasting the entity ID), rename, hide or add plant parts. **Reset everything** returns to the automatic detection.
 - **Control tab:** switch the boiler and heating circuits on or off and select heat, setback or time program. This needs the corresponding switches (e.g. *On/Off button*) to be selected in the integration options.
 - **Heating times:** click the time bar of a heating circuit to edit its three time slots per day, for one day, Mon–Fri, Sat–Sun or all days. Needs ETA API 1.2 or newer and the time slots selected as writable sensors; otherwise they are read only.
+- **Live values:** values shown on the card are read every 10 seconds, all other entities at the normal update interval.
 - **Ash box:** fill level as a bar above the boiler (orange from 80 %, red from 100 % when ETA asks to empty it) and in the control tab with the expected emptying date.
 - **Card settings:** plant (if several are configured), name, language and an icon per block (e.g. the exact boiler model).
 - **Report a problem:** if the plant is not shown correctly, use **Open GitHub issue** in the card settings. It downloads the plant file `eta-plant-report.json` and opens an issue form; drag the file into the "Plant file" field. The file lists every value of the plant with ETA names, units and current readings, plus the terminal's API version and menu (also values the integration does not support yet), but no IP address, no serial number, no names you gave and no history. Nothing is sent until the issue is submitted on GitHub, and issues are public. The same file is part of the integration's diagnostics (Settings → Devices & services → ETA Heating → ⋮ → Download diagnostics).
@@ -146,6 +147,8 @@ If the sensors on the ETA unit change (e.g. new hardware is added), you can refr
 - Older ETA units: `3–5`
 - Newer ETA units: `8–15` (if stable)
 - If you see API errors/timeouts, reduce the value step by step.
+
+**Faster updates for single entities:** values on the [plant card](#plant-card) are read every 10 seconds. To read another entity that often too (e.g. the flow rate of the fresh water module), add the label **ETA Fast Update** to it in the entity settings. The integration creates this label automatically. Each labelled entity adds requests to the unit, so use it for a few values only.
 
 ## Error Events
 
