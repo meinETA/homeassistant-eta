@@ -281,7 +281,8 @@
     background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,0) 30%);border-top:1px solid rgba(255,255,255,.06)}
   .g{position:absolute;left:0;top:0}
   .p{position:absolute;border-radius:5px;overflow:hidden}
-  .p.vl{background:#9c1f17}.p.rl{background:#1d4f9e}
+  .p.vl{background:#9c1f17;z-index:3}.p.rl{background:#1d4f9e;z-index:1}
+  .gap{position:absolute;z-index:2;background:#141414;pointer-events:none}
   .p i{position:absolute;will-change:transform}
   .p.h i{left:-24px;right:-24px;top:2.5px;height:4px;
     background:repeating-linear-gradient(90deg,transparent 0 12px,var(--dc) 12px 19px,transparent 19px 24px)}
@@ -303,7 +304,7 @@
   @keyframes mx{to{transform:translateX(24px)}}
   @keyframes my{to{transform:translateY(24px)}}
   @keyframes mb{to{transform:translateX(19.8px)}}
-  .blk{position:absolute;top:64px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
+  .blk{position:absolute;z-index:4;top:64px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
   .vals{display:flex;align-items:flex-end;gap:8px;padding-bottom:14px}
   .stack{height:${FLOOR - 64}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
   .icon{display:flex;align-items:flex-end;position:relative}
@@ -529,10 +530,16 @@
         cv.querySelector(".pg.plant").classList.toggle("hide", this._tab !== "plant");
         cv.querySelector(".pg.ctl").classList.toggle("hide", this._tab !== "ctl");
       }));
-      // on/off opens the HA dialog of the switch entity: switching happens there,
-      // so the user sees which entity is behind it and nothing toggles by accident
+      // on/off switches directly; switching off asks first, so nothing goes off by accident
       cv.querySelectorAll(".tg").forEach((el) => el.addEventListener("click", () => {
-        this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: el.dataset.sw }, bubbles: true, composed: true }));
+        const sw = el.dataset.sw;
+        const want = !this._shownOn(sw);
+        if (!want && !window.confirm(`${el.dataset.n} ${this._t("ask_off")}`)) return;
+        // the state only updates with the next poll: show the new position until then
+        this._swPending = this._swPending || {};
+        this._swPending[sw] = { on: want, until: Date.now() + 180000 };
+        this._call(el, sw, want ? "turn_on" : "turn_off");
+        this._update();
       }));
       cv.querySelectorAll(".ts").forEach((el) => el.addEventListener("click", () => {
         const b = this._blocks.find((x) => x.id === el.dataset.ts);
@@ -763,9 +770,11 @@
       const T = 9;
       const ys = FLOOR - 300; // supply line height, above the consumers and their values
       const yr = ys + 34; // return runs close below the supply
+      const segs = [];
       // one straight pipe piece; dir +1 = flow towards (x2,y2)
       const seg = (x1, y1, x2, y2, cls) => {
         const hz = y1 === y2;
+        segs.push({ cls, hz, x1: Math.min(x1, x2), x2: Math.max(x1, x2), y1: Math.min(y1, y2), y2: Math.max(y1, y2) });
         const rev = hz ? x2 < x1 : y2 < y1;
         const l = Math.min(x1, x2) - T / 2;
         const t = Math.min(y1, y2) - T / 2;
@@ -811,7 +820,17 @@
       }
       const src = buffers[buffers.length - 1] || boilers[boilers.length - 1];
       if (src) {
-        consumers.forEach((c, i) => {
+        // supply line above the producer (boiler without buffer): both lines drop
+        // straight into its top (the image hides the rest), so none starts in the air
+        const air = src.top > ys - 4;
+        const xR = src.right - 44;
+        const xB = src.right - 20;
+        const yIn = src.top + (src.bottom - src.top) * 0.2;
+        const head = air ? [[xR, yIn], [xR, ys]] : [[src.right, ys]];
+        const tail = air ? [[xB, yr], [xB, yIn]] : [[src.right, yr]];
+        // each consumer: own riser and connection; the shared trunk lines along ys / yr
+        // are drawn once, piece by piece, so no two pipes lie on top of each other
+        const legs = consumers.map((c) => {
           const a = c.anchors;
           const inX = a ? c.x0 + a.in[0] * c.w : c.left;
           const inY = a ? c.y0 + a.in[1] * c.h : c.top + (c.bottom - c.top) * 0.3;
@@ -820,19 +839,66 @@
           const outY = out ? c.y0 + out[1] * c.h : c.top + (c.bottom - c.top) * 0.8;
           // the riser of the upper connection sits closer to the icon
           const returnAbove = out && out[2] === "h" && outY < inY;
-          const xv = returnAbove ? inX - 64 : inX - 30; // supply riser
-          const xr = returnAbove ? inX - 30 : xv - 34; // return riser (unused for "u")
-          const vl = [[src.right, ys], [xv, ys], [xv, inY], [inX, inY]];
+          let xv = returnAbove ? inX - 64 : inX - 30; // supply riser
+          let xr = returnAbove ? inX - 30 : xv - 34; // return riser
+          // a consumer right next to the producer: keep both risers clear of its edge
+          const minX = src.right + 24;
+          if (Math.min(xv, xr) < minX) {
+            const gap = Math.max(12, Math.min(34, inX - 8 - minX));
+            if (returnAbove) { xv = minX; xr = Math.max(minX + gap, Math.min(xr, inX - 8)); } else { xr = minX; xv = minX + gap; }
+          }
           let rl;
           if (out && out[2] === "u") {
-            rl = [[outX, outY], [outX, yr], [src.right, yr]];
+            xr = outX;
+            rl = [[outX, outY], [outX, yr]];
           } else if (out && out[2] === "v") {
-            rl = [[outX, outY], [outX, outY + 10], [xr, outY + 10], [xr, yr], [src.right, yr]];
+            rl = [[outX, outY], [outX, outY + 10], [xr, outY + 10], [xr, yr]];
           } else {
-            rl = [[outX, outY], [xr, outY], [xr, yr], [src.right, yr]];
+            rl = [[outX, outY], [xr, outY], [xr, yr]];
           }
-          s += group(c.b.id, line(vl, "vl") + line(rl, "rl"));
+          return { id: c.b.id, xv, xr, vl: [[xv, ys], [xv, inY], [inX, inY]], rl };
         });
+        const ids = (xs) => xs.map((l) => l.id).join(",");
+        const all = ids(legs);
+        if (legs.length) {
+          if (head.length > 1) s += group(all, line(head, "vl"));
+          if (tail.length > 1) s += group(all, line(tail, "rl"));
+        }
+        // supply trunk: from the producer to each riser; a piece carries flow when a consumer behind it runs
+        const bySup = [...legs].sort((p, q) => p.xv - q.xv);
+        let x = head[head.length - 1][0];
+        bySup.forEach((l, i) => {
+          if (l.xv > x) s += group(ids(bySup.slice(i)), line([[x, ys], [l.xv, ys]], "vl"));
+          x = Math.max(x, l.xv);
+        });
+        const byRet = [...legs].sort((p, q) => p.xr - q.xr);
+        x = tail[0][0];
+        byRet.forEach((l, i) => {
+          if (l.xr > x) s += group(ids(byRet.slice(i)), line([[l.xr, yr], [x, yr]], "rl"));
+          x = Math.max(x, l.xr);
+        });
+        legs.forEach((l) => { s += group(l.id, line(l.vl, "vl") + line(l.rl, "rl")); });
+      }
+      // supply crossing a return pipe: the supply runs on top, the return gets a gap (bridge)
+      const vl = segs.filter((x) => x.cls === "vl");
+      const rl = segs.filter((x) => x.cls === "rl");
+      const seen = new Set();
+      for (const a of vl) {
+        for (const b of rl) {
+          if (a.hz === b.hz) continue;
+          const v = a.hz ? b : a;
+          const h = a.hz ? a : b;
+          const x = v.x1;
+          const y = h.y1;
+          if (x <= h.x1 + T || x >= h.x2 - T || y <= v.y1 + T || y >= v.y2 - T) continue;
+          const key = `${Math.round(x)},${Math.round(y)}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const along = T + 10;
+          const across = T + 2;
+          const [w, hh] = h === b ? [along, across] : [across, along];
+          s += `<div class="gap" style="left:${x - w / 2}px;top:${y - hh / 2}px;width:${w}px;height:${hh}px"></div>`;
+        }
       }
       return s;
     }
@@ -865,6 +931,14 @@
         });
       }
       return `${v}<u>${unit}</u>`;
+    }
+
+    // switch position on the card: a pending click wins until the poll confirms it
+    _shownOn(sw) {
+      const on = this._isOn(sw);
+      const p = this._swPending && this._swPending[sw];
+      if (p && (Date.now() > p.until || p.on === on)) delete this._swPending[sw];
+      return this._swPending && this._swPending[sw] ? this._swPending[sw].on : on;
     }
 
     _modeOn(el) {
@@ -903,7 +977,7 @@
         el.classList.toggle("idle", this._isIdle(el.dataset.chip));
       });
       root.querySelectorAll(".tg").forEach((el) => {
-        const on = this._isOn(el.dataset.sw);
+        const on = this._shownOn(el.dataset.sw);
         if (el._on !== on) { el.classList.toggle("on", on); el._on = on; }
       });
       root.querySelectorAll(".modes").forEach((row) => {
@@ -987,12 +1061,14 @@
       if (!this.shadowRoot) this.attachShadow({ mode: "open" });
       const icons = this._config.icons || {};
       const list = this._topo ? [...this._topo.blocks] : [];
+      // plant parts added by hand get an icon choice too
+      if (this._topo) (this._config.extra || []).forEach((x) => list.push({ id: x.id, type: x.type, name: null }));
       if (!list.some((b) => b.type === "silo")) {
         const bo = list.find((b) => b.type === "boiler" && b.roles.auger);
         if (bo) list.splice(list.indexOf(bo), 0, { id: `${bo.id}/store`, type: "chip_store", name: "Lager" });
       }
       const rows = list.filter((b) => ICON_CHOICES[b.type]).map((b) => {
-        const name = (b.name || b.type).split(">").pop().trim().replace(/\[/g, "(").replace(/\]/g, ")");
+        const name = esc((this._config.names || {})[b.id] || this._label(b));
         const opts = ICON_CHOICES[b.type].map(([label, file]) =>
           `<option value="${file}" ${webp(icons[b.id]) === file ? "selected" : ""}>${label}</option>`).join("");
         return `<label>${name}<select data-b="${b.id}"><option value="">Standard</option>${opts}</select></label>`;
@@ -1086,7 +1162,8 @@
 
     // ---- "Werte zuordnen": pick the entity of a value by hand ----
     _de() {
-      const l = this._config.language || (this._hass.locale && this._hass.locale.language) || this._hass.language || "en";
+      const h = this._hass || {};
+      const l = this._config.language || (h.locale && h.locale.language) || h.language || "en";
       return l.startsWith("de");
     }
 
@@ -1101,7 +1178,7 @@
       const lab = LABELS[this._de() ? "de" : "en"];
       if (b.type === "plant") return b.name;
       let n = (b.name || "").split(">").pop().trim().replace(/\[/g, "(").replace(/\]/g, ")");
-      const title = (this._topo.title || "").trim();
+      const title = ((this._topo && this._topo.title) || "").trim();
       if (title && n.toLowerCase().startsWith(`${title.toLowerCase()} `)) n = n.slice(title.length + 1);
       return n || lab[b.type] || b.type;
     }
