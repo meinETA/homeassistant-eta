@@ -117,7 +117,7 @@
         },
         "rediscover_switches": {
             "title": "Optional: new switches available for {name}",
-            "description": "With ETA API 1.2, the discovery skipped some switches so far, e.g. the On/Off button of hot water or the fresh water module and \"Solar abschöpfen\". Your plant keeps working unchanged.\n\nIf you want to use these switches: Settings → Devices & services → ETA Heating → Configure → **Rediscover available entities and update selected entities**. Your current selection, entity ids and history are kept. This notice disappears after the discovery."
+            "description": "The discovery skipped some switches so far, e.g. the On/Off button of hot water or the fresh water module and \"Solar abschöpfen\". Your plant keeps working unchanged.\n\nIf you want to use these switches: Settings → Devices & services → ETA Heating → Configure → **Rediscover available entities and update selected entities**. Your current selection, entity ids and history are kept. This notice disappears after the discovery."
         }
     },
     "entity": {

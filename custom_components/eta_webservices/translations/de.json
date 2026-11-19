@@ -117,7 +117,7 @@
         },
         "rediscover_switches": {
             "title": "Optional: neue Schalter für {name} verfügbar",
-            "description": "Mit ETA-API 1.2 wurden bisher einige Schalter bei der Suche übersprungen, z. B. die Ein/Aus Taste von Warmwasser oder Frischwassermodul und „Solar abschöpfen“. Deine Anlage funktioniert unverändert weiter.\n\nWenn du diese Schalter nutzen möchtest: Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → **Verfügbare Entitäten neu suchen und Auswahl aktualisieren**. Deine bisherige Auswahl, Entity-IDs und Verlauf bleiben erhalten. Dieser Hinweis verschwindet nach der Suche."
+            "description": "Bisher wurden einige Schalter bei der Suche übersprungen, z. B. die Ein/Aus Taste von Warmwasser oder Frischwassermodul und „Solar abschöpfen“. Deine Anlage funktioniert unverändert weiter.\n\nWenn du diese Schalter nutzen möchtest: Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → **Verfügbare Entitäten neu suchen und Auswahl aktualisieren**. Deine bisherige Auswahl, Entity-IDs und Verlauf bleiben erhalten. Dieser Hinweis verschwindet nach der Suche."
         }
     },
     "entity": {
