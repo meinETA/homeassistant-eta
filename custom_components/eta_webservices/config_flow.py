@@ -28,9 +28,11 @@ from .const import (
     CHOSEN_SWITCHES,
     CHOSEN_TEXT_SENSORS,
     CHOSEN_WRITABLE_SENSORS,
+    CURRENT_DISCOVERY_REV,
     CUSTOM_UNITS,
     DEFAULT_MAX_PARALLEL_REQUESTS,
     DEFAULT_UPDATE_INTERVAL,
+    DISCOVERY_REV,
     DOMAIN,
     ENABLE_DEBUG_LOGGING,
     FLOAT_DICT,
@@ -661,6 +663,7 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
 
         if not new_api_version:
             self._errors["base"] = "legacy_mode_selected"
+        self.data[DISCOVERY_REV] = CURRENT_DISCOVERY_REV
 
         _LOGGER.debug(
             "Queried sensors: Number of float sensors: %i, Number of switches: %i, Number of text sensors: %i, Number of writable sensors: %i, Number of pending sensors: %i",
@@ -755,6 +758,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
 
         if not new_api_version:
             self._errors["base"] = "legacy_mode_selected"
+        self.data[DISCOVERY_REV] = CURRENT_DISCOVERY_REV
 
         return float_dict, switches_dict, text_dict, writable_dict, pending_dict
 
@@ -1276,6 +1280,8 @@ class EtaOptionsFlowHandler(OptionsFlow):
             FORCE_LEGACY_MODE,
         ]:
             self.data[key] = copy.copy(current_data[key])
+        # keep the discovery revision unless a new discovery set it already
+        self.data.setdefault(DISCOVERY_REV, current_data.get(DISCOVERY_REV, 0))
         (
             self.data[CHOSEN_FLOAT_SENSORS],
             self.data[CHOSEN_SWITCHES],
@@ -1464,6 +1470,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
                     ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION
                 ],
                 FORCE_LEGACY_MODE: self.data[FORCE_LEGACY_MODE],
+                DISCOVERY_REV: self.data.get(DISCOVERY_REV, 0),
             }
 
             # The selection was reviewed, so the reselect hint after a rename is done.

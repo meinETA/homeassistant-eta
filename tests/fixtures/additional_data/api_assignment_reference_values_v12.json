@@ -5002,6 +5002,162 @@
       "value": "Aus",
       "is_writable": true,
       "is_invalid": false
+    },
+    "eta_192_168_0_25__puffer_puffer_warmwasserbereich_ladezeiten": {
+      "valid_values": {
+        "on_value": 1803,
+        "off_value": 1802
+      },
+      "friendly_name": "Puffer > Puffer > Warmwasserbereich > Ladezeiten",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/264/10601/12235/0/0",
+      "value": "xxx",
+      "is_writable": false,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__puffer_puffer_verbraucherniveaus_verbraucher_2_solar_überschuss": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Puffer > Puffer > Verbraucherniveaus > Verbraucher 2 > Solar Überschuss",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/264/10601/0/0/12653",
+      "value": "xxx",
+      "is_writable": false,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_einstellungen_ausfallbereitschaft_aktivieren?": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Kessel > Einstellungen > Ausfallbereitschaft > Aktivieren?",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/264/10891/0/0/13940",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__sys_störmeldung_anzeigen": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Sys > Störmeldung > Anzeigen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/264/10241/0/0/14870",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_kessellaufmeldung": {
+      "valid_values": {
+        "on_value": 1041,
+        "off_value": 1040
+      },
+      "friendly_name": "Kessel > Kessel > Kessellaufmeldung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/264/10891/0/0/14268",
+      "value": "xxx",
+      "is_writable": false,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__puffer_puffer_verbraucherniveaus_verbraucher_1_(oben)_solar_überschuss": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Puffer > Puffer > Verbraucherniveaus > Verbraucher 1 (oben) > Solar Überschuss",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/264/10601/0/0/13188",
+      "value": "xxx",
+      "is_writable": false,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__sys_externe_störmeldung_anzeigen": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Sys > Externe Störmeldung > Anzeigen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/264/10241/0/0/14871",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__puffer_puffer_solar_abschöpfen_aktivieren_?": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Puffer > Puffer > Solar abschöpfen > Aktivieren ?",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/264/10601/0/0/12683",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__fwm_sonstiges_ein/aus_taste": {
+      "valid_values": {
+        "on_value": 1803,
+        "off_value": 1802
+      },
+      "friendly_name": "FWM > Sonstiges > Ein/Aus Taste",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/79/10531/0/0/12080",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__puffer_puffer_anfahrentlastung_puffer_durchladen_im_pellets-_oder_brennerbetrieb": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Puffer > Puffer > Anfahrentlastung > Puffer durchladen im Pellets- oder Brennerbetrieb",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/264/10601/0/0/14561",
+      "value": "xxx",
+      "is_writable": false,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_kessellaufmeldung_laufmeldung_von_schnittstellen": {
+      "valid_values": {
+        "on_value": 1041,
+        "off_value": 1040
+      },
+      "friendly_name": "Kessel > Kessel > Kessellaufmeldung > Laufmeldung von Schnittstellen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/264/10891/0/0/14275",
+      "value": "xxx",
+      "is_writable": false,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_kesselstörmeldung_invertieren": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Kessel > Kesselstörmeldung > Invertieren",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/264/10891/0/0/14227",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
     }
   },
   "text_dict": {

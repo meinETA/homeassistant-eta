@@ -411,6 +411,21 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
             is_invalid=raw_var_data.get("@strValue") == "xxx",
         )
 
+    @staticmethod
+    def _raw_in_valid_values(raw_var_data: dict, valid_values) -> bool:
+        """Whether the raw value is one of the discrete valid values.
+
+        Some switches (e.g. "Ein/Aus Taste" of the fresh water module) report
+        the text `xxx` although their raw value is a valid state (1802/1803).
+        """
+        if not isinstance(valid_values, dict) or "scaled_min_value" in valid_values:
+            return False
+        try:
+            raw = int(str(raw_var_data.get("#text", "")).strip())
+        except ValueError:
+            return False
+        return raw in valid_values.values()
+
     async def _fetch_varinfo_raw(self, fub: str, uri: str) -> dict:
         """Fetch raw varinfo variable dict from API. Raises on network error or error node."""
         data = await self._http.get_request("/user/varinfo/" + str(uri))
@@ -697,6 +712,16 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
             endpoint_info = endpoint_infos[uri]
             _, _, raw_var_data = var_data[uri]
 
+            # switches like the fresh water module's "Ein/Aus Taste" report the
+            # text `xxx` with a valid raw state (1802/1803): keep those
+            if (
+                endpoint_info["is_invalid"]
+                and self._is_switch(endpoint_info, raw_var_data["@advTextOffset"])
+                and self._raw_in_valid_values(
+                    raw_var_data, endpoint_info["valid_values"]
+                )
+            ):
+                endpoint_info["is_invalid"] = False
             if endpoint_info["is_invalid"]:
                 _LOGGER.debug(
                     "Skipping potentially invalid endpoint %s (URI: %s)", key, uri

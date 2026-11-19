@@ -20,6 +20,9 @@ CHOSEN_PENDING_SENSORS = "chosen_pending_sensors"
 STABLE_ID = "stable_id"
 
 FORCE_LEGACY_MODE = "force_legacy_mode"
+# Revision of the entity discovery; 2 = v1.2 switches reporting `xxx` are kept.
+DISCOVERY_REV = "discovery_rev"
+CURRENT_DISCOVERY_REV = 2
 ENABLE_DEBUG_LOGGING = "enable_debug_logging"
 AUTO_SELECT_ALL_ENTITIES = "auto_select_all_entities"
 

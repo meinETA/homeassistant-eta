@@ -114,6 +114,10 @@
         "rename_reselect": {
             "title": "ETA Heating: fehlende Sensoren erneut auswählen",
             "description": "Die Umbenennung auf das namensbasierte Schema in Version 2.0.0 hat Sensoren, die nach der Ersteinrichtung hinzugefügt wurden, aus der Auswahl entfernt. Sie werden jetzt als nicht verfügbar angezeigt. Doppelte `_2`-Entitäten wurden automatisch entfernt.\n\nWähle die fehlenden Sensoren unter Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → Ausgewählte Entitäten aktualisieren erneut aus. Entity-IDs und Verlauf bleiben erhalten. Dieser Hinweis verschwindet, sobald die Auswahl gespeichert ist."
+        },
+        "rediscover_switches": {
+            "title": "Optional: neue Schalter für {name} verfügbar",
+            "description": "Mit ETA-API 1.2 wurden bisher einige Schalter bei der Suche übersprungen, z. B. die Ein/Aus Taste von Warmwasser oder Frischwassermodul und „Solar abschöpfen“. Deine Anlage funktioniert unverändert weiter.\n\nWenn du diese Schalter nutzen möchtest: Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → **Verfügbare Entitäten neu suchen und Auswahl aktualisieren**. Deine bisherige Auswahl, Entity-IDs und Verlauf bleiben erhalten. Dieser Hinweis verschwindet nach der Suche."
         }
     },
     "entity": {

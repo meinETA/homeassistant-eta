@@ -114,6 +114,10 @@
         "rename_reselect": {
             "title": "ETA Heating: select missing sensors again",
             "description": "The rename to the name-based scheme in version 2.0.0 removed sensors that were added after the initial setup from the selection. They now show as unavailable. Duplicate `_2` entities have been removed automatically.\n\nSelect the missing sensors again under Settings → Devices & Services → ETA Heating → Configure → Update selected entities. Their entity ids and history are kept. This notice disappears once the selection is saved."
+        },
+        "rediscover_switches": {
+            "title": "Optional: new switches available for {name}",
+            "description": "With ETA API 1.2, the discovery skipped some switches so far, e.g. the On/Off button of hot water or the fresh water module and \"Solar abschöpfen\". Your plant keeps working unchanged.\n\nIf you want to use these switches: Settings → Devices & services → ETA Heating → Configure → **Rediscover available entities and update selected entities**. Your current selection, entity ids and history are kept. This notice disappears after the discovery."
         }
     },
     "entity": {

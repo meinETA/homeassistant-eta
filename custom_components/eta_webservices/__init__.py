@@ -7,7 +7,9 @@ from typing import Any
 from homeassistant import config_entries, core
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
 from homeassistant.helpers import entity_registry as er, issue_registry as ir
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .api import EtaAPI
 from .config_flow import EtaFlowHandler
 from .const import (
     CHOSEN_FLOAT_SENSORS,
@@ -15,11 +17,13 @@ from .const import (
     CHOSEN_SWITCHES,
     CHOSEN_TEXT_SENSORS,
     CHOSEN_WRITABLE_SENSORS,
+    CURRENT_DISCOVERY_REV,
     CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT,
     CUSTOM_UNIT_TIMESLOT,
     CUSTOM_UNIT_TIMESLOT_PLUS_TEMPERATURE,
     DEFAULT_MAX_PARALLEL_REQUESTS,
     DEFAULT_UPDATE_INTERVAL,
+    DISCOVERY_REV,
     DOMAIN,
     ERROR_UPDATE_COORDINATOR,
     FLOAT_DICT,
@@ -211,6 +215,42 @@ def _sync_migration_issue(
     )
 
 
+async def _sync_rediscover_issue(
+    hass: core.HomeAssistant, entry: config_entries.ConfigEntry, config: dict
+) -> None:
+    """Suggest a new discovery to v1.2 installs discovered before rev 2.
+
+    Optional warning: v1.2 skipped some switches (e.g. "Ein/Aus Taste" of hot
+    water / fresh water module); a new discovery offers them. Clears once the
+    discovery ran again.
+    """
+    issue_id = f"rediscover_switches_{entry.entry_id}"
+    if config.get(DISCOVERY_REV, 0) >= CURRENT_DISCOVERY_REV or config.get(
+        FORCE_LEGACY_MODE
+    ):
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
+        return
+    try:
+        api = EtaAPI(
+            async_get_clientsession(hass), config[CONF_HOST], config[CONF_PORT]
+        )
+        is_v12 = await api.is_correct_api_version()
+    except Exception:  # noqa: BLE001 - unreachable now: ask again next start
+        return
+    if not is_v12:
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
+        return
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        issue_id,
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="rediscover_switches",
+        translation_placeholders={"name": entry.title},
+    )
+
+
 async def async_setup_entry(
     hass: core.HomeAssistant, entry: config_entries.ConfigEntry
 ) -> bool:
@@ -235,6 +275,10 @@ async def async_setup_entry(
             config[key] = entry.data[key]
         else:
             config.pop(key, None)
+
+    entry.async_create_background_task(
+        hass, _sync_rediscover_issue(hass, entry, dict(config)), "eta rediscover issue"
+    )
 
     config[MAX_PARALLEL_REQUESTS] = int(
         config.get(MAX_PARALLEL_REQUESTS, DEFAULT_MAX_PARALLEL_REQUESTS)

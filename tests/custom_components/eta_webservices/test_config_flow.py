@@ -23,6 +23,7 @@ from custom_components.eta_webservices.const import (
     CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT,
     CUSTOM_UNIT_UNITLESS,
     DEFAULT_UPDATE_INTERVAL,
+    DISCOVERY_REV,
     FLOAT_DICT,
     FORCE_LEGACY_MODE,
     MAX_PARALLEL_REQUESTS,
@@ -211,6 +212,7 @@ async def test_prepare_data_structures_copies_all_keys_from_runtime_config():
             FLOAT_DICT: {"s1": _make_sensor()},
             CHOSEN_FLOAT_SENSORS: ["s1"],
             FORCE_LEGACY_MODE: True,
+            DISCOVERY_REV: 2,
         }
     )
     flow = _make_flow(config)

@@ -3645,6 +3645,175 @@
       "value": "Nein",
       "is_writable": true,
       "is_invalid": false
+    },
+    "eta_192_168_0_25__lagerum._austragung_spülposition_?": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "LagerUm. > Austragung > Spülposition ?",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/40/10211/0/0/12876",
+      "value": "xxx",
+      "is_writable": false,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__ww_warmwasserspeicher_solar_abschöpfen": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "WW > Warmwasserspeicher > Solar abschöpfen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/120/10111/0/0/12652",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__lagerum._sonstiges_taste_zurück": {
+      "valid_values": {
+        "on_value": 1803,
+        "off_value": 1802
+      },
+      "friendly_name": "LagerUm. > Sonstiges > Taste Zurück",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/40/10211/0/0/12884",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_einstellungen_ausfallbereitschaft_aktivieren?": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Kessel > Einstellungen > Ausfallbereitschaft > Aktivieren?",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/40/10021/0/0/13940",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_kessellaufmeldung_laufmeldung_von_schnittstellen": {
+      "valid_values": {
+        "on_value": 1041,
+        "off_value": 1040
+      },
+      "friendly_name": "Kessel > Kessel > Kessellaufmeldung > Laufmeldung von Schnittstellen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/40/10021/0/0/14275",
+      "value": "xxx",
+      "is_writable": false,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__hk_heizkreis_solar_abschöpfen": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "HK > Heizkreis > Solar abschöpfen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/120/10101/0/0/12652",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__lagerum._austragung_position_ist_spülposition_?": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "LagerUm. > Austragung > Position ist Spülposition ?",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/40/10211/0/0/12878",
+      "value": "xxx",
+      "is_writable": false,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__sys_externe_störmeldung_anzeigen": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Sys > Externe Störmeldung > Anzeigen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/120/10241/0/0/14871",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__ww_sonstiges_ein/aus_taste": {
+      "valid_values": {
+        "on_value": 1803,
+        "off_value": 1802
+      },
+      "friendly_name": "WW > Sonstiges > Ein/Aus Taste",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/120/10111/0/0/12080",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_kessellaufmeldung": {
+      "valid_values": {
+        "on_value": 1041,
+        "off_value": 1040
+      },
+      "friendly_name": "Kessel > Kessel > Kessellaufmeldung",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/40/10021/0/0/14268",
+      "value": "xxx",
+      "is_writable": false,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__fbh_heizkreis_solar_abschöpfen": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Fbh > Heizkreis > Solar abschöpfen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/120/10102/0/0/12652",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__kessel_kessel_entaschung_glutabbrand_sofort_beenden": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Kessel > Kessel > Entaschung > Glutabbrand sofort beenden",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/40/10021/0/0/13951",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
+    },
+    "eta_192_168_0_25__sys_störmeldung_anzeigen": {
+      "valid_values": {
+        "on_value": 1801,
+        "off_value": 1800
+      },
+      "friendly_name": "Sys > Störmeldung > Anzeigen",
+      "unit": "",
+      "endpoint_type": "TEXT",
+      "url": "/120/10241/0/0/14870",
+      "value": "xxx",
+      "is_writable": true,
+      "is_invalid": false
     }
   },
   "text_dict": {
