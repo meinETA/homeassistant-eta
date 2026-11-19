@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from asyncio import timeout
+from asyncio import Lock, timeout
 from datetime import timedelta
 import logging
 import time
@@ -26,14 +26,18 @@ from .const import (
     CUSTOM_UNIT_TIMESLOT,
     CUSTOM_UNIT_TIMESLOT_PLUS_TEMPERATURE,
     CUSTOM_UNITS,
+    DEFAULT_FAST_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    FAST_UPDATE_INTERVAL,
+    FAST_UPDATE_WARN_COUNT,
     FLOAT_DICT,
     LAST_COORDINATOR_WARNING_TIMESTAMP,
     MAX_PARALLEL_REQUESTS,
     PAUSE_COORDINATORS_MAX_DURATION,
     PAUSE_COORDINATORS_START_TIMESTAMP,
     PENDING_DICT,
+    READ_LOCK,
     REQUEST_SEMAPHORE,
     REQUEST_TIMEOUT,
     SWITCHES_DICT,
@@ -41,8 +45,27 @@ from .const import (
     UPDATE_INTERVAL,
     WRITABLE_DICT,
 )
+from .topology import async_fast_uris
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _read_lock(config: dict) -> Lock:
+    """Return the lock that keeps the polls of one entry from overlapping."""
+    return config.setdefault(READ_LOCK, Lock())
+
+
+def _switch_states(
+    states: dict[str, object], switch_queries: dict[str, tuple[str, int, int]]
+) -> dict[str, bool]:
+    """Turn raw switch values into on/off by the switch's on value."""
+    data: dict[str, bool] = {}
+    for uri, on_value, _ in switch_queries.values():
+        result = states.get(uri)
+        if result is None or isinstance(result, BaseException):
+            continue
+        data[uri] = int(result) == on_value
+    return data
 
 
 class ETAErrorUpdateCoordinator(DataUpdateCoordinator[list[ETAError]]):
@@ -140,6 +163,7 @@ class ETASensorUpdateCoordinator(DataUpdateCoordinator[dict[str, float | str | b
         self.sensor_queries: dict[str, tuple[str, bool]] = {}
         self.switch_queries: dict[str, tuple[str, int, int]] = {}
         self._build_queries()
+        self._lock = _read_lock(config)
 
         super().__init__(
             hass,
@@ -238,7 +262,7 @@ class ETASensorUpdateCoordinator(DataUpdateCoordinator[dict[str, float | str | b
             if force_string_handling:
                 uri_sensor_queries[uri]["force_string_handling"] = True
 
-        async with timeout(REQUEST_TIMEOUT):
+        async with self._lock, timeout(REQUEST_TIMEOUT):
             if uri_sensor_queries:
                 data = await eta_client.get_all_data(uri_sensor_queries)
 
@@ -250,11 +274,7 @@ class ETASensorUpdateCoordinator(DataUpdateCoordinator[dict[str, float | str | b
                 all_switch_states = await eta_client.get_all_switch_states(
                     unique_switch_uris
                 )
-                for uri, on_value, _ in self.switch_queries.values():
-                    result = all_switch_states.get(uri)
-                    if result is None or isinstance(result, BaseException):
-                        continue
-                    data[uri] = int(result) == on_value
+                data.update(_switch_states(all_switch_states, self.switch_queries))
 
         elapsed = time.monotonic() - start_time
         if (
@@ -285,6 +305,7 @@ class ETAWritableUpdateCoordinator(DataUpdateCoordinator[dict[str, float | str]]
         self.request_semaphore = config.get(REQUEST_SEMAPHORE)
         self.chosen_writable_sensors: list[str] = config[CHOSEN_WRITABLE_SENSORS]
         self.all_writable_sensors: dict[str, ETAEndpoint] = config[WRITABLE_DICT]
+        self._lock = _read_lock(config)
 
         super().__init__(
             hass,
@@ -330,7 +351,8 @@ class ETAWritableUpdateCoordinator(DataUpdateCoordinator[dict[str, float | str]]
             for sensor in self.chosen_writable_sensors
         }
 
-        data = await eta_client.get_all_data(sensor_list)
+        async with self._lock:
+            data = await eta_client.get_all_data(sensor_list)
         elapsed = time.monotonic() - start_time
         if (
             self.update_interval
@@ -469,3 +491,148 @@ class ETAPendingNodeCoordinator(DataUpdateCoordinator[bool]):
             self.entry, options={**self.entry.options, **current}
         )
         return True
+
+
+class ETAFastUpdateCoordinator(DataUpdateCoordinator[int]):
+    """Reads the values shown on the plant card more often.
+
+    It holds no entities: changed values go into the sensor and writable
+    coordinators, whose entities then update, without touching their own
+    schedule. Values are read exactly like the regular poll does.
+    """
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config: dict,
+        entry: config_entries.ConfigEntry,
+        sensor_coordinator: ETASensorUpdateCoordinator,
+        writable_coordinator: ETAWritableUpdateCoordinator,
+    ) -> None:
+        """Initialize."""
+        self.config = config
+        self.entry = entry
+        self.host = config.get(CONF_HOST, "")
+        self.port = config.get(CONF_PORT, "")
+        self.session = async_get_clientsession(hass)
+        self.max_parallel_requests = int(config.get(MAX_PARALLEL_REQUESTS, 5))
+        self.request_semaphore = config.get(REQUEST_SEMAPHORE)
+        self._sensor = sensor_coordinator
+        self._writable = writable_coordinator
+        self._lock = _read_lock(config)
+
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=timedelta(
+                seconds=int(
+                    config.get(FAST_UPDATE_INTERVAL, DEFAULT_FAST_UPDATE_INTERVAL)
+                )
+            ),
+            config_entry=entry,
+        )
+        self._warned = False
+        # no entities listen here; keep the schedule running
+        self.remove_listener = self.async_add_listener(lambda: None)
+
+    def _create_eta_client(self):
+        return EtaAPI(
+            self.session,
+            self.host,
+            self.port,
+            max_concurrent_requests=self.max_parallel_requests,
+            request_semaphore=self.request_semaphore,
+        )
+
+    def _queries(
+        self,
+    ) -> tuple[
+        dict[str, dict[str, bool]],
+        dict[str, tuple[str, int, int]],
+        dict[str, dict[str, bool]],
+    ]:
+        """Split the card uris by the coordinator that owns them."""
+        fast = async_fast_uris(self.hass, self.entry)
+        sensors: dict[str, dict[str, bool]] = {}
+        for uri, force_string_handling in self._sensor.sensor_queries.values():
+            if uri in fast:
+                flags = sensors.setdefault(uri, {})
+                if force_string_handling:
+                    flags["force_string_handling"] = True
+        switches = {
+            key: query
+            for key, query in self._sensor.switch_queries.items()
+            if query[0] in fast
+        }
+        writables: dict[str, dict[str, bool]] = {}
+        for sensor in self._writable.chosen_writable_sensors:
+            endpoint = self._writable.all_writable_sensors.get(sensor)
+            if endpoint and endpoint["url"] in fast:
+                writables[endpoint["url"]] = {}
+        return sensors, switches, writables
+
+    @staticmethod
+    def _merge(coordinator: DataUpdateCoordinator, values: dict[str, Any]) -> int:
+        """Write changed values into a coordinator and notify its entities."""
+        if coordinator.data is None:
+            return 0
+        changed = {
+            uri: value
+            for uri, value in values.items()
+            if uri not in coordinator.data or coordinator.data[uri] != value
+        }
+        if changed:
+            coordinator.data = {**coordinator.data, **changed}
+            coordinator.async_update_listeners()
+        return len(changed)
+
+    async def _async_update_data(self) -> int:
+        """Read the card values; return how many changed."""
+        if (
+            (
+                pause_start_timestamp := self.config.get(
+                    PAUSE_COORDINATORS_START_TIMESTAMP
+                )
+            )
+            is not None
+            and time.time() - pause_start_timestamp < PAUSE_COORDINATORS_MAX_DURATION
+        ):
+            return 0
+        # the regular poll is running or failed: skip this round
+        if (
+            self._lock.locked()
+            or self._sensor.data is None
+            or not self._sensor.last_update_success
+        ):
+            return 0
+        sensors, switches, writables = self._queries()
+        if not (sensors or switches or writables):
+            return 0
+        count = len(sensors) + len(switches) + len(writables)
+        if count > FAST_UPDATE_WARN_COUNT and not self._warned:
+            self._warned = True
+            _LOGGER.warning(
+                "%d values are polled every %s seconds (plant card and the ETA Fast "
+                "Update label). Consider removing the label from some entities to "
+                "reduce load on the ETA terminal",
+                count,
+                self.update_interval.total_seconds() if self.update_interval else "?",
+            )
+
+        eta_client = self._create_eta_client()
+        sensor_values: dict[str, Any] = {}
+        writable_values: dict[str, Any] = {}
+        async with self._lock, timeout(REQUEST_TIMEOUT):
+            if sensors:
+                sensor_values = await eta_client.get_all_data(sensors)
+            if switches:
+                states = await eta_client.get_all_switch_states(
+                    list(dict.fromkeys(query[0] for query in switches.values()))
+                )
+                sensor_values.update(_switch_states(states, switches))
+            if writables:
+                writable_values = await eta_client.get_all_data(writables)
+        return self._merge(self._sensor, sensor_values) + self._merge(
+            self._writable, writable_values
+        )

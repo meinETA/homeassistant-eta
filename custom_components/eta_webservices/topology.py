@@ -14,10 +14,21 @@ from pathlib import Path
 import re
 from typing import Any
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    label_registry as lr,
+)
 
-from .const import DOMAIN, STABLE_ID
+from .const import (
+    DOMAIN,
+    FAST_UPDATE_LABEL_ID,
+    FAST_UPDATE_LABEL_NAME,
+    PANEL_DATA,
+    STABLE_ID,
+)
 
 # Detection rules: object id -> block type ("1010*" = prefix) and, per block
 # type, [address below the object (segments 3..5), role]. Several addresses may
@@ -214,26 +225,142 @@ def build_report(
     return [objects[key] for key in sorted(objects)]
 
 
+def _stable(entry: ConfigEntry) -> str:
+    return entry.data.get(STABLE_ID) or str(entry.data.get("host", "")).replace(
+        ".", "_"
+    )
+
+
+# roles the card uses for calculations only, they change rarely or never;
+# heating time slots ("slot_*") are refreshed right after a write anyway
+SLOW_ROLES = frozenset({"ash_limit", "stock_max", "stock_warn", "consumption_total"})
+_BUFFER_POSITIONS = ("top", "middle", "bottom")
+
+
+def card_entities(
+    blocks: list[Block], plant: dict[str, str], card: dict[str, Any]
+) -> set[str]:
+    """Return the entities the plant card shows, with its stored settings.
+
+    Mirrors applyConfig() of the card: roles assigned by hand replace the
+    detected ones, "-" hides a role, hidden blocks are left out, and a buffer
+    with a hand-picked top/middle/bottom sensor drops its numbered sensors.
+    """
+    overrides = card.get("roles") or {}
+    hidden = set(card.get("hidden") or [])
+    result: set[str] = set()
+
+    def apply(roles: dict[str, str], own: Any) -> dict[str, str]:
+        roles = dict(roles)
+        for role, entity_id in (own if isinstance(own, dict) else {}).items():
+            if entity_id == "-":
+                roles.pop(role, None)
+            elif isinstance(entity_id, str) and entity_id:
+                roles[role] = entity_id
+        return roles
+
+    block_ids = [block.id for block in blocks]
+    block_ids += [
+        x["id"] for x in card.get("extra") or [] if isinstance(x, dict) and "id" in x
+    ]
+    detected = {block.id: block for block in blocks}
+    for block_id in block_ids:
+        if block_id in hidden:
+            continue
+        block = detected.get(block_id)
+        own = overrides.get(block_id)
+        roles = apply(block.roles if block else {}, own)
+        if (
+            block is not None
+            and block.type == "buffer"
+            and isinstance(own, dict)
+            and any(pos in own for pos in _BUFFER_POSITIONS)
+        ):
+            roles = {r: e for r, e in roles.items() if not r.startswith("sensor_")}
+        result.update(
+            entity_id
+            for role, entity_id in roles.items()
+            if role not in SLOW_ROLES and not role.startswith("slot_")
+        )
+    result.update(apply(plant, overrides.get("plant")).values())
+    return result
+
+
+def entity_uris(entity_ids: set[str], uid_of: dict[str, str], stable: str) -> set[str]:
+    """Return the ETA uris of entities of this entry (others are skipped)."""
+    uris = set()
+    for entity_id in entity_ids:
+        parsed = parse_unique_id(uid_of.get(entity_id, ""), stable, writable=True)
+        if parsed is not None:
+            node, obj, address = parsed
+            uris.add(f"/{node}/{obj}/{address}")
+    return uris
+
+
+@callback
+def async_fast_uris(hass: HomeAssistant, entry: ConfigEntry) -> set[str]:
+    """Return the uris to poll fast: plant card values and labelled entities."""
+    ent_reg = er.async_get(hass)
+    stable = _stable(entry)
+    regs = [
+        reg
+        for reg in er.async_entries_for_config_entry(ent_reg, entry.entry_id)
+        if reg.disabled_by is None
+    ]
+    blocks, plant = build_blocks(
+        [(reg.unique_id, reg.entity_id, None) for reg in regs], stable
+    )
+    stored = hass.data.get(PANEL_DATA, {}).get(entry.entry_id, {})
+    entity_ids = card_entities(blocks, plant, stored.get("card") or {})
+    # entities the user marked with the "ETA Fast Update" label
+    entity_ids.update(
+        reg.entity_id for reg in regs if FAST_UPDATE_LABEL_ID in reg.labels
+    )
+    uid_of = {reg.entity_id: reg.unique_id for reg in regs}
+    return entity_uris(entity_ids, uid_of, stable)
+
+
+@callback
+def async_ensure_fast_label(hass: HomeAssistant) -> None:
+    """Create the "ETA Fast Update" label once, so users only pick it.
+
+    Found by id: a renamed label keeps working, a deleted one comes back.
+    """
+    label_reg = lr.async_get(hass)
+    if label_reg.async_get_label(FAST_UPDATE_LABEL_ID) is not None:
+        return
+    if label_reg.async_get_label_by_name(FAST_UPDATE_LABEL_NAME) is not None:
+        return  # same name, other id: leave the user's label alone
+    label_reg.async_create(
+        FAST_UPDATE_LABEL_NAME,
+        icon="mdi:speedometer",
+        description="Home Assistant reads entities of the ETA integration with this label more often.",
+    )
+
+
+def _entry_rows(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> list[tuple[str, str, str | None]]:
+    ent_reg = er.async_get(hass)
+    dev_reg = dr.async_get(hass)
+    rows = []
+    for reg_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
+        if reg_entry.disabled_by is not None:
+            continue
+        device = dev_reg.async_get(reg_entry.device_id) if reg_entry.device_id else None
+        device_name = (device.name_by_user or device.name) if device else None
+        rows.append((reg_entry.unique_id, reg_entry.entity_id, device_name))
+    return rows
+
+
 @callback
 def async_get_topology(hass: HomeAssistant) -> list[dict[str, Any]]:
     """Return the topology of every loaded ETA config entry."""
     ent_reg = er.async_get(hass)
-    dev_reg = dr.async_get(hass)
     result = []
     for entry in hass.config_entries.async_entries(DOMAIN):
-        stable = entry.data.get(STABLE_ID) or str(entry.data.get("host", "")).replace(
-            ".", "_"
-        )
-        rows = []
-        for reg_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
-            if reg_entry.disabled_by is not None:
-                continue
-            device = (
-                dev_reg.async_get(reg_entry.device_id) if reg_entry.device_id else None
-            )
-            device_name = (device.name_by_user or device.name) if device else None
-            rows.append((reg_entry.unique_id, reg_entry.entity_id, device_name))
-        blocks, plant = build_blocks(rows, stable)
+        stable = _stable(entry)
+        blocks, plant = build_blocks(_entry_rows(hass, entry), stable)
         # computed values of the integration ("Auswertung" device)
         prefix = f"eta_{stable}_analytics_"
         for reg_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
@@ -268,9 +395,7 @@ def async_get_report(
     )
     if entry is None:
         return {"objects": []}
-    stable = entry.data.get(STABLE_ID) or str(entry.data.get("host", "")).replace(
-        ".", "_"
-    )
+    stable = _stable(entry)
     regs = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
     rows = [
         (reg.unique_id, reg.entity_id, None, reg.unit_of_measurement)

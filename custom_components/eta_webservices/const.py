@@ -41,6 +41,9 @@ ERROR_UPDATE_COORDINATOR = "error_update_coordinator"
 WRITABLE_UPDATE_COORDINATOR = "writable_update_coordinator"
 SENSOR_UPDATE_COORDINATOR = "sensor_update_coordinator"
 PENDING_UPDATE_COORDINATOR = "pending_update_coordinator"
+FAST_UPDATE_COORDINATOR = "fast_update_coordinator"
+# hass.data key of the stored card settings (panel.py)
+PANEL_DATA = f"{DOMAIN}_panel_data"
 LAST_COORDINATOR_WARNING_TIMESTAMP = "last_coordinator_warning_timestamp"
 
 CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT = "minutes_since_midnight"
@@ -75,6 +78,9 @@ INVISIBLE_UNITS = [
 MAX_PARALLEL_REQUESTS = "max_parallel_requests"
 REQUEST_SEMAPHORE = "request_semaphore"
 UPDATE_INTERVAL = "update_interval"
+FAST_UPDATE_INTERVAL = "fast_update_interval"
+# one read at a time per entry: slow and fast polling never overlap
+READ_LOCK = "read_lock"
 PAUSE_COORDINATORS_START_TIMESTAMP = "pause_coordinators_start_timestamp"
 PAUSE_COORDINATORS_MAX_DURATION = 10 * 60  # seconds
 
@@ -82,6 +88,12 @@ PAUSE_COORDINATORS_MAX_DURATION = 10 * 60  # seconds
 REQUEST_TIMEOUT = 60
 DEFAULT_MAX_PARALLEL_REQUESTS = 5
 DEFAULT_UPDATE_INTERVAL = 60  # seconds
+DEFAULT_FAST_UPDATE_INTERVAL = 10  # seconds, values shown on the plant card
+# entities with this label are polled fast as well (label id = slug of the name)
+FAST_UPDATE_LABEL_ID = "eta_fast_update"
+FAST_UPDATE_LABEL_NAME = "ETA Fast Update"
+# more fast values than this load the terminal noticeably: warn once
+FAST_UPDATE_WARN_COUNT = 50
 COORDINATOR_WARNING_INTERVAL = (
     30 * 60
 )  # seconds between coordinator performance warnings
