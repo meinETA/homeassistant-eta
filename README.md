@@ -27,8 +27,8 @@ Your ETA plant on a dashboard, like on the touch display: detected automatically
 | Wood chip boiler | Control tab |
 | --- | --- |
 | ![Plant card: wood chip boiler with buffer and external demand](images/plant-card-chips.png) | ![Plant card: control tab with boiler, heating circuits and heating times](images/plant-card-control.png) |
-| **Heating times** | |
-| ![Plant card: editing the heating times of a heating circuit](images/plant-card-times.png) | |
+| **Heating times** | **Card settings** |
+| ![Plant card: editing the heating times of a heating circuit](images/plant-card-times.png) | ![Plant card settings: name, language, icons and manually assigned values](images/plant-card-settings.png) |
 
 ## Contents
 
@@ -45,6 +45,7 @@ Your ETA plant on a dashboard, like on the touch display: detected automatically
 - **Error monitoring**: a binary sensor for active errors, the active-error count, the latest error message, plus [error events](#error-events) for automations.
 - **Services** to write values directly to the unit ([details](#custom-services)).
 - **Stable entity identities**: entity ids stay stable across firmware updates, terminal language changes and IP changes.
+- **Analytics**: ash box fill level, pellet consumption per day and forecasts for ash box and pellet store ([details](#analytics)).
 - **Energy Dashboard** ready ([details](#integrating-the-eta-unit-into-the-energy-dashboard)).
 
 ## Plant Card
