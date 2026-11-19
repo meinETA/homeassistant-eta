@@ -4,7 +4,7 @@
   const H = 860;
   const FLOOR = 610;
   // bump when icon files change, so browsers do not keep stale images
-  const ICON_REV = "2026-11-19a";
+  const ICON_REV = "2026-11-20a";
 
   // type -> [icon file, icon width on the 1600px canvas, aspect w/h]
   const ICONS = {
@@ -44,6 +44,7 @@
       ["PE-K", "Kessel/Pellets/PEK.webp", 840 / 1000],
       ["ePE-K", "Kessel/Pellets/ePEK.webp", 884 / 932],
       ["ePE (gelb)", "Kessel/ePE/ePE_HW.webp", 904 / 924],
+      ["ePE (Einblick)", "Kessel/ePE/ePE_einblick.webp", 904 / 924],
       ["ePE BW (weiß)", "Kessel/ePE_BW/ePE_BW.webp", 560 / 880],
       ["SH", "Kessel/SH/SH_neu.webp", 780 / 980],
       ["SH alt", "Kessel/SH/SH.webp", 780 / 980],
@@ -93,6 +94,7 @@
     "Kessel/Pellets/PEK.webp": [0.068,0.069,0.921,0.91],
     "Kessel/Pellets/ePEK.webp": [0.063,0.06,0.921,0.926],
     "Kessel/ePE/ePE_HW.webp": [0.231,0.079,0.715,0.903],
+    "Kessel/ePE/ePE_einblick.webp": [0.231,0.079,0.715,0.903],
     "Kessel/ePE_BW/ePE_BW.webp": [0.095,0.06,0.875,0.925],
     "Kessel/SH/SH_neu.webp": [0.078,0.07,0.736,0.92],
     "Kessel/SH/SH.webp": [0.068,0.07,0.777,0.934],
@@ -138,6 +140,7 @@
     "Kessel/Pellets/PEK.webp": [0.065, 0.303],
     "Kessel/Pellets/ePEK.webp": [0.062, 0.303],
     "Kessel/ePE/ePE_HW.webp": [0.257, 0.308],
+    "Kessel/ePE/ePE_einblick.webp": [0.257, 0.308],
     "Kessel/ePE_BW/ePE_BW.webp": [0.136, 0.301],
     "Kessel/SH/SH_neu.webp": [0.077, 0.307],
     "Kessel/SH/SH.webp": [0.086, 0.311],
