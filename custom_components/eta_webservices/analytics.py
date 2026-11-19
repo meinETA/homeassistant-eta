@@ -28,14 +28,19 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, STABLE_ID
+from .const import DOMAIN, FLOAT_DICT, STABLE_ID, SWITCHES_DICT, TEXT_DICT
 from .topology import build_blocks
 from .utils import create_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
 ANALYTICS = "analytics"
-DEVICE_NAME = "Auswertung"
+# device name in the language of the ETA terminal, like the other devices
+DEVICE_NAMES = {"de": "Auswertung", "en": "Analytics"}
+_MENU_WORDS = {
+    "de": {"Kessel", "Puffer", "Heizkreis", "Warmwasser", "Eingänge", "Ausgänge", "Zählerstände", "Vorrat", "Sonstiges"},
+    "en": {"Boiler", "Buffer", "Heating circuit", "Hot water", "Inputs", "Outputs", "Counters", "Stock", "Other"},
+}  # fmt: skip
 AVG_DAYS = 14
 # seasonal forecast: needs most of the last year as daily consumption
 SEASON_MIN_DAYS = 300
@@ -46,6 +51,16 @@ _SOURCES = {
     "boiler": ("ash_used", "ash_limit", "consumption_total"),
     "silo": ("stock", "stock_warn"),
 }
+
+
+def terminal_language(friendly_names: list[str]) -> str:
+    """Guess the ETA terminal language from its menu names ("Kessel > ...")."""
+    hits = dict.fromkeys(_MENU_WORDS, 0)
+    for name in friendly_names:
+        parts = {p.strip() for p in name.split(">")}
+        for lang, words in _MENU_WORDS.items():
+            hits[lang] += len(parts & words)
+    return "de" if hits["de"] > hits["en"] else "en"
 
 
 def find_sources(unique_ids: list[str], stable: str) -> dict[str, str]:
@@ -184,6 +199,7 @@ class EtaAnalyticsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self.sources = sources
         self.config = config
+        self.device_name = DEVICE_NAMES["en"]
         self._history: tuple[datetime, float | None, float | None, float | None]
         self._history = (datetime.min.replace(tzinfo=dt_util.UTC), None, None, None)
         self._daily: tuple[date | None, dict[date, float]] = (None, {})
@@ -327,9 +343,13 @@ class EtaAnalyticsSensor(CoordinatorEntity[EtaAnalyticsCoordinator], SensorEntit
         self._attr_suggested_display_precision = spec.precision
         if spec.options:
             self._attr_options = list(spec.options)
-        self._attr_device_info = create_device_info(
-            host, config.get(CONF_PORT, ""), DEVICE_NAME, config.get(CONF_NAME)
+        # fixed identifier (German name), shown name in the terminal language
+        info = create_device_info(
+            host, config.get(CONF_PORT, ""), DEVICE_NAMES["de"], config.get(CONF_NAME)
         )
+        name = str(info.get("name") or "")
+        info["name"] = name[: -len(DEVICE_NAMES["de"])] + coordinator.device_name
+        self._attr_device_info = info
 
     async def async_added_to_hass(self) -> None:
         """Recompute once the source values are loaded after startup."""
@@ -356,5 +376,11 @@ async def async_create_analytics(
     if not specs:
         return []
     coordinator = EtaAnalyticsCoordinator(hass, config, sources)
+    names = [
+        info.get("friendly_name", "")
+        for key in (FLOAT_DICT, TEXT_DICT, SWITCHES_DICT)
+        for info in (config.get(key) or {}).values()
+    ]
+    coordinator.device_name = DEVICE_NAMES[terminal_language(names)]
     await coordinator.async_refresh()
     return [EtaAnalyticsSensor(coordinator, spec) for spec in specs]

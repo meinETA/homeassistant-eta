@@ -7,6 +7,7 @@ from custom_components.eta_webservices.analytics import (
     daily_consumption,
     find_sources,
     forecast_days,
+    terminal_language,
 )
 
 STABLE = "keller"
@@ -101,3 +102,12 @@ def test_forecast_falls_back_to_average() -> None:
     """Less than a year of statistics: the 14-day average."""
     days, method = forecast_days(300.0, 15.0, {}, date(2026, 11, 19))
     assert (days, method) == (20.0, "average")
+
+
+def test_terminal_language_from_menu_names() -> None:
+    """Device name follows the language of the ETA menu names."""
+    de = ["Kessel > Zählerstände > Gesamtverbrauch", "Puffer > Eingänge > Fühler 1"]
+    en = ["Boiler > Counters > Total consumption", "Buffer > Inputs > Sensor 1"]
+    assert terminal_language(de) == "de"
+    assert terminal_language(en) == "en"
+    assert terminal_language(["Caldaia > Contatori"]) == "en"

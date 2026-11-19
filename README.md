@@ -66,7 +66,7 @@ Layouts that are not covered yet will be added based on reports.
 
 ### Analytics
 
-Computed values on an extra device **ETA > [name] > Auswertung**, created when the needed ETA values are selected:
+Computed values on an extra device **ETA > [name] > Auswertung** (named in the language of the ETA terminal, e.g. *Analytics* for English), created when the needed ETA values are selected:
 
 - **Ash box fill level** (%), from *Verbrauch seit Aschebox leeren* and *Aschebox leeren nach*.
 - **Pellet consumption** today, yesterday and per day (14-day average), from *Gesamtverbrauch*. "Today" resets at midnight, so a statistics graph with "change" per day shows daily bars.

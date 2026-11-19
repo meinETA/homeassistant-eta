@@ -328,6 +328,7 @@
   @keyframes mb{to{transform:translateX(19.8px)}}
   .blk{position:absolute;z-index:4;top:64px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
   .vals{display:flex;align-items:flex-end;gap:8px;padding-bottom:14px}
+  .pill.na{display:none}
   .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
   .stack{height:${FLOOR - 64}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
   .icon{display:flex;align-items:flex-end;position:relative}
@@ -1005,6 +1006,10 @@
       const root = this.shadowRoot;
       if (!root || !this._topo) return;
       root.querySelectorAll("[data-e]").forEach((el) => {
+        // no value (e.g. flow temperature while the circuit is off, forecast without history): hide the box
+        const st = this._hass.states[el.dataset.e];
+        const na = !st || ["unknown", "unavailable", "", "---", "xxx"].includes(String(st.state));
+        if (el._na !== na) { el.classList.toggle("na", na); el._na = na; }
         const v = this._fmt(el.dataset.e);
         const html = v === null ? "–" : v;
         if (el._v !== html) { el.innerHTML = html; el._v = html; }
