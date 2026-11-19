@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from homeassistant import config_entries
 from homeassistant.components.switch import ENTITY_ID_FORMAT, SwitchEntity
@@ -16,6 +17,11 @@ from .coordinator import ETASensorUpdateCoordinator
 from .entity import EtaEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+# After a write the terminal may still report the old state for a moment, and a
+# poll that started before the write returns it. Such reads must not flip the
+# switch back; once the poll agrees or this time has passed, the poll wins.
+WRITE_HOLD_SECONDS = 15
 
 
 async def async_setup_entry(
@@ -63,27 +69,41 @@ class EtaSwitch(EtaEntity, SwitchEntity, CoordinatorEntity[ETASensorUpdateCoordi
         self.off_value = endpoint_info["valid_values"].get("off_value", 1802)  # pyright: ignore[reportOptionalMemberAccess]
         data = self.coordinator.data.get(self.uri)
         self._attr_is_on = bool(data) if data is not None else None
+        # state written last and when (monotonic), until a poll confirms it
+        self._written: tuple[bool, float] | None = None
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Update attributes when the coordinator updates."""
         data = self.coordinator.data.get(self.uri)
         if self.coordinator.data:
-            self._attr_is_on = bool(data) if data is not None else None
+            polled = bool(data) if data is not None else None
+            if self._written is not None:
+                wanted, written_at = self._written
+                if (
+                    polled == wanted
+                    or time.monotonic() - written_at > WRITE_HOLD_SECONDS
+                ):
+                    self._written = None
+                else:
+                    polled = wanted  # read before the terminal applied the write
+            self._attr_is_on = polled
         super()._handle_coordinator_update()
+
+    async def _async_write(self, on: bool) -> None:
+        eta_client = self._create_eta_client()
+        res = await eta_client.set_switch_state(
+            self.uri, self.on_value if on else self.off_value
+        )
+        if res:
+            self._written = (on, time.monotonic())
+            self._attr_is_on = on
+            self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs):
         """Turn the switch on."""
-        eta_client = self._create_eta_client()
-        res = await eta_client.set_switch_state(self.uri, self.on_value)
-        if res:
-            self._attr_is_on = True
-            self.async_write_ha_state()
+        await self._async_write(True)
 
     async def async_turn_off(self, **kwargs):
         """Turn the switch off."""
-        eta_client = self._create_eta_client()
-        res = await eta_client.set_switch_state(self.uri, self.off_value)
-        if res:
-            self._attr_is_on = False
-            self.async_write_ha_state()
+        await self._async_write(False)
