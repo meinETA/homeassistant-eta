@@ -867,6 +867,7 @@
       };
       const group = (key, inner) => `<div class="g" data-flow="${key}">${inner}</div>`;
       let s = "";
+      this._hoseLeft = null;
       if (silo && boiler) {
         if (silo.b.type === "silo" && NO_HOSE.test(boiler.file)) {
           // log or wood chip boiler: no pellet suction
@@ -903,6 +904,7 @@
             if (e[2] !== null) pts.push([e[0], e[2]]);
             return pts;
           };
+          this._hoseLeft = Math.min(xs, xa) - T / 2;
           const suction = path(xs, y0 + D / 2, ends.suction);
           const air = path(xa, y0 - D / 2, ends.air).reverse(); // flows back to the store
           s += group(silo.b.id, line(suction, "pe") + line(air, "air"));
@@ -1079,18 +1081,37 @@
       return IDLE.some((w) => v === w || v.startsWith(`${w} `));
     }
 
+    // the store's values must not cover the pellet hoses: move them left as far as
+    // needed, but not past the left edge of the card
+    _valsOffHoses() {
+      const vals = this._hoseLeft && this.shadowRoot.querySelector(".blk.t-silo .vals");
+      const cv = this.shadowRoot.querySelector(".cv");
+      if (!vals || !cv) return;
+      vals.style.transform = "";
+      const c = cv.getBoundingClientRect();
+      const k = c.width / W;
+      if (!k) return;
+      const r = vals.getBoundingClientRect();
+      const left = (r.left - c.left) / k;
+      const over = (r.right - c.left) / k - (this._hoseLeft - 10);
+      const shift = Math.max(0, Math.min(over, left - 8));
+      if (shift > 0) vals.style.transform = `translateX(${-shift}px)`;
+    }
+
     _update() {
       const root = this.shadowRoot;
       if (!root || !this._topo) return;
+      let resized = false;
       root.querySelectorAll("[data-e]").forEach((el) => {
         // no value (e.g. flow temperature while the circuit is off, forecast without history): hide the box
         const st = this._hass.states[el.dataset.e];
         const na = !st || ["unknown", "unavailable", "", "---", "xxx"].includes(String(st.state));
-        if (el._na !== na) { el.classList.toggle("na", na); el._na = na; }
+        if (el._na !== na) { el.classList.toggle("na", na); el._na = na; resized = true; }
         const v = this._fmt(el.dataset.e);
         const html = v === null ? "–" : v;
-        if (el._v !== html) { el.innerHTML = html; el._v = html; }
+        if (el._v !== html) { el.innerHTML = html; el._v = html; resized = true; }
       });
+      if (resized) this._valsOffHoses();
       // ash box: bar colour from 80 % (soon) and 100 % (ETA asks to empty it)
       root.querySelectorAll("[data-ash]").forEach((el) => {
         const st = this._hass.states[el.dataset.ash];
