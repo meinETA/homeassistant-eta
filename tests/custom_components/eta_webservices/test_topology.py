@@ -320,3 +320,42 @@ def test_report_line_marks_non_sensor_domains():
     assert _report_line("0/11109/0", "°C", "Kessel", None, "sensor.x") == (
         "0/11109/0 °C | Kessel"
     )
+
+
+def test_pc_boiler_object_is_a_boiler():
+    """ETA PC reports its boiler under object 10511 (#21)."""
+    assert block_type_for_object("10511") == "boiler"
+
+
+def test_sh_twin_boilers_are_detected():
+    """SH-TWIN: log wood boiler 10391 and pellet unit 10401 are boilers (#22, #23)."""
+    rows = [
+        (f"eta_{STABLE}_40_10401_0_0_12013", "sensor.ash", None),
+        (f"eta_{STABLE}_40_10401_0_0_12414", "sensor.twin_pump", None),
+        (f"eta_{STABLE}_48_10391_0_0_12161", "sensor.sh_temp", None),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    by_id = {b.id: b for b in blocks}
+    assert by_id["40/10401"].type == "boiler"
+    assert by_id["40/10401"].roles["ash_used"] == "sensor.ash"
+    assert by_id["40/10401"].roles["pump"] == "sensor.twin_pump"
+    assert by_id["48/10391"].type == "boiler"
+    assert by_id["48/10391"].roles["temperature"] == "sensor.sh_temp"
+
+
+def test_pellet_boiler_comes_before_wood_boiler():
+    """The boiler with pellets stands next to the store, whatever its node."""
+    rows = [
+        (f"eta_{STABLE}_10_10391_0_0_12161", "sensor.sh_temp", None),
+        (f"eta_{STABLE}_40_10401_0_0_12011", "sensor.twin_hopper", None),
+        (f"eta_{STABLE}_40_10201_0_0_12015", "sensor.stock", None),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    assert [b.id for b in blocks] == ["40/10201", "40/10401", "10/10391"]
+
+
+def test_boiler_residual_oxygen_role():
+    """Residual oxygen is shown as fourth boiler value."""
+    rows = [(f"eta_{STABLE}_48_10391_0_0_12164", "sensor.o2", None)]
+    blocks, _ = build_blocks(rows, STABLE)
+    assert blocks[0].roles["oxygen"] == "sensor.o2"

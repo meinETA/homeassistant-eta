@@ -178,8 +178,26 @@
   // default icon per ETA object id where the type alone is ambiguous
   const DEFAULT_BY_OBJECT = {
     "10561": ["Kessel/Hack/Hack.webp", 1],
+    // SH-TWIN: log wood boiler (10391) with pellet unit (10401)
+    "10391": ["Kessel/SH/SH_neu.webp", 780 / 980],
+    "10401": ["Kessel/TWIN/SH_TWIN_neu.webp", 1020 / 920],
   };
   const ICON_OFF = { heating_circuit: "FUBs/Heizkreise/Radiator_aus.webp" };
+  // SH-TWIN: the pellet unit (key) is built onto the wood boiler (value). ETA controls them as two
+  // function blocks, but it is one boiler with one water side: the plant view draws one block
+  // with the SH-TWIN icon, the control tab keeps both (each has its own on/off).
+  const TWIN_PAIRS = { "10401": "10391" };
+  const mergeTwins = (list) => {
+    const out = [...list];
+    out.filter((b) => b.type === "boiler" && TWIN_PAIRS[b.object]).forEach((b) => {
+      const partner = out.find((x) => x.type === "boiler" && x.object === TWIN_PAIRS[b.object]);
+      if (!partner) return;
+      const merged = { ...b, roles: { ...partner.roles, ...b.roles }, entities: [...b.entities, ...partner.entities], partner };
+      out.splice(out.indexOf(b), 1, merged);
+      out.splice(out.indexOf(partner), 1);
+    });
+    return out;
+  };
   // particle separator: not part of the heat flow, shown in the control tab only
   const EP_ICON = { off: "Kessel/EP_Abscheider/EP.webp", on: "Kessel/EP_Abscheider/EP_aktiv.webp" };
   const LABELS = {
@@ -194,7 +212,7 @@
       apply: "Übernehmen für", only_day: "nur diesen Tag", workdays: "Mo–Fr", weekend: "Sa–So", all_days: "alle Tage",
       save: "Speichern", cancel: "Abbrechen", saving: "Wird geschrieben …", ro: "Nur lesbar. Bearbeiten ab ETA-API 1.2: Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → „Ausgewählte Entitäten aktualisieren“ → Heizzeiten unter „Schreibbare Sensoren“ auswählen.",
       bad_slot: "Ungültiges Zeitfenster: Beginn muss vor dem Ende liegen.",
-      ash: "Aschebox", hopper: "Tagesbehälter", empty_now: "jetzt leeren", d_unit: "Tage",
+      ash: "Aschebox", hopper: "Tagesbehälter", pellets: "Pellets", wood: "Holz", empty_now: "jetzt leeren", d_unit: "Tage",
       fc_seasonal: "Prognose aus Vorjahr", fc_average: "Prognose aus Ø 14 Tagen",
       in_days: (n) => `leeren in ca. ${n} ${n === 1 ? "Tag" : "Tagen"}`,
       in_weeks: (n) => `leeren in ca. ${n} Wochen`, in_months: (n) => `leeren in ca. ${n} Monaten`,
@@ -210,7 +228,7 @@
       apply: "Apply to", only_day: "this day only", workdays: "Mon–Fri", weekend: "Sat–Sun", all_days: "all days",
       save: "Save", cancel: "Cancel", saving: "Writing …", ro: "Read only. Editing from ETA API 1.2: Settings → Devices & services → ETA Heating → Configure → \u201cUpdate selected entities\u201d → select the heating times under \u201cPossible writable sensors\u201d.",
       bad_slot: "Invalid time slot: start must be before end.",
-      ash: "Ash box", hopper: "Hopper", empty_now: "empty now", d_unit: "days",
+      ash: "Ash box", hopper: "Hopper", pellets: "Pellets", wood: "Wood", empty_now: "empty now", d_unit: "days",
       fc_seasonal: "forecast from last year", fc_average: "forecast from 14-day average",
       in_days: (n) => `empty in approx. ${n} ${n === 1 ? "day" : "days"}`,
       in_weeks: (n) => `empty in approx. ${n} weeks`, in_months: (n) => `empty in approx. ${n} months`,
@@ -220,7 +238,7 @@
   const TOP_VALUES = {
     silo: ["stock"],
     chip_store: ["discharge"],
-    boiler: ["temperature", "hopper", "pressure"],
+    boiler: ["temperature", "hopper", "pressure", "oxygen"],
     buffer: ["charge"],
     heating_circuit: ["flow"],
     fwm: ["hot_water", "primary_flow"],
@@ -228,7 +246,7 @@
     solar: ["collector"],
     external_heat: ["temperature"],
   };
-  const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "unavailable", "unknown"];
+  const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "ausgeschaltet", "unavailable", "unknown"];
   const ON = ["ein", "an", "on", "true", "läuft", "running"];
   const CONSUMERS = ["heating_circuit", "external_demand", "fwm", "dhw", "unknown"];
 
@@ -236,7 +254,8 @@
   const EDIT_ROLES = {
     plant: [["outside", "Außentemperatur", "Outside temperature", "temp"]],
     boiler: [["temperature", "Kesseltemperatur", "Boiler temperature", "temp"], ["pressure", "Druck", "Pressure", "bar"],
-      ["hopper", "Vorratsbehälter", "Hopper", "level"], ["status", "Status", "Status", "text"],
+      ["hopper", "Vorratsbehälter", "Hopper", "level"], ["oxygen", "Restsauerstoff", "Residual oxygen", "level"],
+      ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"]],
     silo: [["stock", "Vorrat", "Stock", "level"], ["status", "Status", "Status", "text"], ["auger", "Förderung", "Conveyor", "onoff"]],
     chip_store: [["auger", "Förderung", "Conveyor", "onoff"], ["discharge", "Austragung", "Discharge", "onoff"]],
@@ -288,7 +307,20 @@
     });
     const plant = { ...(topo.plant || {}) };
     Object.entries(ov.plant || {}).forEach(([role, e]) => { if (e === "-") delete plant[role]; else if (e) plant[role] = e; });
-    return { ...topo, plant, blocks: blocks.filter((b) => !hidden.has(b.id)) };
+    // a part added by hand whose values all belong to a detected part of the same type is a
+    // duplicate (the detection learned it later, e.g. after an update): leave it out
+    const dup = (b) => {
+      if (!b.manual) return false;
+      const mine = Object.values(b.roles).filter((e) => e && e !== "-");
+      return mine.length > 0 && blocks.some((x) => !x.manual && x.type === b.type
+        && mine.every((e) => (topo.blocks.find((t) => t.id === x.id) || { entities: [] }).entities.includes(e)));
+    };
+    const dups = new Set(blocks.filter(dup).map((b) => b.id));
+    // order picked by hand (like on the ETA terminal); parts not in the list keep their place at the end
+    const order = cfg.order || [];
+    const pos = (b, i) => { const k = order.indexOf(b.id); return k < 0 ? order.length + i : k; };
+    const sorted = blocks.map((b, i) => [pos(b, i), b]).sort((x, y) => x[0] - y[0]).map(([, b]) => b);
+    return { ...topo, plant, blocks: sorted.filter((b) => !hidden.has(b.id) && !dups.has(b.id)) };
   };
 
   // pellet hopper at the boiler: ETA reports its content in kg but no capacity. The boiler
@@ -364,6 +396,7 @@
   .pill.na{display:none}
   .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
   .t-silo .vals{flex-direction:column;align-items:center;gap:6px}
+  .t-boiler .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
   .stack{height:${FLOOR - 64}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
   .icon{display:flex;align-items:flex-end;position:relative}
   .icon img{display:block;position:relative}
@@ -372,6 +405,7 @@
   .name{font-size:22px;font-weight:600;margin-top:40px;text-align:center;max-width:300px}
   .chip{margin-top:8px;padding:6px 16px;border-radius:9px;font-size:19px;font-weight:600;color:#1a1a1a;
         background:linear-gradient(90deg,#ffd31a,#ffc000);max-width:300px;text-align:center}
+  .chips{display:flex;flex-direction:column;align-items:center}.chips .chip{font-size:16px;padding:4px 12px;margin-top:6px}
   .chip.idle{background:linear-gradient(90deg,#8a8a8a,#6f6f6f);color:#111}
   .pill{padding:6px 12px;border-radius:10px;background:#1d1d1d;border:1px solid #3b3b3b;
         box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 4px 10px rgba(0,0,0,.5);font-size:26px;font-weight:500;white-space:nowrap}
@@ -513,7 +547,7 @@
         this._fit();
         return;
       }
-      const blocks = this._topo.blocks.filter((b) => ICONS[b.type] || b.type === "unknown");
+      const blocks = mergeTwins(this._topo.blocks.filter((b) => ICONS[b.type] || b.type === "unknown"));
       // boilers with their own discharge (wood chips) get a virtual store in front
       if (!blocks.some((b) => b.type === "silo")) {
         const bi = blocks.findIndex((b) => b.type === "boiler" && b.roles.auger);
@@ -565,7 +599,8 @@
         const hasInner = b.type === "buffer" && inner.length > 0;
         if (!shown.length && !hasInner) shown = this._autoValues(b); // no known roles: pick measurements
         if (b.type === "silo" && plant.silo_days) shown.push(plant.silo_days); // forecast: pellets last approx. n days
-        shown = shown.slice(0, Math.max(1, Math.floor(colW / 110))); // narrow columns: fewer value boxes
+        // narrow columns: fewer value boxes; boilers keep up to four and wrap into a second row
+        shown = shown.slice(0, b.type === "boiler" ? 4 : Math.max(1, Math.floor(colW / 110)));
         const vals = shown.map((e) => `<div class="pill" data-e="${e}"></div>`).join("");
         const tank = b.type === "buffer"
           ? `<div class="tank${inner.length > 4 ? " many" : ""}">${inner
@@ -575,7 +610,9 @@
           <div class="stack">${this._boilerRows(b, b === firstBoiler)}<div class="vals">${vals}</div>
           <div class="icon" style="margin-bottom:${-g.sink}px${g.dx ? `;transform:translateX(${g.dx}px)` : ""}"><div class="shadow" style="bottom:${g.sink - 12}px"></div><img data-type="${b.type}" src="${iconSrc(g.file)}" style="width:${g.w}px">${tank}</div></div>
           <div class="name">${this._name(b)}</div>
-          ${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}
+          ${b.partner && b.partner.roles.status && b.roles.status
+            ? `<div class="chips"><div class="chip" data-chip="${b.roles.status}" data-pre="${this._t("pellets")}"></div><div class="chip" data-chip="${b.partner.roles.status}" data-pre="${this._t("wood")}"></div></div>`
+            : b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}
         </div>`;
       }
       const ctl = this._controlHtml();
@@ -685,7 +722,9 @@
 
     // second tab: boiler / heating circuit control via the integration's switches
     _controlHtml() {
-      const tiles = this._blocks.filter((b) => b.roles.switch || b.roles.heat || b.roles.auto || b.roles.lower);
+      // SH-TWIN: both parts get their own tile (own status and on/off)
+      const all = this._blocks.flatMap((b) => (b.partner ? [b, b.partner] : [b]));
+      const tiles = all.filter((b) => b.roles.switch || b.roles.heat || b.roles.auto || b.roles.lower);
       const plant = this._topo.plant || {};
       const eps = this._topo.blocks.filter((b) => b.type === "particle_separator");
       const epHtml = eps.map((b) => {
@@ -725,7 +764,8 @@
           return `<button class="md" data-mode="${r}" data-md="${target(r)}"${also}><i>${ic}</i>${this._t(r)}</button>`;
         }).join("");
         return `<div class="tile" data-tile="${b.id}">
-          <div class="th">${geo[b.id] ? `<img src="${iconSrc(geo[b.id].file)}">` : ""}
+          <div class="th">${geo[b.id] ? `<img src="${iconSrc(geo[b.id].file)}">`
+            : DEFAULT_BY_OBJECT[b.object] ? `<img src="${iconSrc(DEFAULT_BY_OBJECT[b.object][0])}">` : ""}
             <div class="tx"><div class="tn">${name}</div>${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}</div>
             ${b.roles.switch ? `<div class="tg" data-sw="${b.roles.switch}" data-n="${name}">0<b></b>I</div>` : ""}
           </div>
@@ -1217,11 +1257,13 @@
         }
       });
       root.querySelectorAll("[data-chip]").forEach((el) => {
-        const st = this._hass.states[el.dataset.chip];
-        // ETA status texts like "Ein [Heizen]" -> "Ein Heizen"
-        const txt = st ? String(st.state).replace(/[[\]]/g, " ").replace(/\s+/g, " ").trim() : "–";
+        const id = el.dataset.chip;
+        const st = this._hass.states[id];
+        // ETA status texts like "Ein [Heizen]" -> "Ein Heizen"; SH-TWIN: "Pellets: …" / "Holz: …"
+        const raw = st ? String(st.state).replace(/[[\]]/g, " ").replace(/\s+/g, " ").trim() : "–";
+        const txt = el.dataset.pre ? `${el.dataset.pre}: ${raw}` : raw;
         if (el.textContent !== txt) el.textContent = txt;
-        el.classList.toggle("idle", this._isIdle(el.dataset.chip));
+        el.classList.toggle("idle", this._isIdle(id));
       });
       root.querySelectorAll(".tg").forEach((el) => {
         const on = this._shownOn(el.dataset.sw);
@@ -1260,6 +1302,7 @@
       // flows
       const active = (b) => {
         if (!b) return false;
+        if (b.partner && active(b.partner)) return true;
         if (b.roles.pump) return this._isOn(b.roles.pump);
         if (b.roles.auger && this._isOn(b.roles.auger)) return true;
         if (b.roles.discharge && this._isOn(b.roles.discharge)) return true;
@@ -1292,6 +1335,7 @@
   const EDIT_TEXTS = {
     de: {
       settings: "Einstellungen", reset_all: "Alles zurücksetzen", cancel: "Abbrechen", save: "Speichern",
+      order: "Reihenfolge", order_text: "Reihenfolge der Anlagenteile von links nach rechts, z. B. wie am ETA-Terminal.", up: "nach links", down: "nach rechts", order_reset: "Automatisch",
       auto: "Automatisch", plant: "Anlage", language: "Sprache", lang_auto: "Automatisch (HA)", title: "Name der Anlage",
       store: "Lager", no_icons: "Keine Anlagenteile mit Icon-Auswahl erkannt.", loading: "Anlage wird geladen …",
       report: "Anlage melden",
@@ -1300,6 +1344,7 @@
     },
     en: {
       settings: "Settings", reset_all: "Reset everything", cancel: "Cancel", save: "Save",
+      order: "Order", order_text: "Order of the plant parts from left to right, e.g. as on the ETA terminal.", up: "move left", down: "move right", order_reset: "Automatic",
       auto: "Automatic", plant: "Plant", language: "Language", lang_auto: "Automatic (HA)", title: "Plant name",
       store: "Store", no_icons: "No plant parts with an icon choice detected.", loading: "Loading plant …",
       report: "Report plant",
@@ -1360,6 +1405,10 @@
       this.shadowRoot.innerHTML = `<style>
         label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0;font-size:14px}
         select,input{min-width:200px;padding:6px;font-size:14px}
+        .order{margin-top:20px;padding-top:12px;border-top:1px solid var(--divider-color,#444);font-size:13px}
+        .order .ord{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:14px}
+        .order .ord span{flex:1}.order .ord.hid{opacity:.5}
+        .order button{padding:3px 9px;cursor:pointer}
         .report{margin-top:20px;padding-top:12px;border-top:1px solid var(--divider-color,#444);font-size:13px}
         .report textarea{width:100%;box-sizing:border-box;font-family:monospace;font-size:11px;margin:8px 0}
         .report button{padding:6px 12px;cursor:pointer}
@@ -1382,6 +1431,7 @@
         `<option value="${v}" ${(this._config.language || "") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       <label>${T.title}<input id="title" value="${esc(this._config.title || "")}" placeholder="${esc((this._topo && this._topo.title) || "ETA")}"></label>
       ${rows || `<p>${this._all ? T.no_icons : T.loading}</p>`}
+      ${this._topo ? this._orderHtml(T) : ""}
       ${this._topo ? this._valuesHtml() : ""}
       <div class="report">
         <b>${T.report}</b>
@@ -1405,6 +1455,22 @@
         this._cands = null;
         const cfg = { ...this._config, entry: ev.target.value };
         delete cfg.icons; // icon choices belong to the previous plant
+        this._emit(cfg);
+        this._render();
+      });
+      this.shadowRoot.querySelectorAll("[data-mv]").forEach((btn) => btn.addEventListener("click", () => {
+        const ids = this._orderIds();
+        const i = +btn.dataset.mv;
+        const j = i + +btn.dataset.d;
+        if (j < 0 || j >= ids.length) return;
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+        this._emit({ ...this._config, order: ids });
+        this._render();
+      }));
+      const ordreset = this.shadowRoot.getElementById("ordreset");
+      if (ordreset) ordreset.addEventListener("click", () => {
+        const cfg = { ...this._config };
+        delete cfg.order;
         this._emit(cfg);
         this._render();
       });
@@ -1499,6 +1565,26 @@
       const unit = st.attributes.unit_of_measurement || "";
       const v = String(st.state).length > 24 ? `${String(st.state).slice(0, 24)}…` : st.state;
       return `${name} – ${v}${unit ? ` ${unit}` : ""}`;
+    }
+
+    // current order of the plant parts (detected and added, hidden ones included)
+    _orderIds() {
+      const ids = this._blockList().filter((b) => b.type !== "plant").map((b) => b.id);
+      const order = this._config.order || [];
+      const pos = (id, i) => { const k = order.indexOf(id); return k < 0 ? order.length + i : k; };
+      return ids.map((id, i) => [pos(id, i), id]).sort((x, y) => x[0] - y[0]).map(([, id]) => id);
+    }
+
+    _orderHtml(T) {
+      const byId = Object.fromEntries(this._blockList().map((b) => [b.id, b]));
+      const hidden = new Set(this._config.hidden || []);
+      const ids = this._orderIds();
+      if (ids.length < 2) return "";
+      const rows = ids.map((id, i) => `<div class="ord${hidden.has(id) ? " hid" : ""}"><span>${esc(this._label(byId[id]))}</span>
+        <button data-mv="${i}" data-d="-1" title="${T.up}" ${i === 0 ? "disabled" : ""}>◀</button>
+        <button data-mv="${i}" data-d="1" title="${T.down}" ${i === ids.length - 1 ? "disabled" : ""}>▶</button></div>`).join("");
+      return `<div class="order"><b>${T.order}</b><p>${T.order_text}</p>${rows}
+        ${this._config.order ? `<button id="ordreset">${T.order_reset}</button>` : ""}</div>`;
     }
 
     _valuesHtml() {
@@ -1635,10 +1721,10 @@
     // back to the automatic detection: drops all manual values, names, hidden and added parts
     resetValues() {
       if (!window.confirm(this._de()
-        ? "Alle manuellen Zuordnungen, Namen, ausgeblendeten und hinzugefügten Anlagenteile löschen und wieder die automatische Erkennung verwenden?"
-        : "Delete all manual values, names, hidden and added plant parts and use the automatic detection again?")) return;
+        ? "Alle manuellen Zuordnungen, Namen, Reihenfolge, ausgeblendeten und hinzugefügten Anlagenteile löschen und wieder die automatische Erkennung verwenden?"
+        : "Delete all manual values, names, order, hidden and added plant parts and use the automatic detection again?")) return;
       const cfg = { ...this._config };
-      ["roles", "names", "hidden", "extra"].forEach((k) => delete cfg[k]);
+      ["roles", "names", "hidden", "extra", "order"].forEach((k) => delete cfg[k]);
       this._open = new Set();
       this._emit(cfg);
       this._render();

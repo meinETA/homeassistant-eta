@@ -185,12 +185,15 @@ def build_blocks(
         if block_type == "buffer" and (m := _BUFFER_SENSOR_RE.match(address)):
             block.roles[f"sensor_{int(m.group(1)) - 26}"] = entity_id
 
-    def sort_key(block: Block) -> tuple[int, str]:
+    def sort_key(block: Block) -> tuple[int, int, str]:
         try:
             pos = BLOCK_ORDER.index(block.type)
         except ValueError:
             pos = len(BLOCK_ORDER)
-        return pos, block.id
+        # pellet boilers next to the store, so the hoses reach them (SH-TWIN:
+        # pellet unit first, then the wood boiler)
+        pellets = any(r in block.roles for r in ("hopper", "consumption_total"))
+        return pos, 0 if block.type != "boiler" or pellets else 1, block.id
 
     return sorted(blocks.values(), key=sort_key), plant
 
