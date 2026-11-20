@@ -354,6 +354,7 @@
   .vals{display:flex;align-items:flex-end;gap:8px;padding-bottom:14px}
   .pill.na{display:none}
   .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
+  .t-silo .vals{flex-direction:column;align-items:center;gap:6px}
   .stack{height:${FLOOR - 64}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
   .icon{display:flex;align-items:flex-end;position:relative}
   .icon img{display:block;position:relative}
