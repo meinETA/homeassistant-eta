@@ -1263,7 +1263,7 @@
         const name = esc((this._config.names || {})[b.id] || this._label(b));
         const opts = ICON_CHOICES[b.type].map(([label, file]) =>
           `<option value="${file}" ${webp(icons[b.id]) === file ? "selected" : ""}>${label}</option>`).join("");
-        return `<label>${name}<select data-b="${b.id}"><option value="">Standard</option>${opts}</select></label>`;
+        return `<label>${name}<select data-b="${b.id}"><option value="">Automatisch</option>${opts}</select></label>`;
       }).join("");
       this.shadowRoot.innerHTML = `<style>
         label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0;font-size:14px}
