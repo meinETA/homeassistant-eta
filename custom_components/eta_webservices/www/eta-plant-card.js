@@ -194,7 +194,7 @@
       apply: "Übernehmen für", only_day: "nur diesen Tag", workdays: "Mo–Fr", weekend: "Sa–So", all_days: "alle Tage",
       save: "Speichern", cancel: "Abbrechen", saving: "Wird geschrieben …", ro: "Nur lesbar. Bearbeiten ab ETA-API 1.2: Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → „Ausgewählte Entitäten aktualisieren“ → Heizzeiten unter „Schreibbare Sensoren“ auswählen.",
       bad_slot: "Ungültiges Zeitfenster: Beginn muss vor dem Ende liegen.",
-      ash: "Aschebox", empty_now: "jetzt leeren", d_unit: "Tage",
+      ash: "Aschebox", hopper: "Tagesbehälter", empty_now: "jetzt leeren", d_unit: "Tage",
       fc_seasonal: "Prognose aus Vorjahr", fc_average: "Prognose aus Ø 14 Tagen",
       in_days: (n) => `leeren in ca. ${n} ${n === 1 ? "Tag" : "Tagen"}`,
       in_weeks: (n) => `leeren in ca. ${n} Wochen`, in_months: (n) => `leeren in ca. ${n} Monaten`,
@@ -210,7 +210,7 @@
       apply: "Apply to", only_day: "this day only", workdays: "Mon–Fri", weekend: "Sat–Sun", all_days: "all days",
       save: "Save", cancel: "Cancel", saving: "Writing …", ro: "Read only. Editing from ETA API 1.2: Settings → Devices & services → ETA Heating → Configure → \u201cUpdate selected entities\u201d → select the heating times under \u201cPossible writable sensors\u201d.",
       bad_slot: "Invalid time slot: start must be before end.",
-      ash: "Ash box", empty_now: "empty now", d_unit: "days",
+      ash: "Ash box", hopper: "Hopper", empty_now: "empty now", d_unit: "days",
       fc_seasonal: "forecast from last year", fc_average: "forecast from 14-day average",
       in_days: (n) => `empty in approx. ${n} ${n === 1 ? "day" : "days"}`,
       in_weeks: (n) => `empty in approx. ${n} weeks`, in_months: (n) => `empty in approx. ${n} months`,
@@ -220,7 +220,7 @@
   const TOP_VALUES = {
     silo: ["stock"],
     chip_store: ["discharge"],
-    boiler: ["temperature", "pressure", "hopper"],
+    boiler: ["temperature", "pressure"],
     buffer: ["charge"],
     heating_circuit: ["flow"],
     fwm: ["hot_water", "primary_flow"],
@@ -291,6 +291,10 @@
     return { ...topo, plant, blocks: blocks.filter((b) => !hidden.has(b.id)) };
   };
 
+  // pellet hopper at the boiler: ETA reports its content in kg but no capacity
+  const HOPPER_KG = 30;
+  const hopSvg = (size) => `<svg viewBox="0 0 40 40" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h24v13l-7 9v5H15v-5l-7-9z"/><circle cx="15" cy="16" r="2.2" fill="currentColor" stroke="none"/><circle cx="21" cy="14" r="2.2" fill="currentColor" stroke="none"/><circle cx="26" cy="17" r="2.2" fill="currentColor" stroke="none"/><circle cx="19" cy="20" r="2.2" fill="currentColor" stroke="none"/></svg>`;
+
   // ash box symbol (plant view and control tab)
   const ashSvg = (size) => `<svg viewBox="0 0 40 40" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 13h22l-2 21H11z"/><path d="M6 13h28M16 9h8"/><path d="M12 25h16" stroke-width="5" opacity=".55"/></svg>`;
 
@@ -316,6 +320,8 @@
   .ashrow{display:flex;align-items:center;gap:8px;margin:0 auto 18px;cursor:pointer;color:#ffc400;font-size:16px}
   .ashrow.warn{color:#ff8c00}.ashrow.full{color:#e53935}.ashrow .pc{color:#aaa;min-width:40px}
   .ashrow.warn .pc,.ashrow.full .pc{color:inherit}
+  .rows{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin:0 auto 18px}
+  .rows .ashrow{margin:0}
   .ashbar{width:120px;height:8px;border-radius:4px;background:#3a3a3a;overflow:hidden}
   .ashbar i,.ash .bar i{display:block;height:100%;width:0;background:#ffc400;transition:width .4s}
   .ashrow.warn i,.ash.warn .bar i{background:#ff8c00}.ashrow.full i,.ash.full .bar i{background:#e53935}
@@ -563,7 +569,7 @@
               .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("")}</div>`
           : "";
         html += `<div class="blk t-${b.type}" data-b="${b.id}" style="left:${g.cx - colW / 2}px;width:${colW}px">
-          <div class="stack">${b.type === "boiler" && plant.ash_fill && b === firstBoiler ? `<div class="ashrow" data-ash="${plant.ash_fill}">${ashSvg(22)}<div class="ashbar"><i></i></div><span class="pc"></span></div>` : ""}<div class="vals">${vals}</div>
+          <div class="stack">${this._boilerRows(b, b === firstBoiler)}<div class="vals">${vals}</div>
           <div class="icon" style="margin-bottom:${-g.sink}px${g.dx ? `;transform:translateX(${g.dx}px)` : ""}"><div class="shadow" style="bottom:${g.sink - 12}px"></div><img data-type="${b.type}" src="${iconSrc(g.file)}" style="width:${g.w}px">${tank}</div></div>
           <div class="name">${this._name(b)}</div>
           ${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}
@@ -616,9 +622,9 @@
         this._update();
       }));
       // every value and status chip opens its own entity, the rest of the block the status
-      cv.querySelectorAll("[data-e],[data-chip],[data-ash]").forEach((el) => el.addEventListener("click", (ev) => {
+      cv.querySelectorAll("[data-e],[data-chip],[data-ash],[data-hop]").forEach((el) => el.addEventListener("click", (ev) => {
         ev.stopPropagation();
-        this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: el.dataset.e || el.dataset.chip || el.dataset.ash }, bubbles: true, composed: true }));
+        this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: el.dataset.e || el.dataset.chip || el.dataset.ash || el.dataset.hop }, bubbles: true, composed: true }));
       }));
       const outEl = cv.querySelector("#outside");
       if (outEl) outEl.addEventListener("click", () => {
@@ -642,6 +648,16 @@
       }
       this._fit();
       this._update();
+    }
+
+    // above the boiler: ash box (first boiler) and pellet hopper, one bar each
+    _boilerRows(b, first) {
+      if (b.type !== "boiler") return "";
+      const plant = this._topo.plant || {};
+      const rows = [];
+      if (first && plant.ash_fill) rows.push(`<div class="ashrow" data-ash="${plant.ash_fill}">${ashSvg(22)}<div class="ashbar"><i></i></div><span class="pc"></span></div>`);
+      if (b.roles.hopper) rows.push(`<div class="ashrow hop" data-hop="${b.roles.hopper}">${hopSvg(22)}<div class="ashbar"><i></i></div><span class="pc"></span></div>`);
+      return rows.length ? `<div class="rows">${rows.join("")}</div>` : "";
     }
 
     // second tab: boiler / heating circuit control via the integration's switches
@@ -694,6 +710,8 @@
           ${b.type === "boiler" && plant.ash_fill && b === this._blocks.find((x) => x.type === "boiler")
             ? `<div class="ash" data-ash="${plant.ash_fill}">${ashSvg(38)}
                 <div class="col"><div class="tx"><b></b><span></span></div><div class="bar"><i></i></div><div class="fc"></div></div></div>` : ""}
+          ${b.roles.hopper ? `<div class="ash hop" data-hop="${b.roles.hopper}">${hopSvg(38)}
+                <div class="col"><div class="tx"><b></b><span></span></div><div class="bar"><i></i></div></div></div>` : ""}
           ${m ? `<div class="modes">${m}</div>` : ""}
           ${b.roles.slot_0_0 || b.roles.slot_6_2 ? `<div class="ts" data-ts="${b.id}"><div class="bar"></div>
             <div class="ax">${[0, 6, 12, 18, 24].map((h) => `<span style="left:${h / 24 * 100}%">${h}</span>`).join("")}</div></div>` : ""}
@@ -1155,6 +1173,22 @@
           const fc = el.querySelector(".fc");
           const label = m && !Number.isNaN(d) ? this._t(`fc_${m.state}`) : "";
           if (fc) fc.textContent = label.startsWith("fc_") ? "" : label;
+        }
+      });
+      // pellet hopper: kg against HOPPER_KG (or more, if a boiler reports more)
+      root.querySelectorAll("[data-hop]").forEach((el) => {
+        const st = this._hass.states[el.dataset.hop];
+        const v = st ? Number(st.state) : NaN;
+        const ok = !Number.isNaN(v);
+        const pct = ok ? Math.min(Math.max(v / Math.max(HOPPER_KG, v), 0), 1) * 100 : 0;
+        el.querySelector("i").style.width = `${pct}%`;
+        const kg = ok ? `${Math.round(v)} kg` : "–";
+        const pc = el.querySelector(".pc");
+        if (pc) pc.textContent = ok ? `${Math.round(pct)} %` : "–";
+        const tx = el.querySelector(".tx");
+        if (tx) {
+          tx.querySelector("b").textContent = `${this._t("hopper")} ${kg}`;
+          tx.querySelector("span").textContent = ok ? `${Math.round(pct)} %` : "";
         }
       });
       root.querySelectorAll("[data-chip]").forEach((el) => {
