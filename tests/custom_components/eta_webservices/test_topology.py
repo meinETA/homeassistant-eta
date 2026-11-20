@@ -5,11 +5,15 @@ from pathlib import Path
 import re
 
 from custom_components.eta_webservices.topology import (
+    _param_name,
+    _report_line,
     block_type_for_object,
     build_blocks,
     build_report,
     manual_report,
     parse_unique_id,
+    report_text,
+    unselected_report,
 )
 
 STABLE = "keller"
@@ -238,3 +242,81 @@ def test_writable_twin_provides_role() -> None:
     ):
         blocks, _ = build_blocks(order, STABLE)
         assert blocks[0].roles["slot_0_0"] == "sensor.slot_w"
+
+
+def test_report_v2_names_and_status_texts():
+    """Parameter names and short status texts are reported, numbers are not."""
+    rows = [
+        (f"eta_{STABLE}_264_10571_0_0_19439", "sensor.a", "Status", None, "Bereit"),
+        (
+            f"eta_{STABLE}_264_10571_0_0_12733",
+            "sensor.b",
+            "Seriennummer",
+            None,
+            "12345678",
+        ),
+        (f"eta_{STABLE}_264_10571_0_11318_2328", "sensor.c", "Leistung", "W", "12.0"),
+        (f"eta_{STABLE}_264_10571_0_0_14439", "sensor.d", None, None, "unknown"),
+    ]
+    report = build_report(rows, STABLE)
+    assert report[0]["type"] == "particle_separator"
+    assert report[0]["other"] == [
+        "0/0/12733 | Seriennummer",
+        "0/0/14439",
+        "0/0/19439 | Status = Bereit",
+        "0/11318/2328 W | Leistung",
+    ]
+    assert "12345678" not in str(report)
+    assert "12.0" not in str(report)
+
+
+def test_report_text_filter():
+    """Only short texts without digits are kept."""
+    assert report_text("Bereit") == "Bereit"
+    assert report_text("Ein [Heizen]") == "Ein [Heizen]"
+    for value in (
+        None,
+        "",
+        "unknown",
+        "unavailable",
+        "21:00",
+        "192.168.1.5",
+        "+43 7672",
+        "x" * 41,
+    ):
+        assert report_text(value) is None
+
+
+def test_param_name_drops_block_name():
+    """Renamable block names are cut off, the ETA parameter name stays."""
+    assert _param_name("HK Oma > Status") == "Status"
+    assert _param_name("Status") == "Status"
+    assert _param_name(None) is None
+
+
+def test_unselected_report_lists_found_but_not_selected():
+    """Discovered endpoints that were not selected are reported per object."""
+    discovered = {
+        f"eta_{STABLE}_264_10891_0_11109_0": {
+            "friendly_name": "Kessel > Kessel",
+            "unit": "°C",
+        },
+        f"eta_{STABLE}_264_10891_0_0_12080": {
+            "friendly_name": "Kessel > Ein/Aus",
+            "unit": "",
+        },
+    }
+    chosen = {f"eta_{STABLE}_264_10891_0_11109_0"}
+    assert unselected_report(discovered, chosen, STABLE) == {
+        "264/10891": ["0/0/12080 | Ein/Aus"]
+    }
+
+
+def test_report_line_marks_non_sensor_domains():
+    """Switches and other non-sensor entities carry their domain."""
+    assert _report_line("0/0/12080", None, "Ein/Aus", None, "switch.x") == (
+        "0/0/12080 | Ein/Aus [switch]"
+    )
+    assert _report_line("0/11109/0", "°C", "Kessel", None, "sensor.x") == (
+        "0/11109/0 °C | Kessel"
+    )

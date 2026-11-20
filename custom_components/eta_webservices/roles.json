@@ -12,6 +12,7 @@
     "10291": "external_heat",
     "10311": "external_demand",
     "10531": "fwm",
+    "10571": "particle_separator",
     "10911": "diagnostics",
     "10961": "pv",
     "1010*": "heating_circuit",

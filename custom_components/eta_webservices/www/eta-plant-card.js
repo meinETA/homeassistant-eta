@@ -4,7 +4,7 @@
   const H = 860;
   const FLOOR = 610;
   // bump when icon files change, so browsers do not keep stale images
-  const ICON_REV = "2026-11-20a";
+  const ICON_REV = "2026-11-20b";
 
   // type -> [icon file, icon width on the 1600px canvas, aspect w/h]
   const ICONS = {
@@ -180,10 +180,12 @@
     "10561": ["Kessel/Hack/Hack.webp", 1],
   };
   const ICON_OFF = { heating_circuit: "FUBs/Heizkreise/Radiator_aus.webp" };
+  // particle separator: not part of the heat flow, shown in the control tab only
+  const EP_ICON = { off: "Kessel/EP_Abscheider/EP.webp", on: "Kessel/EP_Abscheider/EP_aktiv.webp" };
   const LABELS = {
     de: {
       silo: "Silo", chip_store: "Hackgutlager", boiler: "Kessel", buffer: "Puffer", heating_circuit: "Heizkreis",
-      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul",
+      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider",
       external_demand: "Ext. Anforderung", external_heat: "Fremdwärme",
       no_blocks: "Keine Anlagenteile erkannt. Wähle in den Integrationsoptionen die Entitäten von Kessel, Heizkreis usw. aus oder melde deine Anlage über das Zahnrad.", outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
       heat: "Heizen", lower: "Absenken", auto: "Zeitautomatik", ask_off: "wirklich ausschalten?",
@@ -199,7 +201,7 @@
     },
     en: {
       silo: "Storage", chip_store: "Chip store", boiler: "Boiler", buffer: "Buffer", heating_circuit: "Heating circuit",
-      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module",
+      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator",
       external_demand: "Ext. demand", external_heat: "External heat",
       no_blocks: "No plant parts detected. Select the boiler, heating circuit, ... entities in the integration options or report your plant via the gear.", outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
       heat: "Heat", lower: "Setback", auto: "Time program", ask_off: "really switch off?",
@@ -254,6 +256,7 @@
       ["primary_return", "Rücklauf primär", "Primary return", "temp"], ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"]],
     external_demand: [["status", "Status", "Status", "text"]],
+    particle_separator: [["status", "Status", "Status", "text"]],
     unknown: [["temperature", "Temperatur", "Temperature", "temp"], ["status", "Status", "Status", "text"]],
   };
   // block types a user can add by hand
@@ -644,6 +647,15 @@
     _controlHtml() {
       const tiles = this._blocks.filter((b) => b.roles.switch || b.roles.heat || b.roles.auto || b.roles.lower);
       const plant = this._topo.plant || {};
+      const eps = this._topo.blocks.filter((b) => b.type === "particle_separator");
+      const epHtml = eps.map((b) => {
+        const st = b.roles.status || this._guessStatus(b);
+        return `<div class="tile" data-tile="${b.id}"><div class="th">
+          <img src="${iconSrc(EP_ICON.off)}" data-ep="${st || ""}">
+          <div class="tx"><div class="tn">${this._name(b)}</div>${st ? `<div class="chip" data-chip="${st}"></div>` : ""}</div>
+        </div></div>`;
+      }).join("");
+      if (!tiles.length && epHtml) return `<div class="tiles">${epHtml}</div>`;
       if (!tiles.length) {
         const any = this._blocks.some((b) => ["boiler", "heating_circuit"].includes(b.type));
         return any ? `<div class="tiles"><div class="empty">${this._t("no_ctl")}</div></div>` : null;
@@ -685,7 +697,17 @@
           ${b.roles.slot_0_0 || b.roles.slot_6_2 ? `<div class="ts" data-ts="${b.id}"><div class="bar"></div>
             <div class="ax">${[0, 6, 12, 18, 24].map((h) => `<span style="left:${h / 24 * 100}%">${h}</span>`).join("")}</div></div>` : ""}
         </div>`;
-      }).join("")}</div>`;
+      }).join("")}${epHtml}</div>`;
+    }
+
+    // no detection rule for the separator status yet: take the first text value of the
+    // block (e.g. "Bereit"); a value picked under "Werte zuordnen" replaces it
+    _guessStatus(b) {
+      return b.entities.find((e) => {
+        const st = this._hass.states[e];
+        return st && e.startsWith("sensor.") && !(st.attributes || {}).unit_of_measurement
+          && /^[^\d]+$/.test(String(st.state)) && !["unknown", "unavailable"].includes(st.state);
+      }) || null;
     }
 
     // "06:00 - 21:00" or "06:00 - 21:00: 21 °C" -> [start, end] in minutes, null if empty
@@ -1188,6 +1210,10 @@
         const on = el.dataset.flow.split(",").some((key) => active(this._blocks.find((x) => x.id === key)));
         if (el._on !== on) { el.classList.toggle("on", on); el.classList.toggle("off", !on); el._on = on; }
       });
+      root.querySelectorAll("img[data-ep]").forEach((img) => {
+        const file = img.dataset.ep && !this._isIdle(img.dataset.ep) ? EP_ICON.on : EP_ICON.off;
+        if (!img.src.includes(file)) img.src = iconSrc(file);
+      });
       root.querySelectorAll("img[data-type=heating_circuit]").forEach((img) => {
         const b = this._blocks.find((x) => x.id === img.closest(".blk").dataset.b);
         if (b && (this._config.icons || {})[b.id]) return;
@@ -1267,8 +1293,8 @@
       <div class="report">
         <b>Anlage melden</b>
         <p>Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ erstellt ein Issue, in dem die Anlagendaten
-        schon eingetragen sind. Sie enthalten nur Objekt-Nummern, Parameter-Adressen und Einheiten, keine Namen, keine Werte,
-        keine IP. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst.
+        schon eingetragen sind. Sie enthalten Objekt-Nummern, Parameter-Adressen, Einheiten, die ETA-Parameternamen und kurze
+        Statustexte (z. B. „Bereit“), aber keine Messwerte, keine selbst vergebenen Namen, keine IP. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst.
         Das Issue ist öffentlich sichtbar. Achte auf dem Screenshot auf persönliche Namen.</p>
         <button id="dl">Anlagendatei herunterladen</button> <button id="gh">GitHub-Issue öffnen</button>
         ${this._report ? `<p>Inhalt der Datei <code>eta-anlage.json</code>:</p><textarea readonly rows="10">${this._report}</textarea>` : ""}
@@ -1314,7 +1340,7 @@
         const base = `https://github.com/${REPORT_REPO}/issues/new?labels=plant-card&title=${encodeURIComponent("Plant card: ")}`;
         const head = "**What is wrong?**\n\n\n**Screenshot:**\n\n\n";
         const packed = await this._pack(this._report);
-        let body = `${head}**Plant data** (eta-plant-report v1, gzip+base64):\n\n\`\`\`\n${packed}\n\`\`\`\n`;
+        let body = `${head}**Plant data** (eta-plant-report v2, gzip+base64):\n\n\`\`\`\n${packed}\n\`\`\`\n`;
         if (!packed || (base + encodeURIComponent(body)).length > 8000) {
           this._download(); // too large for the link: attach the file instead
           body = `${head}**Plant data:** please attach the downloaded file \`eta-anlage.json\`.\n`;
@@ -1536,7 +1562,13 @@
         if (e && e !== "-" && types[bid]) manual.push([types[bid], role, e]);
       }));
       const rep = await this._hass.callWS({ type: "eta_webservices/report", entry_id: this._topo && this._topo.entry_id, manual });
-      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, ...rep }, null, 1);
+      // card settings without user-given names: which parts are hidden, added or have another icon
+      const c = this._config;
+      const settings = {
+        hidden: c.hidden || [], extra: (c.extra || []).map((x) => x.type), icons: c.icons || {},
+        renamed: Object.keys(c.names || {}).length, language: c.language || "",
+      };
+      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...rep }, null, 1);
     }
 
     async _pack(text) {

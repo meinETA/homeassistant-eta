@@ -14,15 +14,32 @@ from pathlib import Path
 import re
 from typing import Any
 
+from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from .const import DOMAIN, STABLE_ID
+from .const import (
+    CHOSEN_FLOAT_SENSORS,
+    CHOSEN_SWITCHES,
+    CHOSEN_TEXT_SENSORS,
+    CHOSEN_WRITABLE_SENSORS,
+    DOMAIN,
+    FLOAT_DICT,
+    FORCE_LEGACY_MODE,
+    PENDING_DICT,
+    STABLE_ID,
+    SWITCHES_DICT,
+    TEXT_DICT,
+    WRITABLE_DICT,
+)
 
 # Detection rules: object id -> block type ("1010*" = prefix) and, per block
 # type, [address below the object (segments 3..5), role]. Several addresses may
 # serve one role; the first one present wins (older firmware exposes some
 # values only under a display address). New addresses go into roles.json.
+_VERSION: str = json.loads(
+    (Path(__file__).parent / "manifest.json").read_text(encoding="utf-8")
+)["version"]
 _RULES: dict[str, Any] = json.loads(
     (Path(__file__).parent / "roles.json").read_text(encoding="utf-8")
 )
@@ -178,19 +195,33 @@ def build_blocks(
     return sorted(blocks.values(), key=sort_key), plant
 
 
-def build_report(
-    entries: list[tuple[str, str, str | None, str | None]], stable: str
-) -> list[dict[str, Any]]:
-    """Build an anonymized plant report from (unique_id, entity_id, name, unit).
+def report_text(state: str | None) -> str | None:
+    """Return a status text worth reporting, None for numbers and other values.
 
-    Contains only object ids, parameter addresses, detected roles and units:
-    no names, entity ids or values. Used for the "report plant" button.
+    Only short texts without digits ("Bereit", "Heizen") are kept: they show
+    which address carries a status. Anything with digits (serial numbers,
+    times, dates, phone numbers, IP addresses) is left out.
     """
-    blocks, plant = build_blocks([(u, e, None) for u, e, _, _ in entries], stable)
+    if not state or state in ("unknown", "unavailable") or len(state) > 40:
+        return None
+    if any(ch.isdigit() for ch in state):
+        return None
+    return state
+
+
+def build_report(entries: list[tuple[Any, ...]], stable: str) -> list[dict[str, Any]]:
+    """Build an anonymized plant report.
+
+    entries: (unique_id, entity_id, parameter name, unit[, status text]).
+    Contains object ids, parameter addresses, detected roles, units, the ETA
+    parameter names and short status texts (see report_text). No entity ids,
+    device names or measured values. Used for the "report plant" button.
+    """
+    blocks, plant = build_blocks([(row[0], row[1], None) for row in entries], stable)
     role_of = {eid: role for block in blocks for role, eid in block.roles.items()}
     role_of.update({eid: role for role, eid in plant.items()})
     objects: dict[str, dict[str, Any]] = {}
-    for unique_id, entity_id, _name, unit in entries:
+    for unique_id, entity_id, name, unit, *rest in entries:
         parsed = parse_unique_id(unique_id, stable)
         if parsed is None:
             continue
@@ -208,7 +239,8 @@ def build_report(
         if entity_id in role_of:
             item["roles"][role_of[entity_id]] = address
         else:
-            item["other"].append(f"{address} {unit}" if unit else address)
+            text = report_text(rest[0]) if rest and not unit else None
+            item["other"].append(_report_line(address, unit, name, text, entity_id))
     for item in objects.values():
         item["other"].sort()
     return [objects[key] for key in sorted(objects)]
@@ -272,16 +304,96 @@ def async_get_report(
         ".", "_"
     )
     regs = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
-    rows = [
-        (reg.unique_id, reg.entity_id, None, reg.unit_of_measurement)
-        for reg in regs
-        if reg.disabled_by is None
-    ]
+    rows = []
+    for reg in regs:
+        if reg.disabled_by is not None:
+            continue
+        state = hass.states.get(reg.entity_id)
+        rows.append(
+            (
+                reg.unique_id,
+                reg.entity_id,
+                _param_name(reg.original_name),
+                reg.unit_of_measurement,
+                state.state if state else None,
+            )
+        )
     uid_of = {reg.entity_id: reg.unique_id for reg in regs}
+    conf = {**entry.data, **entry.options}
+    discovered: dict[str, dict[str, Any]] = {}
+    for key in (FLOAT_DICT, SWITCHES_DICT, TEXT_DICT, WRITABLE_DICT):
+        discovered.update(conf.get(key) or {})
+    chosen: set[str] = set()
+    for key in (
+        CHOSEN_FLOAT_SENSORS,
+        CHOSEN_SWITCHES,
+        CHOSEN_TEXT_SENSORS,
+        CHOSEN_WRITABLE_SENSORS,
+    ):
+        chosen.update(conf.get(key) or [])
     return {
+        "report": 2,
+        "meta": {
+            "integration": _VERSION,
+            "ha": HA_VERSION,
+            "legacy": bool(conf.get(FORCE_LEGACY_MODE)),
+            "interval": conf.get("update_interval"),
+            "discovered": len(discovered),
+            "selected": len(chosen),
+            "pending": len(conf.get(PENDING_DICT) or {}),
+        },
         "objects": build_report(rows, stable),
+        "unselected": unselected_report(discovered, chosen, stable),
         "manual": manual_report(manual or [], uid_of, stable),
     }
+
+
+def _report_line(
+    address: str,
+    unit: str | None,
+    name: str | None,
+    text: str | None = None,
+    entity_id: str | None = None,
+) -> str:
+    """'0/0/19439 | Status = Bereit', '0/0/12080 | Ein/Aus [switch]'."""
+    line = f"{address} {unit}" if unit else address
+    if name:
+        line += f" | {name}"
+    if text:
+        line += f" = {text}"
+    domain = entity_id.split(".", 1)[0] if entity_id else "sensor"
+    if domain != "sensor":
+        line += f" [{domain}]"
+    return line
+
+
+def unselected_report(
+    discovered: dict[str, dict[str, Any]], chosen: set[str], stable: str
+) -> dict[str, list[str]]:
+    """Addresses found by the discovery but not selected, per node/object."""
+    result: dict[str, list[str]] = {}
+    for unique_id, info in discovered.items():
+        if unique_id in chosen:
+            continue
+        parsed = parse_unique_id(unique_id, stable)
+        if parsed is None:
+            continue
+        node, obj, address = parsed
+        name = _param_name(str(info.get("friendly_name") or "")) if info else None
+        result.setdefault(f"{node}/{obj}", []).append(
+            _report_line(address, (info or {}).get("unit") or None, name)
+        )
+    return {key: sorted(set(lines)) for key, lines in sorted(result.items())}
+
+
+def _param_name(name: str | None) -> str | None:
+    """ETA parameter name without the function block ("Kessel > Status" -> "Status").
+
+    The block name can be renamed on the terminal, the parameter name cannot.
+    """
+    if not name:
+        return None
+    return name.rsplit(" > ", 1)[-1].strip() or None
 
 
 def manual_report(
