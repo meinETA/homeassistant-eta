@@ -58,7 +58,7 @@
         "step": {
             "init": {
                 "title": "Optionen",
-                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.",
+                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.\n\n**ETA Anlage in der Seitenleiste**: Zeigt die Anlagenkarte ETA Anlage als eigenen Eintrag in der Seitenleiste, ohne dass du ein Dashboard anlegen musst.",
                 "data": {
                     "options_update_action": "Aktion"
                 }
@@ -95,6 +95,13 @@
                 "description": "Konfiguriere erweiterte Optionen für die Integration.",
                 "data": {
                     "ignore_decimal_places_restriction_for_writable_entities": "HACK: Füge Dezimalstellen zu den Werten dieser schreibbaren Sensoren hinzu"
+                }
+            },
+            "sidebar": {
+                "title": "ETA Anlage in der Seitenleiste",
+                "description": "Zeigt die Anlagenkarte ETA Anlage als eigenen Eintrag in der Home-Assistant-Seitenleiste. Name, Sprache und Icons stellst du dort über das Zahnrad ein (nur Admins).",
+                "data": {
+                    "sidebar_panel": "In Seitenleiste anzeigen"
                 }
             }
         },
@@ -133,6 +140,37 @@
             },
             "latest_error_sensor": {
                 "name": "Neuester aktiver Fehler"
+            },
+            "analytics_ash_fill": {
+                "name": "Aschebox Füllstand"
+            },
+            "analytics_ash_days": {
+                "name": "Aschebox voll in"
+            },
+            "analytics_ash_date": {
+                "name": "Aschebox voll am"
+            },
+            "analytics_pellets_today": {
+                "name": "Pelletsverbrauch heute"
+            },
+            "analytics_pellets_yesterday": {
+                "name": "Pelletsverbrauch gestern"
+            },
+            "analytics_pellets_avg": {
+                "name": "Pelletsverbrauch pro Tag (Ø 14 Tage)"
+            },
+            "analytics_silo_days": {
+                "name": "Pelletslager reicht noch"
+            },
+            "analytics_silo_date": {
+                "name": "Pelletslager leer am"
+            },
+            "analytics_method": {
+                "name": "Prognose-Methode",
+                "state": {
+                    "seasonal": "Vorjahr (saisonal)",
+                    "average": "Ø 14 Tage"
+                }
             }
         }
     },
@@ -142,7 +180,8 @@
                 "update_parallel_requests": "API- & Aktualisierungseinstellungen ändern",
                 "update_selected_entities": "Ausgewählte Entitäten aktualisieren",
                 "rediscover_and_update_entities": "Verfügbare Entitäten neu suchen und Auswahl aktualisieren",
-                "rename_entities_to_named_scheme": "Auf das namensbasierte Schema migrieren (v2)"
+                "rename_entities_to_named_scheme": "Auf das namensbasierte Schema migrieren (v2)",
+                "sidebar_panel": "ETA Anlage in der Seitenleiste"
             }
         }
     },

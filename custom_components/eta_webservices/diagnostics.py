@@ -16,6 +16,7 @@ from .const import (
     MAX_PARALLEL_REQUESTS,
     REQUEST_SEMAPHORE,
 )
+from .topology import async_get_topology
 
 
 async def async_get_config_entry_diagnostics(
@@ -40,4 +41,14 @@ async def async_get_config_entry_diagnostics(
     user_menu = await eta_client.get_menu()
     api_version = await eta_client.get_api_version()
 
-    return {"config": config, "api_version": str(api_version), "menu": user_menu}
+    topology = next(
+        (t for t in async_get_topology(hass) if t["entry_id"] == entry.entry_id),
+        None,
+    )
+
+    return {
+        "config": config,
+        "api_version": str(api_version),
+        "menu": user_menu,
+        "topology": topology,
+    }

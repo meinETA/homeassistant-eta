@@ -1,22 +1,38 @@
-# ETA Heating for Home Assistant
+<img src="images/header-boilers.webp" alt="ETA boilers" title="ETA PU / PC, SH-P TWIN, eSH-eTWIN" align="right" height="80px"/>
+<img src="custom_components/eta_webservices/brand/logo.png" alt="ETA" title="ETA" align="right" height="44px"/>
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
-[![GitHub release](https://img.shields.io/github/v/release/meinETA/homeassistant-eta?display_name=tag)](https://github.com/meinETA/homeassistant-eta/releases)
-[![Downloads](https://img.shields.io/github/downloads/meinETA/homeassistant-eta/total?label=downloads)](https://github.com/meinETA/homeassistant-eta/releases)
+# ETA Heating for<br>Home Assistant
+
+[![GitHub Release](https://img.shields.io/github/v/release/meinETA/homeassistant-eta?style=for-the-badge&label=Release)](https://github.com/meinETA/homeassistant-eta/releases)
+[![Downloads](https://img.shields.io/github/downloads/meinETA/homeassistant-eta/total?style=for-the-badge&label=Downloads)](https://github.com/meinETA/homeassistant-eta/releases)
+[![Issues](https://img.shields.io/github/issues/meinETA/homeassistant-eta?style=for-the-badge&label=Issues)](https://github.com/meinETA/homeassistant-eta/issues)
+[![HACS](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+
+[![License: MIT](https://img.shields.io/badge/Licence-MIT-orange.svg)](LICENSE)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.5%2B-41BDF5.svg)](https://www.home-assistant.io/)
-[![License: MIT](https://img.shields.io/github/license/meinETA/homeassistant-eta.svg)](LICENSE)
-[![Buy us a coffee](https://img.shields.io/badge/Donate-Buy%20us%20a%20coffee-ffd557.svg)](https://www.buymeacoffee.com/christofpichler)
+
+<a href="https://www.buymeacoffee.com/christofpichler"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-orange.png" alt="Buy me a coffee" height="44"></a>
 
 Home Assistant integration for **ETA heating systems** (pellet, wood, and combined boilers). It reads sensors, states and counters from your ETA unit, and lets you switch and set writable parameters — all discovered automatically over the local [ETA REST API](https://www.meineta.at/javax.faces.resource/downloads/ETA-RESTful-v1.2.pdf.xhtml?ln=default&v=0), no cloud required.
 
 [![Open your Home Assistant instance and open this repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=meinETA&repository=homeassistant-eta&category=integration)
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=eta_webservices)
 
-![ETA Heating devices in Home Assistant](images/devices_overview.png)
+### Your plant on the dashboard
+
+Your ETA plant on a dashboard, like on the touch display: detected automatically, with live values, animated pipes and a control tab. See [Plant card](#plant-card).
+
+![Plant card: pellet boiler with storage, buffer, heating circuit and fresh water module](images/plant-card-pellets.png)
+
+| Wood chip boiler | Control tab |
+| --- | --- |
+| ![Plant card: wood chip boiler with buffer and external demand](images/plant-card-chips.png) | ![Plant card: control tab with boiler, heating circuits and heating times](images/plant-card-control.png) |
+| **Heating times** | **Card settings** |
+| ![Plant card: editing the heating times of a heating circuit](images/plant-card-times.png) | ![Plant card settings: name, language, icons and manually assigned values](images/plant-card-settings.png) |
 
 ## Contents
 
-[Features](#features) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Moving from the previous repository](#moving-from-the-previous-repository) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Troubleshooting](#troubleshooting)
+[Features](#features) · [Plant card](#plant-card) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Moving from the previous repository](#moving-from-the-previous-repository) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Troubleshooting](#troubleshooting)
 
 ## Features
 
@@ -29,14 +45,43 @@ Home Assistant integration for **ETA heating systems** (pellet, wood, and combin
 - **Error monitoring**: a binary sensor for active errors, the active-error count, the latest error message, plus [error events](#error-events) for automations.
 - **Services** to write values directly to the unit ([details](#custom-services)).
 - **Stable entity identities**: entity ids stay stable across firmware updates, terminal language changes and IP changes.
+- **Analytics**: ash box fill level, pellet consumption per day and forecasts for ash box and pellet store ([details](#analytics)).
 - **Energy Dashboard** ready ([details](#integrating-the-eta-unit-into-the-energy-dashboard)).
+
+## Plant Card
+
+The integration ships a dashboard card that shows the plant like the ETA touch display: storage, boiler, buffer, heating circuits and fresh water module with live values and animated pipes. No extra installation is needed; the card is loaded automatically.
+
+- **Add it:** edit a dashboard, add a card and pick **ETA Plant**. A panel view gives the best result.
+- **Sidebar:** alternatively, show the card as its own sidebar entry, no dashboard needed: `Configure` → **ETA Plant in the sidebar**. On by default. Admins change name, language and icons there via the gear; the sidebar shows the plant name.
+- **Detection:** the plant layout is detected automatically from the selected sensors. If a value is missing on the card, add the matching sensor in the integration options.
+- **Assign values manually:** if a value is still missing or wrong, pick the right entity per value in the card settings (from a list or by pasting the entity ID), rename, hide or add plant parts. **Reset everything** returns to the automatic detection.
+- **Control tab:** switch the boiler and heating circuits on or off and select heat, setback or time program. This needs the corresponding switches (e.g. *On/Off button*) to be selected in the integration options.
+- **Heating times:** click the time bar of a heating circuit to edit its three time slots per day, for one day, Mon–Fri, Sat–Sun or all days. Needs ETA API 1.2 or newer and the time slots selected as writable sensors; otherwise they are read only.
+- **Ash box:** fill level as a bar above the boiler (orange from 80 %, red from 100 % when ETA asks to empty it) and in the control tab with the expected emptying date.
+- **Card settings:** plant (if several are configured), name, language and an icon per block (e.g. the exact boiler model).
+- **Report a problem:** if the plant is not shown correctly, use **Open GitHub issue** in the card settings. It opens an issue with an anonymized description of the plant (object numbers, parameter addresses and units only; no names, values or IP addresses). Nothing is sent until the issue is submitted on GitHub, and issues are public.
+
+Layouts that are not covered yet will be added based on reports.
+
+### Analytics
+
+Computed values on an extra device **ETA > [name] > Auswertung** (named in the language of the ETA terminal, e.g. *Analytics* for English), created when the needed ETA values are selected:
+
+- **Ash box fill level** (%), from *Verbrauch seit Aschebox leeren* and *Aschebox leeren nach*.
+- **Pellet consumption** today, yesterday and per day (14-day average), from *Gesamtverbrauch*. "Today" resets at midnight, so a statistics graph with "change" per day shows daily bars.
+- **Ash box full in / on** and **pellet store lasts / empty on**: forecasts from the consumption. With most of the last year in Home Assistant's long-term statistics, every coming day uses last year's consumption of the same day (adjusted to the last 14 days), otherwise the 14-day average. **Forecast method** shows which one is used.
+
+Wood chip plants usually report no consumption or stock; they only get the ash box fill level.
 
 ## Screenshots
 
 Every ETA function block becomes a device, and its entities are grouped into the standard Home Assistant cards (Sensors, Configuration, Diagnostic):
 
+<img src="images/devices_overview.png" alt="ETA Heating devices in Home Assistant" width="760">
+
 |            Sensors             |              Diagnostic              |
-| :----------------------------: | :----------------------------------: |
+| :----------------------------- | :----------------------------------- |
 | ![Sensors](images/sensors.png) | ![Diagnostic](images/diagnostic.png) |
 
 ## Prerequisites
@@ -76,17 +121,13 @@ Go to **Settings → Devices & Services → Add Integration**, search for **ETA 
 
 During setup the integration discovers everything on your unit and shows the counts per category, so you can pick exactly what you want (or add everything at once):
 
-![Choosing entities during setup](images/setup_choose_entities.png)
+<img src="images/setup_choose_entities.png" alt="Choosing entities during setup" width="520">
 
 > **Note:** After you enter host and port, the integration scans every available endpoint once. On large systems (~800 entities) this initial scan can take **8–15 minutes** — please be patient. This only happens when adding the integration or when you explicitly rediscover; normal operation only polls the entities you selected.
 
 ## Moving from the Previous Repository
 
 Coming from `Tidone/homeassistant_eta_integration`? Update it to version 1.4.3 first, then follow the [migration guide](docs/migration.md). Your selection, entity IDs, devices and history are restored without a new scan.
-
-## Related Integrations
-
-- [eta-flow](https://github.com/orazefabian/eta-flow) — an animated heat-flow card for visualizing an ETA heating system.
 
 ## Updating the List of Sensors
 
@@ -98,14 +139,13 @@ If the sensors on the ETA unit change (e.g. new hardware is added), you can refr
    - **Update API & polling settings** — only changes the request limit and update interval.
    - **Update selected entities** — refreshes the values of your selected entities without rediscovering.
    - **Rediscover available entities and update selected entities** — performs a full rediscovery, then lets you review and adjust your selection.
+   - **ETA Plant in the sidebar** — shows or hides the [plant card](#plant-card) as its own sidebar entry.
 
 **Maximum parallel API requests** controls how many requests are sent at once. Higher values are faster but put more load on the unit and can cause timeouts on older devices.
 
 - Older ETA units: `3–5`
 - Newer ETA units: `8–15` (if stable)
 - If you see API errors/timeouts, reduce the value step by step.
-
-> **Renamed or deleted sensors:** if a sensor you added is renamed on the ETA terminal, the integration cannot automatically link the new name to the existing entity. The old entity is orphaned and the new name appears in the list to be added again. To keep the history, rename the new entity back to the old entity id manually.
 
 ## Error Events
 
@@ -190,7 +230,7 @@ template:
 
 You can also create the same helper from the UI:
 
-![template helper](images/template_sensor.png)
+<img src="images/template_sensor.png" alt="Template helper" width="380">
 
 Then add the new sensor to the gas sources of your Energy Dashboard.
 
@@ -218,3 +258,5 @@ Originally created by [nigl](https://github.com/nigl/homeassistant_eta_integrati
 ## License
 
 Released under the [MIT License](LICENSE).
+
+Exception: the icons in `custom_components/eta_webservices/www/icons/` are the property of ETA Heiztechnik GmbH, are not licensed under MIT and may only be used as part of this integration. See the [NOTICE](custom_components/eta_webservices/www/icons/NOTICE) file in that directory. The same applies to the ETA logo in `custom_components/eta_webservices/brand/` and to the plant card screenshots and header image (`images/plant-card-*.png`, `images/header-boilers.webp`), which show these icons.

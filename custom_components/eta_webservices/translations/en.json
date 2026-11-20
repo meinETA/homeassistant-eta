@@ -58,7 +58,7 @@
         "step": {
             "init": {
                 "title": "Options",
-                "description": "**Update API & polling settings**: the request limit and update interval are changed.\n\n**Update selected entities**: update the list of entities added to Home Assistant.\n\n**Rediscover available entities and update selected entities**: refreshes the entity list and then lets you adjust your selection.",
+                "description": "**Update API & polling settings**: the request limit and update interval are changed.\n\n**Update selected entities**: update the list of entities added to Home Assistant.\n\n**Rediscover available entities and update selected entities**: refreshes the entity list and then lets you adjust your selection.\n\n**ETA Plant in the sidebar**: shows the ETA Plant card as its own sidebar entry, no dashboard needed.",
                 "data": {
                     "options_update_action": "Action"
                 }
@@ -95,6 +95,13 @@
                 "description": "Configure advanced integration options.",
                 "data": {
                     "ignore_decimal_places_restriction_for_writable_entities": "HACK: Handle decimal places for these writable sensor values"
+                }
+            },
+            "sidebar": {
+                "title": "ETA Plant in the sidebar",
+                "description": "Shows the ETA Plant card as its own entry in the Home Assistant sidebar. Name, language and icons are set there via the gear (admins only).",
+                "data": {
+                    "sidebar_panel": "Show in sidebar"
                 }
             }
         },
@@ -133,6 +140,37 @@
             },
             "latest_error_sensor": {
                 "name": "Latest active error"
+            },
+            "analytics_ash_fill": {
+                "name": "Ash box fill level"
+            },
+            "analytics_ash_days": {
+                "name": "Ash box full in"
+            },
+            "analytics_ash_date": {
+                "name": "Ash box full on"
+            },
+            "analytics_pellets_today": {
+                "name": "Pellet consumption today"
+            },
+            "analytics_pellets_yesterday": {
+                "name": "Pellet consumption yesterday"
+            },
+            "analytics_pellets_avg": {
+                "name": "Pellet consumption per day (14-day avg)"
+            },
+            "analytics_silo_days": {
+                "name": "Pellet store lasts"
+            },
+            "analytics_silo_date": {
+                "name": "Pellet store empty on"
+            },
+            "analytics_method": {
+                "name": "Forecast method",
+                "state": {
+                    "seasonal": "Last year (seasonal)",
+                    "average": "14-day average"
+                }
             }
         }
     },
@@ -142,7 +180,8 @@
                 "update_parallel_requests": "Update API & polling settings",
                 "update_selected_entities": "Update selected entities",
                 "rediscover_and_update_entities": "Rediscover available entities and update selected entities",
-                "rename_entities_to_named_scheme": "Migrate to the name-based scheme (v2)"
+                "rename_entities_to_named_scheme": "Migrate to the name-based scheme (v2)",
+                "sidebar_panel": "ETA Plant in the sidebar"
             }
         }
     },

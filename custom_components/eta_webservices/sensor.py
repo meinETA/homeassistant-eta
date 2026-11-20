@@ -24,6 +24,7 @@ from homeassistant.helpers.entity_platform import async_get_current_platform
 from homeassistant.helpers.typing import VolDictType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .analytics import async_create_analytics
 from .api import ETAEndpoint, ETAError, ETAValidWritableValues
 from .const import (
     CHOSEN_FLOAT_SENSORS,
@@ -179,6 +180,14 @@ async def async_setup_entry(
             EtaNbrErrorsSensor(config, hass, error_coordinator),
             EtaLatestErrorSensor(config, hass, error_coordinator),
         ]
+    )
+    # computed values ("Auswertung" device) from the selected ETA values
+    sensors.extend(
+        await async_create_analytics(
+            hass,
+            config,
+            [*chosen_float_sensors, *chosen_text_sensors, *chosen_writable_sensors],
+        )
     )
     # Final safety net: avoid HA startup failures if config data still contains
     # the same unique_id in multiple sensor categories.

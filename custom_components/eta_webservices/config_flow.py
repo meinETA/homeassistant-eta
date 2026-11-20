@@ -40,12 +40,14 @@ from .const import (
     OPTIONS_ACTION_PARALLEL_ONLY,
     OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
     OPTIONS_ACTION_RENAME_ENTITIES,
+    OPTIONS_ACTION_SIDEBAR,
     OPTIONS_ACTION_UPDATE_SELECTED,
     OPTIONS_UPDATE_ACTION,
     PAUSE_COORDINATORS_START_TIMESTAMP,
     PENDING_DICT,
     RENAME_PENDING_FROM,
     REQUEST_SEMAPHORE,
+    SIDEBAR_PANEL,
     STABLE_ID,
     SWITCHES_DICT,
     TEXT_DICT,
@@ -57,6 +59,7 @@ from .migration_restore import (
     RESTORE_SNAPSHOT_ID,
     async_find_snapshot,
 )
+from .panel import async_set_sidebar, sidebar_enabled
 
 _LOGGER = logging.getLogger(__name__)
 _HOSTNAME_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
@@ -784,6 +787,8 @@ class EtaOptionsFlowHandler(OptionsFlow):
 
             if selected_action == OPTIONS_ACTION_RENAME_ENTITIES:
                 return await self.async_step_rename_entities()
+            if selected_action == OPTIONS_ACTION_SIDEBAR:
+                return await self.async_step_sidebar()
 
             self.update_sensor_values = selected_action in (
                 OPTIONS_ACTION_UPDATE_SELECTED,
@@ -803,6 +808,26 @@ class EtaOptionsFlowHandler(OptionsFlow):
             return await self.async_step_prepare_entities()
 
         return await self._show_initial_option_screen()
+
+    async def async_step_sidebar(self, user_input=None):
+        """Show or hide the plant card as its own sidebar entry.
+
+        Stored outside the entry options, so toggling needs no reload.
+        """
+        entry = self.config_entry
+        if user_input is not None:
+            async_set_sidebar(self.hass, entry, bool(user_input[SIDEBAR_PANEL]))
+            return self.async_create_entry(title="", data=dict(entry.options))
+        return self.async_show_form(
+            step_id="sidebar",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        SIDEBAR_PANEL, default=sidebar_enabled(self.hass, entry)
+                    ): cv.boolean,
+                }
+            ),
+        )
 
     async def async_step_rename_entities(self, user_input=None):
         """Opt-in migration from the IP-based scheme to the name-based v2 scheme.
@@ -934,6 +959,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
             OPTIONS_ACTION_PARALLEL_ONLY,
             OPTIONS_ACTION_UPDATE_SELECTED,
             OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
+            OPTIONS_ACTION_SIDEBAR,
         ]
         # Offer the one-time v2 migration only while still on the IP-based scheme.
         if not current_data.get(CONF_NAME):
