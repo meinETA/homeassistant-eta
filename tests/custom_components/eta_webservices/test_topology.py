@@ -359,3 +359,20 @@ def test_boiler_residual_oxygen_role():
     rows = [(f"eta_{STABLE}_48_10391_0_0_12164", "sensor.o2", None)]
     blocks, _ = build_blocks(rows, STABLE)
     assert blocks[0].roles["oxygen"] == "sensor.o2"
+
+
+def test_report_includes_roles_of_writable_twins():
+    """Roles held by "_writable" twins are reported, their sensor is not "other" (#21)."""
+    rows = [
+        (f"eta_{STABLE}_40_10201_0_0_12015", "sensor.stock", None, "kg"),
+        (f"eta_{STABLE}_40_10201_0_0_12015_writable", "number.stock", None, "kg"),
+        (f"eta_{STABLE}_40_10511_0_0_12120_writable", "number.limit", None, "kg"),
+        (f"eta_{STABLE}_40_10511_0_0_12013", "sensor.ash", None, "kg"),
+    ]
+    report = {o["object"]: o for o in build_report(rows, STABLE)}
+    assert report["10201"]["roles"] == {"stock": "0/0/12015"}
+    assert report["10201"]["other"] == []
+    assert report["10511"]["roles"] == {
+        "ash_used": "0/0/12013",
+        "ash_limit": "0/0/12120",
+    }

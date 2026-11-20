@@ -225,7 +225,8 @@ def build_report(entries: list[tuple[Any, ...]], stable: str) -> list[dict[str, 
     role_of.update({eid: role for role, eid in plant.items()})
     objects: dict[str, dict[str, Any]] = {}
     for unique_id, entity_id, name, unit, *rest in entries:
-        parsed = parse_unique_id(unique_id, stable)
+        # "_writable" twins count: they can hold a role (e.g. ash box limit)
+        parsed = parse_unique_id(unique_id, stable, writable=True)
         if parsed is None:
             continue
         node, obj, address = parsed
@@ -241,11 +242,17 @@ def build_report(entries: list[tuple[Any, ...]], stable: str) -> list[dict[str, 
         )
         if entity_id in role_of:
             item["roles"][role_of[entity_id]] = address
+        elif unique_id.endswith("_writable"):
+            continue  # same address as its sensor, listed once
         else:
             text = report_text(rest[0]) if rest and not unit else None
             item["other"].append(_report_line(address, unit, name, text, entity_id))
     for item in objects.values():
-        item["other"].sort()
+        # a sensor whose writable twin holds the role is not "other"
+        taken = set(item["roles"].values())
+        item["other"] = sorted(
+            {line for line in item["other"] if line.split(" ", 1)[0] not in taken}
+        )
     return [objects[key] for key in sorted(objects)]
 
 
