@@ -29,6 +29,7 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     ERROR_UPDATE_COORDINATOR,
+    FAST_UPDATE_COORDINATOR,
     FLOAT_DICT,
     FORCE_LEGACY_MODE,
     MAX_PARALLEL_REQUESTS,
@@ -46,6 +47,7 @@ from .const import (
 )
 from .coordinator import (
     ETAErrorUpdateCoordinator,
+    ETAFastUpdateCoordinator,
     ETAPendingNodeCoordinator,
     ETASensorUpdateCoordinator,
     ETAWritableUpdateCoordinator,
@@ -62,6 +64,7 @@ from .panel import (
     async_update_panel,
 )
 from .services import async_setup_services
+from .topology import async_ensure_fast_label
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -231,6 +234,7 @@ async def async_setup(hass: core.HomeAssistant, config: ConfigType) -> bool:
     integration = await async_get_integration(hass, DOMAIN)
     await async_setup_card(hass, str(integration.version))
     await async_setup_panels(hass)
+    async_ensure_fast_label(hass)
     return True
 
 
@@ -290,6 +294,13 @@ async def async_setup_entry(
     # options_update_listener (registered above) is already in place before
     # any promotion fires and updates the options.
     hass.async_create_task(pending_coordinator.async_refresh())
+
+    # values on the plant card are read more often, after the platforms exist
+    fast_coordinator = ETAFastUpdateCoordinator(
+        hass, config, entry, sensor_coordinator, writable_coordinator
+    )
+    config[FAST_UPDATE_COORDINATOR] = fast_coordinator
+    entry.async_on_unload(fast_coordinator.remove_listener)
 
     await async_setup_services(hass, entry)
     async_update_panel(hass, entry)

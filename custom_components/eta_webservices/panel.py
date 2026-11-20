@@ -13,10 +13,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 
 from .card import CARD_JS_URL
-from .const import DOMAIN, SIDEBAR_PANEL, STABLE_ID
+from .const import DOMAIN, PANEL_DATA, SIDEBAR_PANEL, STABLE_ID
 
 _STORE = f"{DOMAIN}_panel_store"
-_DATA = f"{DOMAIN}_panel_data"
+_DATA = PANEL_DATA
 
 
 async def async_setup_panels(hass: HomeAssistant) -> None:
