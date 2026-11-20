@@ -1339,7 +1339,7 @@
       auto: "Automatisch", plant: "Anlage", language: "Sprache", lang_auto: "Automatisch (HA)", title: "Name der Anlage",
       store: "Lager", no_icons: "Keine Anlagenteile mit Icon-Auswahl erkannt.", loading: "Anlage wird geladen …",
       report: "Anlage melden",
-      report_text: "Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ erstellt ein Issue, in dem die Anlagendaten schon eingetragen sind. Sie enthalten Objekt-Nummern, Parameter-Adressen, Einheiten, die ETA-Parameternamen und kurze Statustexte (z. B. „Bereit“), aber keine Messwerte, keine selbst vergebenen Namen, keine IP. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst. Das Issue ist öffentlich sichtbar. Achte auf dem Screenshot auf persönliche Namen.",
+      report_text: "Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ lädt die Anlagendatei herunter und öffnet ein Formular auf GitHub. Zieh die Datei dort in das Feld „Plant file“. Die Datei enthält alle Werte der Anlage mit ETA-Namen, Einheiten und aktuellen Messwerten, aber keine IP-Adresse, keine Seriennummer, keine selbst vergebenen Namen und keinen Verlauf. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst. Das Issue ist öffentlich sichtbar. Achte auf dem Screenshot auf persönliche Namen.",
       download: "Anlagendatei herunterladen", open_issue: "GitHub-Issue öffnen", file: "Inhalt der Datei",
     },
     en: {
@@ -1348,7 +1348,7 @@
       auto: "Automatic", plant: "Plant", language: "Language", lang_auto: "Automatic (HA)", title: "Plant name",
       store: "Store", no_icons: "No plant parts with an icon choice detected.", loading: "Loading plant …",
       report: "Report plant",
-      report_text: "Is your plant not shown correctly? \u201cOpen GitHub issue\u201d creates an issue with the plant data already filled in. It contains object numbers, parameter addresses, units, the ETA parameter names and short status texts (e.g. \u201cReady\u201d), but no measured values, no names you gave, no IP address. Nothing is sent until you submit the issue on GitHub yourself. The issue is public. Check the screenshot for personal names.",
+      report_text: "Is your plant not shown correctly? \u201cOpen GitHub issue\u201d downloads the plant file and opens a form on GitHub. Drag the file into the \u201cPlant file\u201d field there. The file contains every value of the plant with ETA names, units and current readings, but no IP address, no serial number, no names you gave and no history. Nothing is sent until you submit the issue on GitHub yourself. The issue is public. Check the screenshot for personal names.",
       download: "Download plant file", open_issue: "Open GitHub issue", file: "Content of the file",
     },
   };
@@ -1493,15 +1493,14 @@
         // open the window synchronously, otherwise the popup blocker kicks in
         const win = window.open("about:blank", "_blank");
         await this._makeReport();
-        const base = `https://github.com/${REPORT_REPO}/issues/new?labels=plant-card&title=${encodeURIComponent("Plant card: ")}`;
-        const head = "**What is wrong?**\n\n\n**Screenshot:**\n\n\n";
-        const packed = await this._pack(this._report);
-        let body = `${head}**Plant data** (eta-plant-report v2, gzip+base64):\n\n\`\`\`\n${packed}\n\`\`\`\n`;
-        if (!packed || (base + encodeURIComponent(body)).length > 8000) {
-          this._download(); // too large for the link: attach the file instead
-          body = `${head}**Plant data:** please attach the downloaded file \`${REPORT_FILE}\`.\n`;
-        }
-        const url = `${base}&body=${encodeURIComponent(body)}`;
+        // the full plant file is downloaded and dragged into the issue form by the user;
+        // the short report goes into the form directly when it fits into the link
+        this._download();
+        const base = `https://github.com/${REPORT_REPO}/issues/new?template=plant-card.yml&title=${encodeURIComponent("Plant card: ")}`;
+        const packed = await this._pack(this._summary);
+        let data = `eta-plant-report v2, gzip+base64\n${packed}`;
+        if (!packed || (base + encodeURIComponent(data)).length > 8000) data = `see attached file ${REPORT_FILE}`;
+        const url = `${base}&data=${encodeURIComponent(data)}`;
         if (win) win.location.href = url; else window.open(url, "_blank");
         this._render();
       });
@@ -1737,14 +1736,17 @@
       Object.entries(this._config.roles || {}).forEach(([bid, o]) => Object.entries(o).forEach(([role, e]) => {
         if (e && e !== "-" && types[bid]) manual.push([types[bid], role, e]);
       }));
-      const rep = await this._hass.callWS({ type: "eta_webservices/report", entry_id: this._topo && this._topo.entry_id, manual });
+      const rep = await this._hass.callWS({ type: "eta_webservices/report", entry_id: this._topo && this._topo.entry_id, manual, full: true });
       // card settings without user-given names: which parts are hidden, added or have another icon
       const c = this._config;
       const settings = {
         hidden: c.hidden || [], extra: (c.extra || []).map((x) => x.type), icons: c.icons || {},
         renamed: Object.keys(c.names || {}).length, language: c.language || "",
       };
-      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...rep }, null, 1);
+      // the short report (issue link) leaves out the big parts: every endpoint and the terminal menu
+      const { tree, terminal, ...short } = rep;
+      this._summary = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...short });
+      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...short, tree, terminal }, null, 1);
     }
 
     async _pack(text) {

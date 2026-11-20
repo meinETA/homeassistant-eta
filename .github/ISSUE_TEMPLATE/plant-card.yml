@@ -1,0 +1,38 @@
+name: Plant card
+description: The ETA Plant card does not show my plant correctly
+title: "Plant card: "
+labels: ["plant-card"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Easiest way: open the card settings (gear) and click **Open GitHub issue**. It downloads the plant file and opens this form with the plant data filled in.
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong?
+      description: Which part of the plant is missing, wrong or in the wrong place?
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Drag a screenshot of the card here. Check it for personal names first.
+    validations:
+      required: false
+  - type: textarea
+    id: file
+    attributes:
+      label: Plant file
+      description: Drag the downloaded file `eta-plant-report.json` here (it is in your download folder). It contains every value of the plant, without IP address, serial number or names you gave.
+    validations:
+      required: false
+  - type: textarea
+    id: data
+    attributes:
+      label: Plant data
+      description: Filled in by the card (short version of the plant file). Leave as it is.
+      render: text
+    validations:
+      required: false

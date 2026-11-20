@@ -9,7 +9,9 @@ from custom_components.eta_webservices.topology import (
     _report_line,
     block_type_for_object,
     build_blocks,
+    build_plant_file,
     build_report,
+    file_value,
     manual_report,
     parse_unique_id,
     report_text,
@@ -376,3 +378,163 @@ def test_report_includes_roles_of_writable_twins():
         "ash_used": "0/0/12013",
         "ash_limit": "0/0/12120",
     }
+
+
+def test_file_value_keeps_measurements_and_fixed_texts():
+    """Numbers with unit and texts from the parameter's list stay, the rest goes."""
+    temp = {"unit": "°C", "valid_values": None}
+    assert file_value(temp, "61.5") == 61.5
+    serial = {"unit": "", "valid_values": None}
+    assert file_value(serial, "12345678") is None
+    status = {"unit": "", "valid_values": {"Bereit": 2012, "Heizen": 2006}}
+    assert file_value(status, "Bereit") == "Bereit"
+    free = {"unit": "", "valid_values": None, "value": "Huber"}
+    assert file_value(free, None) is None
+    switch = {"unit": "", "valid_values": {"on_value": 1803, "off_value": 1802}}
+    assert file_value(switch, "on") == "on"
+    assert file_value(temp, "unavailable") is None
+
+
+def test_build_plant_file_lists_every_endpoint():
+    """Selected and unselected endpoints, without the block name in the path."""
+    conf = {
+        "FLOAT_DICT": {
+            f"eta_{STABLE}_264_10891_0_11109_0": {
+                "friendly_name": "Haus Huber > Eingänge > Kessel",
+                "unit": "°C",
+                "endpoint_type": "IEEE-754",
+                "is_writable": False,
+                "valid_values": None,
+                "value": 70.0,
+            }
+        },
+        "TEXT_DICT": {
+            f"eta_{STABLE}_264_10241_0_0_14130": {
+                "friendly_name": "Sys > Externe Störmeldung > Name",
+                "unit": "",
+                "endpoint_type": "DEFAULT",
+                "is_writable": True,
+                "valid_values": None,
+                "value": "Huber",
+            }
+        },
+        "chosen_float_sensors": [f"eta_{STABLE}_264_10891_0_11109_0"],
+    }
+    states = {f"eta_{STABLE}_264_10891_0_11109_0": "69.4"}
+    rows = build_plant_file(conf, states, STABLE)
+    assert rows[0] == {
+        "uri": "264/10241/0/0/14130",
+        "kind": "text",
+        "type": "system",
+        "path": "Externe Störmeldung > Name",
+        "unit": "",
+        "etype": "DEFAULT",
+        "writable": True,
+        "selected": False,
+    }
+    assert rows[1]["value"] == 69.4
+    assert rows[1]["path"] == "Eingänge > Kessel"
+    assert rows[1]["selected"] is True
+    assert "Huber" not in str(rows)
+
+
+def test_flatten_menu_leaves_out_block_names():
+    """Menu nodes with path below the function block; the block name is dropped."""
+    from custom_components.eta_webservices.plant_file import flatten_menu
+
+    menu = {
+        "eta": {
+            "menu": {
+                "fub": {
+                    "@name": "HK Huber",
+                    "@uri": "/120/10101",
+                    "object": [
+                        {
+                            "@name": "Heizkreis",
+                            "@uri": "/120/10101/0/0/12090",
+                            "object": {
+                                "@name": "Status",
+                                "@uri": "/120/10101/0/0/19404",
+                            },
+                        },
+                        {"@name": "Spannung", "@uri": "/120/10101/0/0/15000"},
+                    ],
+                }
+            }
+        }
+    }
+    rows = flatten_menu(menu)
+    assert rows == [
+        {"uri": "120/10101", "path": None, "leaf": False, "fub": True},
+        {"uri": "120/10101/0/0/12090", "path": "Heizkreis", "leaf": False},
+        {"uri": "120/10101/0/0/19404", "path": "Heizkreis > Status", "leaf": True},
+        {"uri": "120/10101/0/0/15000", "path": "Spannung", "leaf": True},
+    ]
+    assert "Huber" not in str(rows)
+
+
+def test_var_details_explain_skipped_endpoints():
+    """Unit, scale and valid values of a variable, no free text value."""
+    from custom_components.eta_webservices.plant_file import var_details
+
+    xml = """<?xml version="1.0" encoding="utf-8"?>
+<eta version="1.0"><varInfo uri="/user/varinfo/264/10571/0/0/1">
+<variable name="Spannung" uri="264/10571/0/0/1" advTextOffset="0" unit="kV" decPlaces="1"
+ scaleFactor="10" isWritable="0" fullName="Part.-Absch. > Spannung"><type>DEFAULT</type>
+<validValues><min strValue="0" unit="kV">0</min><max strValue="30" unit="kV">300</max></validValues>
+</variable></varInfo></eta>"""
+    assert var_details(xml) == {
+        "unit": "kV",
+        "decPlaces": "1",
+        "scaleFactor": "10",
+        "advTextOffset": "0",
+        "isWritable": "0",
+        "type": "DEFAULT",
+        "valid": {"min": "0", "max": "300"},
+    }
+
+
+async def test_terminal_info_keeps_details_on_timeout(monkeypatch):
+    """Details that arrived before the time limit stay in the file."""
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+
+    from custom_components.eta_webservices import plant_file
+
+    menu = {
+        "eta": {
+            "menu": {
+                "fub": {
+                    "@name": "K",
+                    "@uri": "/1/2",
+                    "object": [
+                        {"@name": "A", "@uri": "/1/2/0/0/1"},
+                        {"@name": "B", "@uri": "/1/2/0/0/2"},
+                    ],
+                }
+            }
+        }
+    }
+    xml = '<eta><varInfo><variable unit="kV"><type>DEFAULT</type></variable></varInfo></eta>'
+
+    async def request(suffix):
+        if suffix.endswith("/2"):
+            await asyncio.sleep(10)
+        response = MagicMock()
+        response.text = AsyncMock(return_value=xml)
+        return response
+
+    api = MagicMock()
+    api.get_api_version = AsyncMock(return_value="1.2")
+    api.get_menu = AsyncMock(return_value=menu)
+    api._http.get_request = request
+    monkeypatch.setattr(plant_file, "EtaAPI", lambda *a, **k: api)
+    monkeypatch.setattr(plant_file, "async_get_clientsession", lambda hass: None)
+    monkeypatch.setattr(plant_file, "TIMEOUT", 0.2)
+    hass = MagicMock()
+    hass.data = {"eta_webservices": {"e": {"host": "h", "port": 8080}}}
+    info = await plant_file.async_terminal_info(hass, "e", set())
+    assert info["api_version"] == "1.2"
+    assert info["skipped_count"] == 2
+    assert info["skipped"] == {"1/2/0/0/1": {"unit": "kV", "type": "DEFAULT"}}
+    assert info["skipped_timeout"] == 1
