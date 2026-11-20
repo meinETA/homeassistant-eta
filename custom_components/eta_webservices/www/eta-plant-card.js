@@ -1229,6 +1229,38 @@
   // Target of the "report plant" button.
   const REPORT_REPO = "meinETA/homeassistant-eta";
 
+  // texts of the card settings
+  const EDIT_TEXTS = {
+    de: {
+      settings: "Einstellungen", reset_all: "Alles zurücksetzen", cancel: "Abbrechen", save: "Speichern",
+      auto: "Automatisch", plant: "Anlage", language: "Sprache", lang_auto: "Automatisch (HA)", title: "Name der Anlage",
+      store: "Lager", no_icons: "Keine Anlagenteile mit Icon-Auswahl erkannt.", loading: "Anlage wird geladen …",
+      report: "Anlage melden",
+      report_text: "Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ erstellt ein Issue, in dem die Anlagendaten schon eingetragen sind. Sie enthalten Objekt-Nummern, Parameter-Adressen, Einheiten, die ETA-Parameternamen und kurze Statustexte (z. B. „Bereit“), aber keine Messwerte, keine selbst vergebenen Namen, keine IP. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst. Das Issue ist öffentlich sichtbar. Achte auf dem Screenshot auf persönliche Namen.",
+      download: "Anlagendatei herunterladen", open_issue: "GitHub-Issue öffnen", file: "Inhalt der Datei",
+    },
+    en: {
+      settings: "Settings", reset_all: "Reset everything", cancel: "Cancel", save: "Save",
+      auto: "Automatic", plant: "Plant", language: "Language", lang_auto: "Automatic (HA)", title: "Plant name",
+      store: "Store", no_icons: "No plant parts with an icon choice detected.", loading: "Loading plant …",
+      report: "Report plant",
+      report_text: "Is your plant not shown correctly? \u201cOpen GitHub issue\u201d creates an issue with the plant data already filled in. It contains object numbers, parameter addresses, units, the ETA parameter names and short status texts (e.g. \u201cReady\u201d), but no measured values, no names you gave, no IP address. Nothing is sent until you submit the issue on GitHub yourself. The issue is public. Check the screenshot for personal names.",
+      download: "Download plant file", open_issue: "Open GitHub issue", file: "Content of the file",
+    },
+  };
+  const REPORT_FILE = "eta-plant-report.json";
+  // English names for the icon choices (ETA model names stay)
+  const ICON_EN = {
+    "Pelletslager": "Pellet store", "Saugsystem 3-fach": "Suction system 3-way", "Saugsystem 4-fach": "Suction system 4-way",
+    "Saugsystem 8-fach": "Suction system 8-way", "Hackgut Rührwerk": "Wood chip agitator", "Hackgut Schnecke": "Wood chip auger",
+    "Rührer": "Agitator", "Pendelschnecke": "Swinging auger", "Pendelschnecke 2-fach": "Swinging auger 2-way",
+    "Schubboden": "Sliding floor", "Schubboden 2-fach": "Sliding floor 2-way", "Schubboden 3-fach": "Sliding floor 3-way",
+    "PU / PC grau": "PU / PC grey", "ePE (gelb)": "ePE (yellow)", "ePE (Einblick)": "ePE (inside view)", "ePE BW (weiß)": "ePE BW (white)",
+    "SH alt": "SH old", "SH-TWIN alt": "SH-TWIN old", "HACK VR (gelb)": "HACK VR (yellow)", "HACK VR (grau)": "HACK VR (grey)",
+    "Puffer": "Buffer", "Puffer mit Wendel": "Buffer with coil", "Kombispeicher": "Combi tank", "Heizkörper": "Radiator",
+    "Fußbodenheizung": "Underfloor heating", "Frischwassermodul": "Fresh water module", "FWM Brauchwasser": "FWM domestic water",
+  };
+
   class EtaPlantCardEditor extends HTMLElement {
     setConfig(config) {
       this._config = { ...config };
@@ -1251,19 +1283,20 @@
     _render() {
       if (!this._config) return;
       if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+      const T = EDIT_TEXTS[this._de() ? "de" : "en"];
       const icons = this._config.icons || {};
       const list = this._topo ? [...this._topo.blocks] : [];
       // plant parts added by hand get an icon choice too
       if (this._topo) (this._config.extra || []).forEach((x) => list.push({ id: x.id, type: x.type, name: null }));
       if (!list.some((b) => b.type === "silo")) {
         const bo = list.find((b) => b.type === "boiler" && b.roles.auger);
-        if (bo) list.splice(list.indexOf(bo), 0, { id: `${bo.id}/store`, type: "chip_store", name: "Lager" });
+        if (bo) list.splice(list.indexOf(bo), 0, { id: `${bo.id}/store`, type: "chip_store", name: T.store });
       }
       const rows = list.filter((b) => ICON_CHOICES[b.type]).map((b) => {
         const name = esc((this._config.names || {})[b.id] || this._label(b));
         const opts = ICON_CHOICES[b.type].map(([label, file]) =>
-          `<option value="${file}" ${webp(icons[b.id]) === file ? "selected" : ""}>${label}</option>`).join("");
-        return `<label>${name}<select data-b="${b.id}"><option value="">Automatisch</option>${opts}</select></label>`;
+          `<option value="${file}" ${webp(icons[b.id]) === file ? "selected" : ""}>${this._de() ? label : ICON_EN[label] || label}</option>`).join("");
+        return `<label>${name}<select data-b="${b.id}"><option value="">${T.auto}</option>${opts}</select></label>`;
       }).join("");
       this.shadowRoot.innerHTML = `<style>
         label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0;font-size:14px}
@@ -1284,21 +1317,18 @@
         .vals .add{display:flex;gap:8px;align-items:center;margin-top:10px}
         .vals .danger{background:#c62828;color:#fff;border:1px solid #c62828;border-radius:4px}
       </style>
-      ${this._all && this._all.length > 1 && !this.fixedEntry ? `<label>Anlage<select id="entry">${this._all.map((e) =>
+      ${this._all && this._all.length > 1 && !this.fixedEntry ? `<label>${T.plant}<select id="entry">${this._all.map((e) =>
         `<option value="${e.title}" ${this._topo && this._topo.entry_id === e.entry_id ? "selected" : ""}>${e.title}</option>`).join("")}</select></label>` : ""}
-      <label>Sprache<select id="lang">${[["", "Automatisch (HA)"], ["de", "Deutsch"], ["en", "English"]].map(([v, l]) =>
+      <label>${T.language}<select id="lang">${[["", T.lang_auto], ["de", "Deutsch"], ["en", "English"]].map(([v, l]) =>
         `<option value="${v}" ${(this._config.language || "") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-      <label>Name der Anlage<input id="title" value="${esc(this._config.title || "")}" placeholder="${esc((this._topo && this._topo.title) || "ETA")}"></label>
-      ${rows || `<p>${this._all ? "Keine Anlagenteile mit Icon-Auswahl erkannt." : "Anlage wird geladen …"}</p>`}
+      <label>${T.title}<input id="title" value="${esc(this._config.title || "")}" placeholder="${esc((this._topo && this._topo.title) || "ETA")}"></label>
+      ${rows || `<p>${this._all ? T.no_icons : T.loading}</p>`}
       ${this._topo ? this._valuesHtml() : ""}
       <div class="report">
-        <b>Anlage melden</b>
-        <p>Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ erstellt ein Issue, in dem die Anlagendaten
-        schon eingetragen sind. Sie enthalten Objekt-Nummern, Parameter-Adressen, Einheiten, die ETA-Parameternamen und kurze
-        Statustexte (z. B. „Bereit“), aber keine Messwerte, keine selbst vergebenen Namen, keine IP. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst.
-        Das Issue ist öffentlich sichtbar. Achte auf dem Screenshot auf persönliche Namen.</p>
-        <button id="dl">Anlagendatei herunterladen</button> <button id="gh">GitHub-Issue öffnen</button>
-        ${this._report ? `<p>Inhalt der Datei <code>eta-anlage.json</code>:</p><textarea readonly rows="10">${this._report}</textarea>` : ""}
+        <b>${T.report}</b>
+        <p>${T.report_text}</p>
+        <button id="dl">${T.download}</button> <button id="gh">${T.open_issue}</button>
+        ${this._report ? `<p>${T.file} <code>${REPORT_FILE}</code>:</p><textarea readonly rows="10">${this._report}</textarea>` : ""}
       </div>`;
       this.shadowRoot.getElementById("lang").addEventListener("change", (ev) => {
         const cfg = { ...this._config, language: ev.target.value };
@@ -1344,7 +1374,7 @@
         let body = `${head}**Plant data** (eta-plant-report v2, gzip+base64):\n\n\`\`\`\n${packed}\n\`\`\`\n`;
         if (!packed || (base + encodeURIComponent(body)).length > 8000) {
           this._download(); // too large for the link: attach the file instead
-          body = `${head}**Plant data:** please attach the downloaded file \`eta-anlage.json\`.\n`;
+          body = `${head}**Plant data:** please attach the downloaded file \`${REPORT_FILE}\`.\n`;
         }
         const url = `${base}&body=${encodeURIComponent(body)}`;
         if (win) win.location.href = url; else window.open(url, "_blank");
@@ -1585,7 +1615,7 @@
     _download() {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([this._report], { type: "application/json" }));
-      a.download = "eta-anlage.json";
+      a.download = REPORT_FILE;
       document.body.appendChild(a);
       a.click();
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
@@ -1644,7 +1674,7 @@
         .act .reset{background:#c62828;border-color:transparent;color:#fff}
       </style>
       <div class="bar"><ha-menu-button></ha-menu-button><span class="sp"></span>${this._hass.user && this._hass.user.is_admin
-        ? `<button class="gear" title="Einstellungen"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg></button>` : ""}</div>
+        ? `<button class="gear" title="${this._texts().settings}"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg></button>` : ""}</div>
       <div class="body"></div>`;
       this._menu = this.shadowRoot.querySelector("ha-menu-button");
       this._menu.hass = this._hass;
@@ -1657,13 +1687,21 @@
       if (gear) gear.addEventListener("click", () => this._openEditor());
     }
 
+    // settings texts in the card language (panel setting, else Home Assistant)
+    _texts() {
+      const h = this._hass || {};
+      const l = (this._cfg && this._cfg.language) || (h.locale && h.locale.language) || h.language || "en";
+      return EDIT_TEXTS[l.startsWith("de") ? "de" : "en"];
+    }
+
     _openEditor() {
       const saved = this._cfg;
+      const T = this._texts();
       let draft = { ...saved };
       const dlg = document.createElement("div");
       dlg.className = "dlg";
-      dlg.innerHTML = `<div><h2>Einstellungen</h2><div class="ed"></div>
-        <div class="act"><button class="reset">Alles zurücksetzen</button><span class="sp"></span><button class="cancel">Abbrechen</button><button class="save">Speichern</button></div></div>`;
+      dlg.innerHTML = `<div><h2>${T.settings}</h2><div class="ed"></div>
+        <div class="act"><button class="reset">${T.reset_all}</button><span class="sp"></span><button class="cancel">${T.cancel}</button><button class="save">${T.save}</button></div></div>`;
       this._editor = document.createElement("eta-plant-card-editor");
       this._editor.fixedEntry = true;
       this._editor.setConfig(draft);
