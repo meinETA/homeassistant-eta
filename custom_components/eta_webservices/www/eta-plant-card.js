@@ -291,8 +291,11 @@
     return { ...topo, plant, blocks: blocks.filter((b) => !hidden.has(b.id)) };
   };
 
-  // pellet hopper at the boiler: ETA reports its content in kg but no capacity
+  // pellet hopper at the boiler: ETA reports its content in kg but no capacity. The boiler
+  // fills it up at least once a day, so the highest value of the last 48 h counts as 100 %;
+  // HOPPER_KG only until history exists.
   const HOPPER_KG = 30;
+  const HOPPER_HOURS = 48;
   const hopSvg = (size) => `<svg viewBox="0 0 40 40" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h24v13l-7 9v5H15v-5l-7-9z"/><circle cx="15" cy="16" r="2.2" fill="currentColor" stroke="none"/><circle cx="21" cy="14" r="2.2" fill="currentColor" stroke="none"/><circle cx="26" cy="17" r="2.2" fill="currentColor" stroke="none"/><circle cx="19" cy="20" r="2.2" fill="currentColor" stroke="none"/></svg>`;
 
   // ash box symbol (plant view and control tab)
@@ -648,6 +651,26 @@
       }
       this._fit();
       this._update();
+    }
+
+    // highest hopper content of the last HOPPER_HOURS from the recorder, refreshed hourly
+    _hopperFull(entityId) {
+      this._hop = this._hop || {};
+      const c = this._hop[entityId];
+      if (!c || (!c.busy && Date.now() - c.t > 3600e3)) {
+        this._hop[entityId] = { max: c ? c.max : null, t: Date.now(), busy: true };
+        const start = new Date(Date.now() - HOPPER_HOURS * 3600e3).toISOString();
+        this._hass.callWS({
+          type: "history/history_during_period", start_time: start, entity_ids: [entityId],
+          minimal_response: true, no_attributes: true, significant_changes_only: false,
+        }).then((res) => {
+          const vals = (res[entityId] || []).map((x) => Number(x.s ?? x.state)).filter((x) => !Number.isNaN(x));
+          const max = vals.length ? Math.max(...vals) : null;
+          this._hop[entityId] = { max: max && max > 1 ? max : null, t: Date.now(), busy: false };
+          this._update();
+        }).catch(() => { this._hop[entityId] = { max: null, t: Date.now(), busy: false }; });
+      }
+      return this._hop[entityId].max;
     }
 
     // above the boiler: ash box (first boiler) and pellet hopper, one bar each
@@ -1175,12 +1198,14 @@
           if (fc) fc.textContent = label.startsWith("fc_") ? "" : label;
         }
       });
-      // pellet hopper: kg against HOPPER_KG (or more, if a boiler reports more)
+      // pellet hopper: kg against the highest value of the last 48 h (see HOPPER_HOURS)
       root.querySelectorAll("[data-hop]").forEach((el) => {
         const st = this._hass.states[el.dataset.hop];
         const v = st ? Number(st.state) : NaN;
         const ok = !Number.isNaN(v);
-        const pct = ok ? Math.min(Math.max(v / Math.max(HOPPER_KG, v), 0), 1) * 100 : 0;
+        const learned = this._hopperFull(el.dataset.hop);
+        const full = Math.max(learned || HOPPER_KG, ok ? v : 0);
+        const pct = ok && full > 0 ? Math.min(Math.max(v / full, 0), 1) * 100 : 0;
         el.querySelector("i").style.width = `${pct}%`;
         const kg = ok ? `${Math.round(v)} kg` : "–";
         const pc = el.querySelector(".pc");
