@@ -1,0 +1,26 @@
+name: Label plant card issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    if: >-
+      startsWith(github.event.issue.title, 'Plant card:') ||
+      contains(github.event.issue.body, 'eta-plant-report')
+    steps:
+      - name: Add plant-card label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ["plant-card"],
+            });
