@@ -55,6 +55,7 @@ def ws_topology(
         vol.Required("type"): f"{DOMAIN}/report",
         vol.Optional("entry_id"): str,
         vol.Optional("manual", default=[]): [[str]],
+        vol.Optional("full", default=False): bool,
     }
 )
 @callback
@@ -63,7 +64,8 @@ def ws_report(
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
-    """Return the anonymized plant report (no names, ids or values)."""
+    """Return the anonymized plant report; full adds every discovered endpoint."""
     connection.send_result(
-        msg["id"], async_get_report(hass, msg.get("entry_id"), msg["manual"])
+        msg["id"],
+        async_get_report(hass, msg.get("entry_id"), msg["manual"], msg["full"]),
     )

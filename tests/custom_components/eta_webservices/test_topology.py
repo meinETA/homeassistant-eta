@@ -9,7 +9,9 @@ from custom_components.eta_webservices.topology import (
     _report_line,
     block_type_for_object,
     build_blocks,
+    build_plant_file,
     build_report,
+    file_value,
     manual_report,
     parse_unique_id,
     report_text,
@@ -376,3 +378,61 @@ def test_report_includes_roles_of_writable_twins():
         "ash_used": "0/0/12013",
         "ash_limit": "0/0/12120",
     }
+
+
+def test_file_value_keeps_measurements_and_fixed_texts():
+    """Numbers with unit and texts from the parameter's list stay, the rest goes."""
+    temp = {"unit": "°C", "valid_values": None}
+    assert file_value(temp, "61.5") == 61.5
+    serial = {"unit": "", "valid_values": None}
+    assert file_value(serial, "12345678") is None
+    status = {"unit": "", "valid_values": {"Bereit": 2012, "Heizen": 2006}}
+    assert file_value(status, "Bereit") == "Bereit"
+    free = {"unit": "", "valid_values": None, "value": "Huber"}
+    assert file_value(free, None) is None
+    switch = {"unit": "", "valid_values": {"on_value": 1803, "off_value": 1802}}
+    assert file_value(switch, "on") == "on"
+    assert file_value(temp, "unavailable") is None
+
+
+def test_build_plant_file_lists_every_endpoint():
+    """Selected and unselected endpoints, without the block name in the path."""
+    conf = {
+        "FLOAT_DICT": {
+            f"eta_{STABLE}_264_10891_0_11109_0": {
+                "friendly_name": "Haus Huber > Eingänge > Kessel",
+                "unit": "°C",
+                "endpoint_type": "IEEE-754",
+                "is_writable": False,
+                "valid_values": None,
+                "value": 70.0,
+            }
+        },
+        "TEXT_DICT": {
+            f"eta_{STABLE}_264_10241_0_0_14130": {
+                "friendly_name": "Sys > Externe Störmeldung > Name",
+                "unit": "",
+                "endpoint_type": "DEFAULT",
+                "is_writable": True,
+                "valid_values": None,
+                "value": "Huber",
+            }
+        },
+        "chosen_float_sensors": [f"eta_{STABLE}_264_10891_0_11109_0"],
+    }
+    states = {f"eta_{STABLE}_264_10891_0_11109_0": "69.4"}
+    rows = build_plant_file(conf, states, STABLE)
+    assert rows[0] == {
+        "uri": "264/10241/0/0/14130",
+        "kind": "text",
+        "type": "system",
+        "path": "Externe Störmeldung > Name",
+        "unit": "",
+        "etype": "DEFAULT",
+        "writable": True,
+        "selected": False,
+    }
+    assert rows[1]["value"] == 69.4
+    assert rows[1]["path"] == "Eingänge > Kessel"
+    assert rows[1]["selected"] is True
+    assert "Huber" not in str(rows)
