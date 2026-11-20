@@ -220,7 +220,7 @@
   const TOP_VALUES = {
     silo: ["stock"],
     chip_store: ["discharge"],
-    boiler: ["temperature", "pressure"],
+    boiler: ["temperature", "hopper", "pressure"],
     buffer: ["charge"],
     heating_circuit: ["flow"],
     fwm: ["hot_water", "primary_flow"],
