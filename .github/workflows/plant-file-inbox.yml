@@ -1,0 +1,79 @@
+name: Store plant files
+
+# Copies plant files attached to plant card issues (and their comments) into the
+# private fixtures repository, so new plants can be analysed and become tests.
+# Issue content is untrusted: nothing from it is executed or put into a shell;
+# only GitHub attachment links to .json files are downloaded, checked and stored.
+
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  store:
+    if: >-
+      !github.event.issue.pull_request && (
+        contains(github.event.issue.labels.*.name, 'plant-card') ||
+        startsWith(github.event.issue.title, 'Plant card'))
+    runs-on: ubuntu-latest
+    concurrency:
+      group: plant-file-${{ github.event.issue.number }}
+    steps:
+      - name: Copy attached plant files
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.ETA_FIXTURES_TOKEN }}
+          script: |
+            const zlib = require("zlib");
+            const MAX = 5 * 1024 * 1024;
+            const issue = context.payload.issue.number;
+            const comment = context.payload.comment;
+            const text = (comment ? comment.body : context.payload.issue.body) || "";
+            const source = comment ? `c${comment.id}` : "issue";
+            const files = [];
+
+            // attachments: only GitHub's own attachment links to .json files
+            const links = [...text.matchAll(/https:\/\/github\.com\/user-attachments\/files\/\d+\/[A-Za-z0-9._-]+\.json/g)].map((m) => m[0]);
+            for (const url of [...new Set(links)].slice(0, 5)) {
+              const res = await fetch(url, { redirect: "follow" });
+              if (!res.ok) { core.warning(`download failed ${res.status}: ${url}`); continue; }
+              const buf = Buffer.from(await res.arrayBuffer());
+              if (buf.length > MAX) { core.warning(`too large: ${url}`); continue; }
+              files.push({ name: url.split("/").pop(), body: buf.toString("utf8") });
+            }
+
+            // short report filled in by the card: "eta-plant-report v2, gzip+base64" + base64
+            const packed = text.match(/eta-plant-report v\d, gzip\+base64[):\s]*(?:```[a-z]*\s*)?([A-Za-z0-9+\/=\s]{40,})/);
+            if (packed) {
+              try {
+                const raw = zlib.gunzipSync(Buffer.from(packed[1].replace(/\s+/g, ""), "base64"));
+                if (raw.length <= MAX) files.push({ name: "summary.json", body: raw.toString("utf8") });
+              } catch (err) { core.warning(`summary not readable: ${err.message}`); }
+            }
+
+            for (const f of files) {
+              let data;
+              try { data = JSON.parse(f.body); } catch { core.warning(`not JSON: ${f.name}`); continue; }
+              if (!data || typeof data !== "object" || !(data.objects || data.tree)) {
+                core.warning(`not a plant file: ${f.name}`); continue;
+              }
+              const safe = f.name.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 80);
+              const path = `plants/inbox/issue-${issue}-${source}-${safe}`;
+              const content = Buffer.from(JSON.stringify(data, null, 1) + "\n").toString("base64");
+              let sha;
+              try {
+                const cur = await github.rest.repos.getContent({ owner: "meinETA", repo: "eta", path });
+                sha = cur.data.sha;
+              } catch { /* new file */ }
+              await github.rest.repos.createOrUpdateFileContents({
+                owner: "meinETA", repo: "eta", path, sha, content,
+                message: `Plant file from issue ${issue}`,
+              });
+              core.info(`stored ${path}`);
+            }
+            if (!files.length) core.info("no plant file in this issue or comment");
