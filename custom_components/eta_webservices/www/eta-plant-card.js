@@ -157,6 +157,19 @@
     "Kessel/HackVR/HackVR_gelb.webp": [0.211, 0.300],
     "Kessel/HackVR/HackVR_grau.webp": [0.211, 0.300],
   };
+  // hose stubs on the boiler roof (image fractions): [suction x, return-air x, stub top y];
+  // the stub nearer to the store takes the suction hose
+  const STUBS = {
+    "Kessel/Pellets/PU_PC_neu.webp": [0.128, 0.190, 0.069],
+    "Kessel/Pellets/PU_PC_grau.webp": [0.128, 0.190, 0.069],
+    "Kessel/ePE/ePE_HW.webp": [0.305, 0.367, 0.078],
+    "Kessel/ePE/ePE_einblick.webp": [0.305, 0.367, 0.078],
+    "Kessel/ePE_BW/ePE_BW.webp": [0.214, 0.313, 0.059],
+  };
+  // boilers without pellet hoses: log and wood chip boilers (the chip store keeps its auger)
+  const NO_HOSE = /^Kessel\/(SH|eSH|Hack|eHack|HackVR)\//;
+  // free space between pellet store and boiler for the hoses
+  const HOSE_GAP = 64;
   // visible height of the device on the 1600px canvas, per block type
   const TARGET_H = {
     silo: 220, chip_store: 200, boiler: 300, buffer: 330, heating_circuit: 140, fwm: 170,
@@ -322,6 +335,11 @@
   .p.pe.v i{background:radial-gradient(circle at 2px 3px,#ffc400 0 2.2px,transparent 2.6px) 0 0/4px 8px repeat-y}
   .on .p.pe.h i{animation:mx .6s linear infinite}.on .p.pe.v i{animation:my .6s linear infinite}
   .on .p.pe.rev i{animation-direction:reverse}
+  .p.air{background:#3f4850;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+  .p.air.h i{background:radial-gradient(circle at 3px 2px,#9fd8ff 0 1.8px,transparent 2.2px) 0 0/8px 4px repeat-x}
+  .p.air.v i{background:radial-gradient(circle at 2px 3px,#9fd8ff 0 1.8px,transparent 2.2px) 0 0/4px 8px repeat-y}
+  .on .p.air.h i{animation:mx .6s linear infinite}.on .p.air.v i{animation:my .6s linear infinite}
+  .on .p.air.rev i{animation-direction:reverse}
   .band{position:absolute;height:16px;border-radius:4px;overflow:hidden;background:#3a3a3a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
   .band i{position:absolute;left:-20px;right:-20px;top:0;bottom:0;will-change:transform;
     background:repeating-linear-gradient(45deg,#ffc400 0 9px,#2a2400 9px 14px)}
@@ -515,10 +533,11 @@
         const sink = (1 - bx[3]) * h; // transparent margin below the device
         const y0 = FLOOR - h + sink;
         return {
-          b, file, cx, w, h, x0, y0, sink, left: x0 + bx[0] * w, right: x0 + bx[2] * w,
+          b, file, bx, cx, w, h, x0, y0, sink, left: x0 + bx[0] * w, right: x0 + bx[2] * w,
           top: y0 + bx[1] * h, bottom: y0 + bx[3] * h, anchors: ANCHORS[file],
         };
       });
+      this._roomForHoses();
 
       const plant = this._topo.plant || {};
       const firstBoiler = blocks.find((x) => x.type === "boiler");
@@ -541,7 +560,7 @@
           : "";
         html += `<div class="blk t-${b.type}" data-b="${b.id}" style="left:${g.cx - colW / 2}px;width:${colW}px">
           <div class="stack">${b.type === "boiler" && plant.ash_fill && b === firstBoiler ? `<div class="ashrow" data-ash="${plant.ash_fill}">${ashSvg(22)}<div class="ashbar"><i></i></div><span class="pc"></span></div>` : ""}<div class="vals">${vals}</div>
-          <div class="icon" style="margin-bottom:${-g.sink}px"><div class="shadow" style="bottom:${g.sink - 12}px"></div><img data-type="${b.type}" src="${iconSrc(g.file)}" style="width:${g.w}px">${tank}</div></div>
+          <div class="icon" style="margin-bottom:${-g.sink}px${g.dx ? `;transform:translateX(${g.dx}px)` : ""}"><div class="shadow" style="bottom:${g.sink - 12}px"></div><img data-type="${b.type}" src="${iconSrc(g.file)}" style="width:${g.w}px">${tank}</div></div>
           <div class="name">${this._name(b)}</div>
           ${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}
         </div>`;
@@ -793,6 +812,31 @@
       return n.replace(/\[/g, "(").replace(/\]/g, ")") || this._t(b.type);
     }
 
+    // pellet hoses need room between store and boiler: move the store image left, then
+    // shrink it; its values and name stay centred in the column
+    _roomForHoses() {
+      const si = this._geo.findIndex((g) => g.b.type === "silo");
+      const st = this._geo[si];
+      const bo = this._geo[si + 1];
+      if (!st || !bo || bo.b.type !== "boiler" || NO_HOSE.test(bo.file)) return;
+      let lack = HOSE_GAP - (bo.left - st.right);
+      if (lack <= 0) return;
+      const move = Math.min(lack, Math.max(0, st.left - 8));
+      lack -= move;
+      let k = 1;
+      if (lack > 0) k = Math.max(0.6, 1 - lack / (st.right - st.left));
+      const left = st.left - move;
+      const w = st.w * k;
+      const h = st.h * k;
+      const x0 = left - st.bx[0] * w;
+      const sink = (1 - st.bx[3]) * h;
+      const y0 = FLOOR - h + sink;
+      Object.assign(st, {
+        w, h, x0, y0, sink, dx: x0 + w / 2 - st.cx, left, right: x0 + st.bx[2] * w,
+        top: y0 + st.bx[1] * h, bottom: y0 + st.bx[3] * h,
+      });
+    }
+
     _pipes() {
       const g = this._geo;
       const find = (t) => g.find((x) => x.b.type === t);
@@ -824,14 +868,44 @@
       const group = (key, inner) => `<div class="g" data-flow="${key}">${inner}</div>`;
       let s = "";
       if (silo && boiler) {
-        if (silo.b.type === "silo") {
-          // pellet suction hose: from the store up into the upper side of the boiler (hopper)
+        if (silo.b.type === "silo" && NO_HOSE.test(boiler.file)) {
+          // log or wood chip boiler: no pellet suction
+        } else if (silo.b.type === "silo") {
+          // pellet suction system: suction hose (pellets to the boiler) and return air
+          // hose (back to the store), side by side without crossing: the return hose
+          // leaves the store higher, runs on the outer side and ends at the farther stub
+          const D = 14; // distance between the two hoses
           const y0 = silo.top + (silo.bottom - silo.top) * 0.4;
+          const st = STUBS[boiler.file];
           const f = FEED[boiler.file];
-          const xe = f ? boiler.x0 + f[0] * boiler.w : boiler.left;
-          const yb = f ? boiler.y0 + f[1] * boiler.h : boiler.top + (boiler.bottom - boiler.top) * 0.16;
-          const xm = silo.right + Math.max(14, (Math.min(xe, boiler.left + 40) - silo.right) / 2);
-          s += group(silo.b.id, line([[silo.right - 6, y0], [xm, y0], [xm, yb], [xe + 3, yb]], "pe"));
+          let ends; // [x, y of the run towards the boiler, y where the hose ends]
+          if (st) {
+            // from above into the two stubs on the boiler roof
+            const top = boiler.y0 + st[2] * boiler.h;
+            ends = {
+              suction: [boiler.x0 + st[0] * boiler.w, top - 10, top + 2],
+              air: [boiler.x0 + st[1] * boiler.w, top - 10 - D, top + 2],
+            };
+          } else {
+            // sideways into the boiler, at its hopper
+            const xe = (f ? boiler.x0 + f[0] * boiler.w : boiler.left) + 3;
+            const yb = f ? boiler.y0 + f[1] * boiler.h : boiler.top + (boiler.bottom - boiler.top) * 0.16;
+            ends = { suction: [xe, yb + D / 2, null], air: [xe, yb - D / 2, null] };
+          }
+          // risers in the middle of the gap between store and boiler; the outer (air)
+          // riser is left of the suction riser when going up, right when going down
+          const xc = (silo.right + Math.min(boiler.left, ends.suction[0])) / 2;
+          const up = ends.suction[1] < y0;
+          const xs = xc + (up ? D / 2 : -D / 2);
+          const xa = xc + (up ? -D / 2 : D / 2);
+          const path = (x, ya, e) => {
+            const pts = [[silo.right - 6, ya], [x, ya], [x, e[1]], [e[0], e[1]]];
+            if (e[2] !== null) pts.push([e[0], e[2]]);
+            return pts;
+          };
+          const suction = path(xs, y0 + D / 2, ends.suction);
+          const air = path(xa, y0 - D / 2, ends.air).reverse(); // flows back to the store
+          s += group(silo.b.id, line(suction, "pe") + line(air, "air"));
         } else {
           // wood chip discharge auger at floor level
           const y = Math.min(silo.bottom, boiler.bottom) - 34;
