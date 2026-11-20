@@ -1743,9 +1743,10 @@
         hidden: c.hidden || [], extra: (c.extra || []).map((x) => x.type), icons: c.icons || {},
         renamed: Object.keys(c.names || {}).length, language: c.language || "",
       };
-      const { tree, ...short } = rep;
+      // the short report (issue link) leaves out the big parts: every endpoint and the terminal menu
+      const { tree, terminal, ...short } = rep;
       this._summary = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...short });
-      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...short, tree }, null, 1);
+      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...short, tree, terminal }, null, 1);
     }
 
     async _pack(text) {

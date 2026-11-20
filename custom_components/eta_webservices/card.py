@@ -14,6 +14,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant, callback
 
 from .const import DOMAIN
+from .plant_file import async_terminal_info
 from .topology import async_get_report, async_get_topology
 
 CARD_URL_BASE = f"/{DOMAIN}_static"
@@ -58,14 +59,20 @@ def ws_topology(
         vol.Optional("full", default=False): bool,
     }
 )
-@callback
-def ws_report(
+@websocket_api.async_response
+async def ws_report(
     hass: HomeAssistant,
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
-    """Return the anonymized plant report; full adds every discovered endpoint."""
-    connection.send_result(
-        msg["id"],
-        async_get_report(hass, msg.get("entry_id"), msg["manual"], msg["full"]),
-    )
+    """Return the anonymized plant report.
+
+    full adds every discovered endpoint and, read live from the terminal, the
+    API version, the whole menu and details of skipped endpoints.
+    """
+    report = async_get_report(hass, msg.get("entry_id"), msg["manual"], msg["full"])
+    if msg["full"] and report.get("entry_id"):
+        found = {row["uri"] for row in report.get("tree", [])}
+        report["terminal"] = await async_terminal_info(hass, report["entry_id"], found)
+    report.pop("entry_id", None)
+    connection.send_result(msg["id"], report)

@@ -362,6 +362,7 @@ def async_get_report(
         "unselected": unselected_report(discovered, chosen, stable),
         "manual": manual_report(manual or [], uid_of, stable),
     }
+    result["entry_id"] = entry.entry_id
     if full:
         states = {}
         for reg in regs:
@@ -492,6 +493,8 @@ def build_plant_file(
             }
             if valid:
                 row["valid"] = valid
+            if info.get("is_invalid"):
+                row["invalid"] = True  # terminal answered "xxx" during discovery
             value = file_value(info, states.get(unique_id))
             if value is not None:
                 row["value"] = value
