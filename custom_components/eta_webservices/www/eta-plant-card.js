@@ -4,7 +4,7 @@
   const H = 860;
   const FLOOR = 610;
   // bump when icon files change, so browsers do not keep stale images
-  const ICON_REV = "2026-11-20a";
+  const ICON_REV = "2026-11-20b";
 
   // type -> [icon file, icon width on the 1600px canvas, aspect w/h]
   const ICONS = {
@@ -178,12 +178,32 @@
   // default icon per ETA object id where the type alone is ambiguous
   const DEFAULT_BY_OBJECT = {
     "10561": ["Kessel/Hack/Hack.webp", 1],
+    // SH-TWIN: log wood boiler (10391) with pellet unit (10401)
+    "10391": ["Kessel/SH/SH_neu.webp", 780 / 980],
+    "10401": ["Kessel/TWIN/SH_TWIN_neu.webp", 1020 / 920],
   };
   const ICON_OFF = { heating_circuit: "FUBs/Heizkreise/Radiator_aus.webp" };
+  // SH-TWIN: the pellet unit (key) is built onto the wood boiler (value). ETA controls them as two
+  // function blocks, but it is one boiler with one water side: the plant view draws one block
+  // with the SH-TWIN icon, the control tab keeps both (each has its own on/off).
+  const TWIN_PAIRS = { "10401": "10391" };
+  const mergeTwins = (list) => {
+    const out = [...list];
+    out.filter((b) => b.type === "boiler" && TWIN_PAIRS[b.object]).forEach((b) => {
+      const partner = out.find((x) => x.type === "boiler" && x.object === TWIN_PAIRS[b.object]);
+      if (!partner) return;
+      const merged = { ...b, roles: { ...partner.roles, ...b.roles }, entities: [...b.entities, ...partner.entities], partner };
+      out.splice(out.indexOf(b), 1, merged);
+      out.splice(out.indexOf(partner), 1);
+    });
+    return out;
+  };
+  // particle separator: not part of the heat flow, shown in the control tab only
+  const EP_ICON = { off: "Kessel/EP_Abscheider/EP.webp", on: "Kessel/EP_Abscheider/EP_aktiv.webp" };
   const LABELS = {
     de: {
       silo: "Silo", chip_store: "Hackgutlager", boiler: "Kessel", buffer: "Puffer", heating_circuit: "Heizkreis",
-      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul",
+      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider",
       external_demand: "Ext. Anforderung", external_heat: "Fremdwärme",
       no_blocks: "Keine Anlagenteile erkannt. Wähle in den Integrationsoptionen die Entitäten von Kessel, Heizkreis usw. aus oder melde deine Anlage über das Zahnrad.", outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
       heat: "Heizen", lower: "Absenken", auto: "Zeitautomatik", ask_off: "wirklich ausschalten?",
@@ -192,14 +212,14 @@
       apply: "Übernehmen für", only_day: "nur diesen Tag", workdays: "Mo–Fr", weekend: "Sa–So", all_days: "alle Tage",
       save: "Speichern", cancel: "Abbrechen", saving: "Wird geschrieben …", ro: "Nur lesbar. Bearbeiten ab ETA-API 1.2: Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → „Ausgewählte Entitäten aktualisieren“ → Heizzeiten unter „Schreibbare Sensoren“ auswählen.",
       bad_slot: "Ungültiges Zeitfenster: Beginn muss vor dem Ende liegen.",
-      ash: "Aschebox", empty_now: "jetzt leeren", d_unit: "Tage",
+      ash: "Aschebox", hopper: "Tagesbehälter", pellets: "Pellets", wood: "Holz", empty_now: "jetzt leeren", d_unit: "Tage",
       fc_seasonal: "Prognose aus Vorjahr", fc_average: "Prognose aus Ø 14 Tagen",
       in_days: (n) => `leeren in ca. ${n} ${n === 1 ? "Tag" : "Tagen"}`,
       in_weeks: (n) => `leeren in ca. ${n} Wochen`, in_months: (n) => `leeren in ca. ${n} Monaten`,
     },
     en: {
       silo: "Storage", chip_store: "Chip store", boiler: "Boiler", buffer: "Buffer", heating_circuit: "Heating circuit",
-      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module",
+      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator",
       external_demand: "Ext. demand", external_heat: "External heat",
       no_blocks: "No plant parts detected. Select the boiler, heating circuit, ... entities in the integration options or report your plant via the gear.", outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
       heat: "Heat", lower: "Setback", auto: "Time program", ask_off: "really switch off?",
@@ -208,7 +228,7 @@
       apply: "Apply to", only_day: "this day only", workdays: "Mon–Fri", weekend: "Sat–Sun", all_days: "all days",
       save: "Save", cancel: "Cancel", saving: "Writing …", ro: "Read only. Editing from ETA API 1.2: Settings → Devices & services → ETA Heating → Configure → \u201cUpdate selected entities\u201d → select the heating times under \u201cPossible writable sensors\u201d.",
       bad_slot: "Invalid time slot: start must be before end.",
-      ash: "Ash box", empty_now: "empty now", d_unit: "days",
+      ash: "Ash box", hopper: "Hopper", pellets: "Pellets", wood: "Wood", empty_now: "empty now", d_unit: "days",
       fc_seasonal: "forecast from last year", fc_average: "forecast from 14-day average",
       in_days: (n) => `empty in approx. ${n} ${n === 1 ? "day" : "days"}`,
       in_weeks: (n) => `empty in approx. ${n} weeks`, in_months: (n) => `empty in approx. ${n} months`,
@@ -218,7 +238,7 @@
   const TOP_VALUES = {
     silo: ["stock"],
     chip_store: ["discharge"],
-    boiler: ["temperature", "pressure", "hopper"],
+    boiler: ["temperature", "hopper", "pressure", "oxygen"],
     buffer: ["charge"],
     heating_circuit: ["flow"],
     fwm: ["hot_water", "primary_flow"],
@@ -226,7 +246,7 @@
     solar: ["collector"],
     external_heat: ["temperature"],
   };
-  const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "unavailable", "unknown"];
+  const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "ausgeschaltet", "unavailable", "unknown"];
   const ON = ["ein", "an", "on", "true", "läuft", "running"];
   const CONSUMERS = ["heating_circuit", "external_demand", "fwm", "dhw", "unknown"];
 
@@ -234,7 +254,8 @@
   const EDIT_ROLES = {
     plant: [["outside", "Außentemperatur", "Outside temperature", "temp"]],
     boiler: [["temperature", "Kesseltemperatur", "Boiler temperature", "temp"], ["pressure", "Druck", "Pressure", "bar"],
-      ["hopper", "Vorratsbehälter", "Hopper", "level"], ["status", "Status", "Status", "text"],
+      ["hopper", "Vorratsbehälter", "Hopper", "level"], ["oxygen", "Restsauerstoff", "Residual oxygen", "level"],
+      ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"]],
     silo: [["stock", "Vorrat", "Stock", "level"], ["status", "Status", "Status", "text"], ["auger", "Förderung", "Conveyor", "onoff"]],
     chip_store: [["auger", "Förderung", "Conveyor", "onoff"], ["discharge", "Austragung", "Discharge", "onoff"]],
@@ -254,6 +275,7 @@
       ["primary_return", "Rücklauf primär", "Primary return", "temp"], ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"]],
     external_demand: [["status", "Status", "Status", "text"]],
+    particle_separator: [["status", "Status", "Status", "text"]],
     unknown: [["temperature", "Temperatur", "Temperature", "temp"], ["status", "Status", "Status", "text"]],
   };
   // block types a user can add by hand
@@ -285,8 +307,28 @@
     });
     const plant = { ...(topo.plant || {}) };
     Object.entries(ov.plant || {}).forEach(([role, e]) => { if (e === "-") delete plant[role]; else if (e) plant[role] = e; });
-    return { ...topo, plant, blocks: blocks.filter((b) => !hidden.has(b.id)) };
+    // a part added by hand whose values all belong to a detected part of the same type is a
+    // duplicate (the detection learned it later, e.g. after an update): leave it out
+    const dup = (b) => {
+      if (!b.manual) return false;
+      const mine = Object.values(b.roles).filter((e) => e && e !== "-");
+      return mine.length > 0 && blocks.some((x) => !x.manual && x.type === b.type
+        && mine.every((e) => (topo.blocks.find((t) => t.id === x.id) || { entities: [] }).entities.includes(e)));
+    };
+    const dups = new Set(blocks.filter(dup).map((b) => b.id));
+    // order picked by hand (like on the ETA terminal); parts not in the list keep their place at the end
+    const order = cfg.order || [];
+    const pos = (b, i) => { const k = order.indexOf(b.id); return k < 0 ? order.length + i : k; };
+    const sorted = blocks.map((b, i) => [pos(b, i), b]).sort((x, y) => x[0] - y[0]).map(([, b]) => b);
+    return { ...topo, plant, blocks: sorted.filter((b) => !hidden.has(b.id) && !dups.has(b.id)) };
   };
+
+  // pellet hopper at the boiler: ETA reports its content in kg but no capacity. The boiler
+  // fills it up at least once a day, so the highest value of the last 48 h counts as 100 %;
+  // HOPPER_KG only until history exists.
+  const HOPPER_KG = 30;
+  const HOPPER_HOURS = 48;
+  const hopSvg = (size) => `<svg viewBox="0 0 40 40" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h24v13l-7 9v5H15v-5l-7-9z"/><circle cx="15" cy="16" r="2.2" fill="currentColor" stroke="none"/><circle cx="21" cy="14" r="2.2" fill="currentColor" stroke="none"/><circle cx="26" cy="17" r="2.2" fill="currentColor" stroke="none"/><circle cx="19" cy="20" r="2.2" fill="currentColor" stroke="none"/></svg>`;
 
   // ash box symbol (plant view and control tab)
   const ashSvg = (size) => `<svg viewBox="0 0 40 40" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 13h22l-2 21H11z"/><path d="M6 13h28M16 9h8"/><path d="M12 25h16" stroke-width="5" opacity=".55"/></svg>`;
@@ -313,6 +355,8 @@
   .ashrow{display:flex;align-items:center;gap:8px;margin:0 auto 18px;cursor:pointer;color:#ffc400;font-size:16px}
   .ashrow.warn{color:#ff8c00}.ashrow.full{color:#e53935}.ashrow .pc{color:#aaa;min-width:40px}
   .ashrow.warn .pc,.ashrow.full .pc{color:inherit}
+  .rows{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin:0 auto 18px}
+  .rows .ashrow{margin:0}
   .ashbar{width:120px;height:8px;border-radius:4px;background:#3a3a3a;overflow:hidden}
   .ashbar i,.ash .bar i{display:block;height:100%;width:0;background:#ffc400;transition:width .4s}
   .ashrow.warn i,.ash.warn .bar i{background:#ff8c00}.ashrow.full i,.ash.full .bar i{background:#e53935}
@@ -351,6 +395,8 @@
   .vals{display:flex;align-items:flex-end;gap:8px;padding-bottom:14px}
   .pill.na{display:none}
   .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
+  .t-silo .vals{flex-direction:column;align-items:center;gap:6px}
+  .t-boiler .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
   .stack{height:${FLOOR - 64}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
   .icon{display:flex;align-items:flex-end;position:relative}
   .icon img{display:block;position:relative}
@@ -359,6 +405,7 @@
   .name{font-size:22px;font-weight:600;margin-top:40px;text-align:center;max-width:300px}
   .chip{margin-top:8px;padding:6px 16px;border-radius:9px;font-size:19px;font-weight:600;color:#1a1a1a;
         background:linear-gradient(90deg,#ffd31a,#ffc000);max-width:300px;text-align:center}
+  .chips{display:flex;flex-direction:column;align-items:center}.chips .chip{font-size:16px;padding:4px 12px;margin-top:6px}
   .chip.idle{background:linear-gradient(90deg,#8a8a8a,#6f6f6f);color:#111}
   .pill{padding:6px 12px;border-radius:10px;background:#1d1d1d;border:1px solid #3b3b3b;
         box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 4px 10px rgba(0,0,0,.5);font-size:26px;font-weight:500;white-space:nowrap}
@@ -500,7 +547,7 @@
         this._fit();
         return;
       }
-      const blocks = this._topo.blocks.filter((b) => ICONS[b.type] || b.type === "unknown");
+      const blocks = mergeTwins(this._topo.blocks.filter((b) => ICONS[b.type] || b.type === "unknown"));
       // boilers with their own discharge (wood chips) get a virtual store in front
       if (!blocks.some((b) => b.type === "silo")) {
         const bi = blocks.findIndex((b) => b.type === "boiler" && b.roles.auger);
@@ -552,17 +599,20 @@
         const hasInner = b.type === "buffer" && inner.length > 0;
         if (!shown.length && !hasInner) shown = this._autoValues(b); // no known roles: pick measurements
         if (b.type === "silo" && plant.silo_days) shown.push(plant.silo_days); // forecast: pellets last approx. n days
-        shown = shown.slice(0, Math.max(1, Math.floor(colW / 110))); // narrow columns: fewer value boxes
+        // narrow columns: fewer value boxes; boilers keep up to four and wrap into a second row
+        shown = shown.slice(0, b.type === "boiler" ? 4 : Math.max(1, Math.floor(colW / 110)));
         const vals = shown.map((e) => `<div class="pill" data-e="${e}"></div>`).join("");
         const tank = b.type === "buffer"
           ? `<div class="tank${inner.length > 4 ? " many" : ""}">${inner
               .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("")}</div>`
           : "";
         html += `<div class="blk t-${b.type}" data-b="${b.id}" style="left:${g.cx - colW / 2}px;width:${colW}px">
-          <div class="stack">${b.type === "boiler" && plant.ash_fill && b === firstBoiler ? `<div class="ashrow" data-ash="${plant.ash_fill}">${ashSvg(22)}<div class="ashbar"><i></i></div><span class="pc"></span></div>` : ""}<div class="vals">${vals}</div>
+          <div class="stack">${this._boilerRows(b, b === firstBoiler)}<div class="vals">${vals}</div>
           <div class="icon" style="margin-bottom:${-g.sink}px${g.dx ? `;transform:translateX(${g.dx}px)` : ""}"><div class="shadow" style="bottom:${g.sink - 12}px"></div><img data-type="${b.type}" src="${iconSrc(g.file)}" style="width:${g.w}px">${tank}</div></div>
           <div class="name">${this._name(b)}</div>
-          ${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}
+          ${b.partner && b.partner.roles.status && b.roles.status
+            ? `<div class="chips"><div class="chip" data-chip="${b.roles.status}" data-pre="${this._t("pellets")}"></div><div class="chip" data-chip="${b.partner.roles.status}" data-pre="${this._t("wood")}"></div></div>`
+            : b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}
         </div>`;
       }
       const ctl = this._controlHtml();
@@ -612,9 +662,9 @@
         this._update();
       }));
       // every value and status chip opens its own entity, the rest of the block the status
-      cv.querySelectorAll("[data-e],[data-chip],[data-ash]").forEach((el) => el.addEventListener("click", (ev) => {
+      cv.querySelectorAll("[data-e],[data-chip],[data-ash],[data-hop]").forEach((el) => el.addEventListener("click", (ev) => {
         ev.stopPropagation();
-        this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: el.dataset.e || el.dataset.chip || el.dataset.ash }, bubbles: true, composed: true }));
+        this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: el.dataset.e || el.dataset.chip || el.dataset.ash || el.dataset.hop }, bubbles: true, composed: true }));
       }));
       const outEl = cv.querySelector("#outside");
       if (outEl) outEl.addEventListener("click", () => {
@@ -640,10 +690,51 @@
       this._update();
     }
 
+    // highest hopper content of the last HOPPER_HOURS from the recorder, refreshed hourly
+    _hopperFull(entityId) {
+      this._hop = this._hop || {};
+      const c = this._hop[entityId];
+      if (!c || (!c.busy && Date.now() - c.t > 3600e3)) {
+        this._hop[entityId] = { max: c ? c.max : null, t: Date.now(), busy: true };
+        const start = new Date(Date.now() - HOPPER_HOURS * 3600e3).toISOString();
+        this._hass.callWS({
+          type: "history/history_during_period", start_time: start, entity_ids: [entityId],
+          minimal_response: true, no_attributes: true, significant_changes_only: false,
+        }).then((res) => {
+          const vals = (res[entityId] || []).map((x) => Number(x.s ?? x.state)).filter((x) => !Number.isNaN(x));
+          const max = vals.length ? Math.max(...vals) : null;
+          this._hop[entityId] = { max: max && max > 1 ? max : null, t: Date.now(), busy: false };
+          this._update();
+        }).catch(() => { this._hop[entityId] = { max: null, t: Date.now(), busy: false }; });
+      }
+      return this._hop[entityId].max;
+    }
+
+    // above the boiler: ash box (first boiler) and pellet hopper, one bar each
+    _boilerRows(b, first) {
+      if (b.type !== "boiler") return "";
+      const plant = this._topo.plant || {};
+      const rows = [];
+      if (first && plant.ash_fill) rows.push(`<div class="ashrow" data-ash="${plant.ash_fill}">${ashSvg(22)}<div class="ashbar"><i></i></div><span class="pc"></span></div>`);
+      if (b.roles.hopper) rows.push(`<div class="ashrow hop" data-hop="${b.roles.hopper}">${hopSvg(22)}<div class="ashbar"><i></i></div><span class="pc"></span></div>`);
+      return rows.length ? `<div class="rows">${rows.join("")}</div>` : "";
+    }
+
     // second tab: boiler / heating circuit control via the integration's switches
     _controlHtml() {
-      const tiles = this._blocks.filter((b) => b.roles.switch || b.roles.heat || b.roles.auto || b.roles.lower);
+      // SH-TWIN: both parts get their own tile (own status and on/off)
+      const all = this._blocks.flatMap((b) => (b.partner ? [b, b.partner] : [b]));
+      const tiles = all.filter((b) => b.roles.switch || b.roles.heat || b.roles.auto || b.roles.lower);
       const plant = this._topo.plant || {};
+      const eps = this._topo.blocks.filter((b) => b.type === "particle_separator");
+      const epHtml = eps.map((b) => {
+        const st = b.roles.status || this._guessStatus(b);
+        return `<div class="tile" data-tile="${b.id}"><div class="th">
+          <img src="${iconSrc(EP_ICON.off)}" data-ep="${st || ""}">
+          <div class="tx"><div class="tn">${this._name(b)}</div>${st ? `<div class="chip" data-chip="${st}"></div>` : ""}</div>
+        </div></div>`;
+      }).join("");
+      if (!tiles.length && epHtml) return `<div class="tiles">${epHtml}</div>`;
       if (!tiles.length) {
         const any = this._blocks.some((b) => ["boiler", "heating_circuit"].includes(b.type));
         return any ? `<div class="tiles"><div class="empty">${this._t("no_ctl")}</div></div>` : null;
@@ -673,7 +764,8 @@
           return `<button class="md" data-mode="${r}" data-md="${target(r)}"${also}><i>${ic}</i>${this._t(r)}</button>`;
         }).join("");
         return `<div class="tile" data-tile="${b.id}">
-          <div class="th">${geo[b.id] ? `<img src="${iconSrc(geo[b.id].file)}">` : ""}
+          <div class="th">${geo[b.id] ? `<img src="${iconSrc(geo[b.id].file)}">`
+            : DEFAULT_BY_OBJECT[b.object] ? `<img src="${iconSrc(DEFAULT_BY_OBJECT[b.object][0])}">` : ""}
             <div class="tx"><div class="tn">${name}</div>${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}</div>
             ${b.roles.switch ? `<div class="tg" data-sw="${b.roles.switch}" data-n="${name}">0<b></b>I</div>` : ""}
           </div>
@@ -681,11 +773,23 @@
           ${b.type === "boiler" && plant.ash_fill && b === this._blocks.find((x) => x.type === "boiler")
             ? `<div class="ash" data-ash="${plant.ash_fill}">${ashSvg(38)}
                 <div class="col"><div class="tx"><b></b><span></span></div><div class="bar"><i></i></div><div class="fc"></div></div></div>` : ""}
+          ${b.roles.hopper ? `<div class="ash hop" data-hop="${b.roles.hopper}">${hopSvg(38)}
+                <div class="col"><div class="tx"><b></b><span></span></div><div class="bar"><i></i></div></div></div>` : ""}
           ${m ? `<div class="modes">${m}</div>` : ""}
           ${b.roles.slot_0_0 || b.roles.slot_6_2 ? `<div class="ts" data-ts="${b.id}"><div class="bar"></div>
             <div class="ax">${[0, 6, 12, 18, 24].map((h) => `<span style="left:${h / 24 * 100}%">${h}</span>`).join("")}</div></div>` : ""}
         </div>`;
-      }).join("")}</div>`;
+      }).join("")}${epHtml}</div>`;
+    }
+
+    // no detection rule for the separator status yet: take the first text value of the
+    // block (e.g. "Bereit"); a value picked under "Werte zuordnen" replaces it
+    _guessStatus(b) {
+      return b.entities.find((e) => {
+        const st = this._hass.states[e];
+        return st && e.startsWith("sensor.") && !(st.attributes || {}).unit_of_measurement
+          && /^[^\d]+$/.test(String(st.state)) && !["unknown", "unavailable"].includes(st.state);
+      }) || null;
     }
 
     // "06:00 - 21:00" or "06:00 - 21:00: 21 °C" -> [start, end] in minutes, null if empty
@@ -1134,12 +1238,32 @@
           if (fc) fc.textContent = label.startsWith("fc_") ? "" : label;
         }
       });
+      // pellet hopper: kg against the highest value of the last 48 h (see HOPPER_HOURS)
+      root.querySelectorAll("[data-hop]").forEach((el) => {
+        const st = this._hass.states[el.dataset.hop];
+        const v = st ? Number(st.state) : NaN;
+        const ok = !Number.isNaN(v);
+        const learned = this._hopperFull(el.dataset.hop);
+        const full = Math.max(learned || HOPPER_KG, ok ? v : 0);
+        const pct = ok && full > 0 ? Math.min(Math.max(v / full, 0), 1) * 100 : 0;
+        el.querySelector("i").style.width = `${pct}%`;
+        const kg = ok ? `${Math.round(v)} kg` : "–";
+        const pc = el.querySelector(".pc");
+        if (pc) pc.textContent = ok ? `${Math.round(pct)} %` : "–";
+        const tx = el.querySelector(".tx");
+        if (tx) {
+          tx.querySelector("b").textContent = `${this._t("hopper")} ${kg}`;
+          tx.querySelector("span").textContent = ok ? `${Math.round(pct)} %` : "";
+        }
+      });
       root.querySelectorAll("[data-chip]").forEach((el) => {
-        const st = this._hass.states[el.dataset.chip];
-        // ETA status texts like "Ein [Heizen]" -> "Ein Heizen"
-        const txt = st ? String(st.state).replace(/[[\]]/g, " ").replace(/\s+/g, " ").trim() : "–";
+        const id = el.dataset.chip;
+        const st = this._hass.states[id];
+        // ETA status texts like "Ein [Heizen]" -> "Ein Heizen"; SH-TWIN: "Pellets: …" / "Holz: …"
+        const raw = st ? String(st.state).replace(/[[\]]/g, " ").replace(/\s+/g, " ").trim() : "–";
+        const txt = el.dataset.pre ? `${el.dataset.pre}: ${raw}` : raw;
         if (el.textContent !== txt) el.textContent = txt;
-        el.classList.toggle("idle", this._isIdle(el.dataset.chip));
+        el.classList.toggle("idle", this._isIdle(id));
       });
       root.querySelectorAll(".tg").forEach((el) => {
         const on = this._shownOn(el.dataset.sw);
@@ -1178,6 +1302,7 @@
       // flows
       const active = (b) => {
         if (!b) return false;
+        if (b.partner && active(b.partner)) return true;
         if (b.roles.pump) return this._isOn(b.roles.pump);
         if (b.roles.auger && this._isOn(b.roles.auger)) return true;
         if (b.roles.discharge && this._isOn(b.roles.discharge)) return true;
@@ -1187,6 +1312,10 @@
       root.querySelectorAll("[data-flow]").forEach((el) => {
         const on = el.dataset.flow.split(",").some((key) => active(this._blocks.find((x) => x.id === key)));
         if (el._on !== on) { el.classList.toggle("on", on); el.classList.toggle("off", !on); el._on = on; }
+      });
+      root.querySelectorAll("img[data-ep]").forEach((img) => {
+        const file = img.dataset.ep && !this._isIdle(img.dataset.ep) ? EP_ICON.on : EP_ICON.off;
+        if (!img.src.includes(file)) img.src = iconSrc(file);
       });
       root.querySelectorAll("img[data-type=heating_circuit]").forEach((img) => {
         const b = this._blocks.find((x) => x.id === img.closest(".blk").dataset.b);
@@ -1201,6 +1330,40 @@
 
   // Target of the "report plant" button.
   const REPORT_REPO = "meinETA/homeassistant-eta";
+
+  // texts of the card settings
+  const EDIT_TEXTS = {
+    de: {
+      settings: "Einstellungen", reset_all: "Alles zurücksetzen", cancel: "Abbrechen", save: "Speichern",
+      order: "Reihenfolge", order_text: "Reihenfolge der Anlagenteile von links nach rechts, z. B. wie am ETA-Terminal.", up: "nach links", down: "nach rechts", order_reset: "Automatisch",
+      auto: "Automatisch", plant: "Anlage", language: "Sprache", lang_auto: "Automatisch (HA)", title: "Name der Anlage",
+      store: "Lager", no_icons: "Keine Anlagenteile mit Icon-Auswahl erkannt.", loading: "Anlage wird geladen …",
+      report: "Anlage melden",
+      report_text: "Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ lädt die Anlagendatei herunter und öffnet ein Formular auf GitHub. Zieh die Datei dort in das Feld „Plant file“. Die Datei enthält alle Werte der Anlage mit ETA-Namen, Einheiten und aktuellen Messwerten, aber keine IP-Adresse, keine Seriennummer, keine selbst vergebenen Namen und keinen Verlauf. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst. Das Issue ist öffentlich sichtbar. Achte auf dem Screenshot auf persönliche Namen.",
+      download: "Anlagendatei herunterladen", open_issue: "GitHub-Issue öffnen", file: "Inhalt der Datei",
+    },
+    en: {
+      settings: "Settings", reset_all: "Reset everything", cancel: "Cancel", save: "Save",
+      order: "Order", order_text: "Order of the plant parts from left to right, e.g. as on the ETA terminal.", up: "move left", down: "move right", order_reset: "Automatic",
+      auto: "Automatic", plant: "Plant", language: "Language", lang_auto: "Automatic (HA)", title: "Plant name",
+      store: "Store", no_icons: "No plant parts with an icon choice detected.", loading: "Loading plant …",
+      report: "Report plant",
+      report_text: "Is your plant not shown correctly? \u201cOpen GitHub issue\u201d downloads the plant file and opens a form on GitHub. Drag the file into the \u201cPlant file\u201d field there. The file contains every value of the plant with ETA names, units and current readings, but no IP address, no serial number, no names you gave and no history. Nothing is sent until you submit the issue on GitHub yourself. The issue is public. Check the screenshot for personal names.",
+      download: "Download plant file", open_issue: "Open GitHub issue", file: "Content of the file",
+    },
+  };
+  const REPORT_FILE = "eta-plant-report.json";
+  // English names for the icon choices (ETA model names stay)
+  const ICON_EN = {
+    "Pelletslager": "Pellet store", "Saugsystem 3-fach": "Suction system 3-way", "Saugsystem 4-fach": "Suction system 4-way",
+    "Saugsystem 8-fach": "Suction system 8-way", "Hackgut Rührwerk": "Wood chip agitator", "Hackgut Schnecke": "Wood chip auger",
+    "Rührer": "Agitator", "Pendelschnecke": "Swinging auger", "Pendelschnecke 2-fach": "Swinging auger 2-way",
+    "Schubboden": "Sliding floor", "Schubboden 2-fach": "Sliding floor 2-way", "Schubboden 3-fach": "Sliding floor 3-way",
+    "PU / PC grau": "PU / PC grey", "ePE (gelb)": "ePE (yellow)", "ePE (Einblick)": "ePE (inside view)", "ePE BW (weiß)": "ePE BW (white)",
+    "SH alt": "SH old", "SH-TWIN alt": "SH-TWIN old", "HACK VR (gelb)": "HACK VR (yellow)", "HACK VR (grau)": "HACK VR (grey)",
+    "Puffer": "Buffer", "Puffer mit Wendel": "Buffer with coil", "Kombispeicher": "Combi tank", "Heizkörper": "Radiator",
+    "Fußbodenheizung": "Underfloor heating", "Frischwassermodul": "Fresh water module", "FWM Brauchwasser": "FWM domestic water",
+  };
 
   class EtaPlantCardEditor extends HTMLElement {
     setConfig(config) {
@@ -1224,23 +1387,28 @@
     _render() {
       if (!this._config) return;
       if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+      const T = EDIT_TEXTS[this._de() ? "de" : "en"];
       const icons = this._config.icons || {};
       const list = this._topo ? [...this._topo.blocks] : [];
       // plant parts added by hand get an icon choice too
       if (this._topo) (this._config.extra || []).forEach((x) => list.push({ id: x.id, type: x.type, name: null }));
       if (!list.some((b) => b.type === "silo")) {
         const bo = list.find((b) => b.type === "boiler" && b.roles.auger);
-        if (bo) list.splice(list.indexOf(bo), 0, { id: `${bo.id}/store`, type: "chip_store", name: "Lager" });
+        if (bo) list.splice(list.indexOf(bo), 0, { id: `${bo.id}/store`, type: "chip_store", name: T.store });
       }
       const rows = list.filter((b) => ICON_CHOICES[b.type]).map((b) => {
         const name = esc((this._config.names || {})[b.id] || this._label(b));
         const opts = ICON_CHOICES[b.type].map(([label, file]) =>
-          `<option value="${file}" ${webp(icons[b.id]) === file ? "selected" : ""}>${label}</option>`).join("");
-        return `<label>${name}<select data-b="${b.id}"><option value="">Standard</option>${opts}</select></label>`;
+          `<option value="${file}" ${webp(icons[b.id]) === file ? "selected" : ""}>${this._de() ? label : ICON_EN[label] || label}</option>`).join("");
+        return `<label>${name}<select data-b="${b.id}"><option value="">${T.auto}</option>${opts}</select></label>`;
       }).join("");
       this.shadowRoot.innerHTML = `<style>
         label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0;font-size:14px}
         select,input{min-width:200px;padding:6px;font-size:14px}
+        .order{margin-top:20px;padding-top:12px;border-top:1px solid var(--divider-color,#444);font-size:13px}
+        .order .ord{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:14px}
+        .order .ord span{flex:1}.order .ord.hid{opacity:.5}
+        .order button{padding:3px 9px;cursor:pointer}
         .report{margin-top:20px;padding-top:12px;border-top:1px solid var(--divider-color,#444);font-size:13px}
         .report textarea{width:100%;box-sizing:border-box;font-family:monospace;font-size:11px;margin:8px 0}
         .report button{padding:6px 12px;cursor:pointer}
@@ -1257,21 +1425,19 @@
         .vals .add{display:flex;gap:8px;align-items:center;margin-top:10px}
         .vals .danger{background:#c62828;color:#fff;border:1px solid #c62828;border-radius:4px}
       </style>
-      ${this._all && this._all.length > 1 && !this.fixedEntry ? `<label>Anlage<select id="entry">${this._all.map((e) =>
+      ${this._all && this._all.length > 1 && !this.fixedEntry ? `<label>${T.plant}<select id="entry">${this._all.map((e) =>
         `<option value="${e.title}" ${this._topo && this._topo.entry_id === e.entry_id ? "selected" : ""}>${e.title}</option>`).join("")}</select></label>` : ""}
-      <label>Sprache<select id="lang">${[["", "Automatisch (HA)"], ["de", "Deutsch"], ["en", "English"]].map(([v, l]) =>
+      <label>${T.language}<select id="lang">${[["", T.lang_auto], ["de", "Deutsch"], ["en", "English"]].map(([v, l]) =>
         `<option value="${v}" ${(this._config.language || "") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-      <label>Name der Anlage<input id="title" value="${esc(this._config.title || "")}" placeholder="${esc((this._topo && this._topo.title) || "ETA")}"></label>
-      ${rows || `<p>${this._all ? "Keine Anlagenteile mit Icon-Auswahl erkannt." : "Anlage wird geladen …"}</p>`}
+      <label>${T.title}<input id="title" value="${esc(this._config.title || "")}" placeholder="${esc((this._topo && this._topo.title) || "ETA")}"></label>
+      ${rows || `<p>${this._all ? T.no_icons : T.loading}</p>`}
+      ${this._topo ? this._orderHtml(T) : ""}
       ${this._topo ? this._valuesHtml() : ""}
       <div class="report">
-        <b>Anlage melden</b>
-        <p>Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ erstellt ein Issue, in dem die Anlagendaten
-        schon eingetragen sind. Sie enthalten nur Objekt-Nummern, Parameter-Adressen und Einheiten, keine Namen, keine Werte,
-        keine IP. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst.
-        Das Issue ist öffentlich sichtbar. Achte auf dem Screenshot auf persönliche Namen.</p>
-        <button id="dl">Anlagendatei herunterladen</button> <button id="gh">GitHub-Issue öffnen</button>
-        ${this._report ? `<p>Inhalt der Datei <code>eta-anlage.json</code>:</p><textarea readonly rows="10">${this._report}</textarea>` : ""}
+        <b>${T.report}</b>
+        <p>${T.report_text}</p>
+        <button id="dl">${T.download}</button> <button id="gh">${T.open_issue}</button>
+        ${this._report ? `<p>${T.file} <code>${REPORT_FILE}</code>:</p><textarea readonly rows="10">${this._report}</textarea>` : ""}
       </div>`;
       this.shadowRoot.getElementById("lang").addEventListener("change", (ev) => {
         const cfg = { ...this._config, language: ev.target.value };
@@ -1289,6 +1455,22 @@
         this._cands = null;
         const cfg = { ...this._config, entry: ev.target.value };
         delete cfg.icons; // icon choices belong to the previous plant
+        this._emit(cfg);
+        this._render();
+      });
+      this.shadowRoot.querySelectorAll("[data-mv]").forEach((btn) => btn.addEventListener("click", () => {
+        const ids = this._orderIds();
+        const i = +btn.dataset.mv;
+        const j = i + +btn.dataset.d;
+        if (j < 0 || j >= ids.length) return;
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+        this._emit({ ...this._config, order: ids });
+        this._render();
+      }));
+      const ordreset = this.shadowRoot.getElementById("ordreset");
+      if (ordreset) ordreset.addEventListener("click", () => {
+        const cfg = { ...this._config };
+        delete cfg.order;
         this._emit(cfg);
         this._render();
       });
@@ -1311,15 +1493,14 @@
         // open the window synchronously, otherwise the popup blocker kicks in
         const win = window.open("about:blank", "_blank");
         await this._makeReport();
-        const base = `https://github.com/${REPORT_REPO}/issues/new?labels=plant-card&title=${encodeURIComponent("Plant card: ")}`;
-        const head = "**What is wrong?**\n\n\n**Screenshot:**\n\n\n";
-        const packed = await this._pack(this._report);
-        let body = `${head}**Plant data** (eta-plant-report v1, gzip+base64):\n\n\`\`\`\n${packed}\n\`\`\`\n`;
-        if (!packed || (base + encodeURIComponent(body)).length > 8000) {
-          this._download(); // too large for the link: attach the file instead
-          body = `${head}**Plant data:** please attach the downloaded file \`eta-anlage.json\`.\n`;
-        }
-        const url = `${base}&body=${encodeURIComponent(body)}`;
+        // the full plant file is downloaded and dragged into the issue form by the user;
+        // the short report goes into the form directly when it fits into the link
+        this._download();
+        const base = `https://github.com/${REPORT_REPO}/issues/new?template=plant-card.yml&title=${encodeURIComponent("Plant card: ")}`;
+        const packed = await this._pack(this._summary);
+        let data = `eta-plant-report v2, gzip+base64\n${packed}`;
+        if (!packed || (base + encodeURIComponent(data)).length > 8000) data = `see attached file ${REPORT_FILE}`;
+        const url = `${base}&data=${encodeURIComponent(data)}`;
         if (win) win.location.href = url; else window.open(url, "_blank");
         this._render();
       });
@@ -1383,6 +1564,26 @@
       const unit = st.attributes.unit_of_measurement || "";
       const v = String(st.state).length > 24 ? `${String(st.state).slice(0, 24)}…` : st.state;
       return `${name} – ${v}${unit ? ` ${unit}` : ""}`;
+    }
+
+    // current order of the plant parts (detected and added, hidden ones included)
+    _orderIds() {
+      const ids = this._blockList().filter((b) => b.type !== "plant").map((b) => b.id);
+      const order = this._config.order || [];
+      const pos = (id, i) => { const k = order.indexOf(id); return k < 0 ? order.length + i : k; };
+      return ids.map((id, i) => [pos(id, i), id]).sort((x, y) => x[0] - y[0]).map(([, id]) => id);
+    }
+
+    _orderHtml(T) {
+      const byId = Object.fromEntries(this._blockList().map((b) => [b.id, b]));
+      const hidden = new Set(this._config.hidden || []);
+      const ids = this._orderIds();
+      if (ids.length < 2) return "";
+      const rows = ids.map((id, i) => `<div class="ord${hidden.has(id) ? " hid" : ""}"><span>${esc(this._label(byId[id]))}</span>
+        <button data-mv="${i}" data-d="-1" title="${T.up}" ${i === 0 ? "disabled" : ""}>◀</button>
+        <button data-mv="${i}" data-d="1" title="${T.down}" ${i === ids.length - 1 ? "disabled" : ""}>▶</button></div>`).join("");
+      return `<div class="order"><b>${T.order}</b><p>${T.order_text}</p>${rows}
+        ${this._config.order ? `<button id="ordreset">${T.order_reset}</button>` : ""}</div>`;
     }
 
     _valuesHtml() {
@@ -1519,10 +1720,10 @@
     // back to the automatic detection: drops all manual values, names, hidden and added parts
     resetValues() {
       if (!window.confirm(this._de()
-        ? "Alle manuellen Zuordnungen, Namen, ausgeblendeten und hinzugefügten Anlagenteile löschen und wieder die automatische Erkennung verwenden?"
-        : "Delete all manual values, names, hidden and added plant parts and use the automatic detection again?")) return;
+        ? "Alle manuellen Zuordnungen, Namen, Reihenfolge, ausgeblendeten und hinzugefügten Anlagenteile löschen und wieder die automatische Erkennung verwenden?"
+        : "Delete all manual values, names, order, hidden and added plant parts and use the automatic detection again?")) return;
       const cfg = { ...this._config };
-      ["roles", "names", "hidden", "extra"].forEach((k) => delete cfg[k]);
+      ["roles", "names", "hidden", "extra", "order"].forEach((k) => delete cfg[k]);
       this._open = new Set();
       this._emit(cfg);
       this._render();
@@ -1535,8 +1736,17 @@
       Object.entries(this._config.roles || {}).forEach(([bid, o]) => Object.entries(o).forEach(([role, e]) => {
         if (e && e !== "-" && types[bid]) manual.push([types[bid], role, e]);
       }));
-      const rep = await this._hass.callWS({ type: "eta_webservices/report", entry_id: this._topo && this._topo.entry_id, manual });
-      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, ...rep }, null, 1);
+      const rep = await this._hass.callWS({ type: "eta_webservices/report", entry_id: this._topo && this._topo.entry_id, manual, full: true });
+      // card settings without user-given names: which parts are hidden, added or have another icon
+      const c = this._config;
+      const settings = {
+        hidden: c.hidden || [], extra: (c.extra || []).map((x) => x.type), icons: c.icons || {},
+        renamed: Object.keys(c.names || {}).length, language: c.language || "",
+      };
+      // the short report (issue link) leaves out the big parts: every endpoint and the terminal menu
+      const { tree, terminal, ...short } = rep;
+      this._summary = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...short });
+      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...short, tree, terminal }, null, 1);
     }
 
     async _pack(text) {
@@ -1552,7 +1762,7 @@
     _download() {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([this._report], { type: "application/json" }));
-      a.download = "eta-anlage.json";
+      a.download = REPORT_FILE;
       document.body.appendChild(a);
       a.click();
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
@@ -1611,7 +1821,7 @@
         .act .reset{background:#c62828;border-color:transparent;color:#fff}
       </style>
       <div class="bar"><ha-menu-button></ha-menu-button><span class="sp"></span>${this._hass.user && this._hass.user.is_admin
-        ? `<button class="gear" title="Einstellungen"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg></button>` : ""}</div>
+        ? `<button class="gear" title="${this._texts().settings}"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg></button>` : ""}</div>
       <div class="body"></div>`;
       this._menu = this.shadowRoot.querySelector("ha-menu-button");
       this._menu.hass = this._hass;
@@ -1624,13 +1834,21 @@
       if (gear) gear.addEventListener("click", () => this._openEditor());
     }
 
+    // settings texts in the card language (panel setting, else Home Assistant)
+    _texts() {
+      const h = this._hass || {};
+      const l = (this._cfg && this._cfg.language) || (h.locale && h.locale.language) || h.language || "en";
+      return EDIT_TEXTS[l.startsWith("de") ? "de" : "en"];
+    }
+
     _openEditor() {
       const saved = this._cfg;
+      const T = this._texts();
       let draft = { ...saved };
       const dlg = document.createElement("div");
       dlg.className = "dlg";
-      dlg.innerHTML = `<div><h2>Einstellungen</h2><div class="ed"></div>
-        <div class="act"><button class="reset">Alles zurücksetzen</button><span class="sp"></span><button class="cancel">Abbrechen</button><button class="save">Speichern</button></div></div>`;
+      dlg.innerHTML = `<div><h2>${T.settings}</h2><div class="ed"></div>
+        <div class="act"><button class="reset">${T.reset_all}</button><span class="sp"></span><button class="cancel">${T.cancel}</button><button class="save">${T.save}</button></div></div>`;
       this._editor = document.createElement("eta-plant-card-editor");
       this._editor.fixedEntry = true;
       this._editor.setConfig(draft);

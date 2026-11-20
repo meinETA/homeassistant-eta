@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
@@ -16,7 +17,11 @@ from .const import (
     MAX_PARALLEL_REQUESTS,
     REQUEST_SEMAPHORE,
 )
-from .topology import async_get_topology
+from .plant_file import async_terminal_info
+from .topology import async_get_report, async_get_topology
+
+# the terminal address and anything that could identify the owner
+TO_REDACT = {CONF_HOST, "username", "password", "token", REQUEST_SEMAPHORE}
 
 
 async def async_get_config_entry_diagnostics(
@@ -46,9 +51,19 @@ async def async_get_config_entry_diagnostics(
         None,
     )
 
+    plant_file = async_get_report(hass, entry.entry_id, full=True)
+    plant_file.pop("entry_id", None)
+    plant_file["terminal"] = await async_terminal_info(
+        hass, entry.entry_id, {row["uri"] for row in plant_file.get("tree", [])}
+    )
+
     return {
-        "config": config,
+        "config": async_redact_data(
+            {k: v for k, v in config.items() if k != REQUEST_SEMAPHORE}, TO_REDACT
+        ),
         "api_version": str(api_version),
         "menu": user_menu,
         "topology": topology,
+        # same content as the plant file of the card (report, every endpoint)
+        "plant_file": plant_file,
     }

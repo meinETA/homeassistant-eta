@@ -107,8 +107,17 @@ def ws_panel_get(
     connection.send_result(msg["id"], stored.get("card", {}))
 
 
-# card settings the gear may store: name, language, icons and manual values
-_CARD_KEYS = ("title", "language", "icons", "roles", "names", "hidden", "extra")
+# card settings the gear may store: name, language, icons, manual values and order
+_CARD_KEYS = (
+    "title",
+    "language",
+    "icons",
+    "roles",
+    "names",
+    "hidden",
+    "extra",
+    "order",
+)
 
 
 @websocket_api.require_admin

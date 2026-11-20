@@ -60,7 +60,7 @@ The integration ships a dashboard card that shows the plant like the ETA touch d
 - **Heating times:** click the time bar of a heating circuit to edit its three time slots per day, for one day, Mon–Fri, Sat–Sun or all days. Needs ETA API 1.2 or newer and the time slots selected as writable sensors; otherwise they are read only.
 - **Ash box:** fill level as a bar above the boiler (orange from 80 %, red from 100 % when ETA asks to empty it) and in the control tab with the expected emptying date.
 - **Card settings:** plant (if several are configured), name, language and an icon per block (e.g. the exact boiler model).
-- **Report a problem:** if the plant is not shown correctly, use **Open GitHub issue** in the card settings. It opens an issue with an anonymized description of the plant (object numbers, parameter addresses and units only; no names, values or IP addresses). Nothing is sent until the issue is submitted on GitHub, and issues are public.
+- **Report a problem:** if the plant is not shown correctly, use **Open GitHub issue** in the card settings. It downloads the plant file `eta-plant-report.json` and opens an issue form; drag the file into the "Plant file" field. The file lists every value of the plant with ETA names, units and current readings, plus the terminal's API version and menu (also values the integration does not support yet), but no IP address, no serial number, no names you gave and no history. Nothing is sent until the issue is submitted on GitHub, and issues are public. The same file is part of the integration's diagnostics (Settings → Devices & services → ETA Heating → ⋮ → Download diagnostics).
 
 Layouts that are not covered yet will be added based on reports.
 
