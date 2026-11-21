@@ -20,7 +20,7 @@
             },
             "select_entities": {
                 "title": "Entitäten auswählen",
-                "description": "Wähle aus, welche gefundenen ETA-Entitäten zu Home Assistant hinzugefügt werden sollen.\n\nSensoren: {float_count}\nSchalter: {switch_count}\nZustandssensoren: {text_count}\nSchreibbare Sensoren: {writable_count}\nAusstehende Sensoren: {pending_count}\n**Gesamt: {total_count}**\n\nAktiviere die automatische Auswahl, wenn du alles auf einmal hinzufügen möchtest. Bei großen Anlagen können das mehrere hundert Entitäten sein.",
+                "description": "Wähle aus, welche gefundenen ETA-Entitäten zu Home Assistant hinzugefügt werden sollen.\n\nSensoren: {float_count}\nSchalter: {switch_count}\nZustandssensoren: {text_count}\nSchreibbare Sensoren: {writable_count}\nAusstehende Sensoren: {pending_count}\n**Gesamt: {total_count}**",
                 "data": {
                     "auto_select_all_entities": "Alle gefundenen Entitäten automatisch auswählen",
                     "chosen_float_sensors": "Sensoren",
@@ -28,6 +28,9 @@
                     "chosen_text_sensors": "Zustandssensoren",
                     "chosen_writable_sensors": "Schreibbare Sensoren",
                     "chosen_pending_sensors": "Sensoren, die erst später verfügbar werden könnten"
+                },
+                "data_description": {
+                    "auto_select_all_entities": "Aktiviere dies, wenn du alles auf einmal hinzufügen möchtest. Bei großen Anlagen können das mehrere hundert Entitäten sein."
                 }
             },
             "restore_choice": {
