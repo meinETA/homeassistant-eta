@@ -602,25 +602,29 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
             max(1, total_varinfo_tasks // 20) if total_varinfo_tasks else 1
         )
 
-        for completed_varinfo_tasks, task in enumerate(
-            asyncio.as_completed(varinfo_tasks), start=1
-        ):
-            uri, result = await task
-            if isinstance(result, Exception):
-                _LOGGER.debug("Failed to get varinfo for %s: %s", uri, str(result))
-            else:
-                raw_varinfo[uri] = result
-            if (
-                completed_varinfo_tasks == total_varinfo_tasks
-                or completed_varinfo_tasks % varinfo_progress_step == 0
+        try:
+            for completed_varinfo_tasks, task in enumerate(
+                asyncio.as_completed(varinfo_tasks), start=1
             ):
-                progress = 0.1 + (
-                    0.45 * completed_varinfo_tasks / max(total_varinfo_tasks, 1)
-                )
-                self._emit_progress(
-                    f"Reading endpoint metadata {completed_varinfo_tasks}/{total_varinfo_tasks}",
-                    progress,
-                )
+                uri, result = await task
+                if isinstance(result, Exception):
+                    _LOGGER.debug("Failed to get varinfo for %s: %s", uri, str(result))
+                else:
+                    raw_varinfo[uri] = result
+                if (
+                    completed_varinfo_tasks == total_varinfo_tasks
+                    or completed_varinfo_tasks % varinfo_progress_step == 0
+                ):
+                    progress = 0.1 + (
+                        0.45 * completed_varinfo_tasks / max(total_varinfo_tasks, 1)
+                    )
+                    self._emit_progress(
+                        f"Reading endpoint metadata {completed_varinfo_tasks}/{total_varinfo_tasks}",
+                        progress,
+                    )
+        except asyncio.CancelledError:
+            await self._cancel_tasks(varinfo_tasks)
+            raise
 
         async def fetch_data_limited(uri):
             try:
@@ -638,25 +642,29 @@ class SensorDiscoveryV12(SensorDiscoveryBase):
         data_progress_step = max(1, total_data_tasks // 20) if total_data_tasks else 1
         self._emit_progress("Reading endpoint values", 0.55)
 
-        for completed_data_tasks, task in enumerate(
-            asyncio.as_completed(data_tasks), start=1
-        ):
-            uri, result = await task
-            if isinstance(result, Exception):
-                _LOGGER.debug("Failed to get data for %s: %s", uri, str(result))
-            else:
-                var_data[uri] = result
-            if (
-                completed_data_tasks == total_data_tasks
-                or completed_data_tasks % data_progress_step == 0
+        try:
+            for completed_data_tasks, task in enumerate(
+                asyncio.as_completed(data_tasks), start=1
             ):
-                progress = 0.55 + (
-                    0.3 * completed_data_tasks / max(total_data_tasks, 1)
-                )
-                self._emit_progress(
-                    f"Reading endpoint values {completed_data_tasks}/{total_data_tasks}",
-                    progress,
-                )
+                uri, result = await task
+                if isinstance(result, Exception):
+                    _LOGGER.debug("Failed to get data for %s: %s", uri, str(result))
+                else:
+                    var_data[uri] = result
+                if (
+                    completed_data_tasks == total_data_tasks
+                    or completed_data_tasks % data_progress_step == 0
+                ):
+                    progress = 0.55 + (
+                        0.3 * completed_data_tasks / max(total_data_tasks, 1)
+                    )
+                    self._emit_progress(
+                        f"Reading endpoint values {completed_data_tasks}/{total_data_tasks}",
+                        progress,
+                    )
+        except asyncio.CancelledError:
+            await self._cancel_tasks(data_tasks)
+            raise
 
         # For nodes where data fetch failed (e.g. permission error), inject a fallback
         # so they still reach Phase 4 and can be classified as pending.
