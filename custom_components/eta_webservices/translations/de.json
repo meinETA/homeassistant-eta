@@ -3,13 +3,19 @@
         "step": {
             "user": {
                 "title": "ETA Verbindung",
-                "description": "Gib Host und Port deines ETA-Geräts ein. Die erste Suche nach verfügbaren Endpunkten kann bei großen Anlagen mehrere Minuten dauern.\n\nAktiviere den alten API-Modus nur dann, wenn es Probleme mit der neueren ETA-API gibt.",
+                "description": "Gib Host und Port deines ETA-Geräts ein. Die Suche nach verfügbaren Endpunkten kann bei großen Anlagen mehrere Minuten dauern; standardmäßig läuft sie nach der Einrichtung im Hintergrund.",
                 "data": {
                     "name": "Anlagenname",
                     "host": "Host",
                     "port": "Port",
+                    "background_discovery": "Entitäten im Hintergrund suchen",
                     "force_legacy_mode": "Erzwinge die alte API Version",
                     "enable_debug_logging": "Aktiviere ausführliche Protokolle"
+                },
+                "data_description": {
+                    "background_discovery": "Einrichtung sofort abschließen und danach nach Entitäten suchen. Alle gefundenen Entitäten werden automatisch hinzugefügt. Deaktiviere dies, um die Entitäten jetzt manuell auszuwählen.",
+                    "force_legacy_mode": "Aktiviere diesen Modus wenn du Probleme mit der neuesten ETA API version hast (fehlende Entitäten, etc).",
+                    "enable_debug_logging": "Aktiviere ausführliche Protokolle für die Einrichtung (nützlich wenn du Probleme hast und ein Github Issue erstellen willst)."
                 }
             },
             "select_entities": {
@@ -50,7 +56,8 @@
     "options": {
         "abort": {
             "integration_busy": "Die Integration wird gerade noch gestartet oder neu geladen. Bitte warte einen Moment und versuche das Konfigurieren dann erneut.",
-            "already_named_scheme": "Diese Anlage nutzt bereits das namensbasierte Schema (v2) – eine Migration ist nicht mehr nötig."
+            "already_named_scheme": "Diese Anlage nutzt bereits das namensbasierte Schema (v2) – eine Migration ist nicht mehr nötig.",
+            "discovery_running": "Die erste Suche nach Entitäten läuft noch. Bitte versuche es erneut, sobald sie abgeschlossen ist."
         },
         "progress": {
             "prepare_entities": "Entitätsdaten werden im Hintergrund vorbereitet. Das kann bei großen Anlagen mehrere Minuten dauern. Home Assistant fährt automatisch fort, sobald der Vorgang abgeschlossen ist."
@@ -183,6 +190,23 @@
                 "rename_entities_to_named_scheme": "Auf das namensbasierte Schema migrieren (v2)",
                 "sidebar_panel": "ETA Anlage in der Seitenleiste"
             }
+        }
+    },
+    "exceptions": {
+        "discovery_title": {
+            "message": "ETA: Entitätssuche"
+        },
+        "discovery_progress": {
+            "message": "Suche nach Entitäten für {name}: {percent} %. Sie werden automatisch hinzugefügt, sobald die Suche abgeschlossen ist."
+        },
+        "discovery_finished": {
+            "message": "Entitätssuche für {name} abgeschlossen: {count} Entitäten wurden hinzugefügt."
+        },
+        "discovery_legacy_mode": {
+            "message": "Das Gerät unterstützt API v1.2 nicht, daher wurde der Kompatibilitätsmodus verwendet."
+        },
+        "discovery_failed": {
+            "message": "Entitätssuche für {name} fehlgeschlagen. Sie wird beim nächsten Neustart oder Neuladen der Integration wiederholt. Details stehen im Log."
         }
     },
     "services": {

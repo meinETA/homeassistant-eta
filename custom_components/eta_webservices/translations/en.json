@@ -3,13 +3,19 @@
         "step": {
             "user": {
                 "title": "ETA connection",
-                "description": "Enter the host (IP) and port of your ETA terminal. The initial scan for available endpoints can take several minutes on large systems.\n\nEnable old API mode only if you have problems with the newer ETA API.",
+                "description": "Enter the host (IP) and port of your ETA terminal. The scan for available endpoints can take several minutes on large systems; by default it runs in the background after the setup.",
                 "data": {
                     "name": "Name of the unit",
                     "host": "Host",
                     "port": "Port",
+                    "background_discovery": "Discover entities in the background",
                     "force_legacy_mode": "Force old API mode",
                     "enable_debug_logging": "Enable verbose logging"
+                },
+                "data_description": {
+                    "background_discovery": "Finish the setup right away and search for entities afterwards. All found entities are added automatically. Disable to select entities manually now.",
+                    "force_legacy_mode": "Activate this if you're having problems with the latest ETA API version (missing entities, etc).",
+                    "enable_debug_logging": "Activate verbose logging for the discovery process (useful if you're having problems and want to open a Github Issue)."
                 }
             },
             "select_entities": {
@@ -50,7 +56,8 @@
     "options": {
         "abort": {
             "integration_busy": "The integration is still starting up or reloading. Please wait a moment and try configuring it again.",
-            "already_named_scheme": "This installation already uses the name-based scheme (v2) – no migration needed."
+            "already_named_scheme": "This installation already uses the name-based scheme (v2) – no migration needed.",
+            "discovery_running": "The initial entity discovery is still running. Please try again once it has finished."
         },
         "progress": {
             "prepare_entities": "Preparing entity data in the background. This can take several minutes on large systems. Home Assistant will continue automatically as soon as the process is finished."
@@ -183,6 +190,23 @@
                 "rename_entities_to_named_scheme": "Migrate to the name-based scheme (v2)",
                 "sidebar_panel": "ETA Plant in the sidebar"
             }
+        }
+    },
+    "exceptions": {
+        "discovery_title": {
+            "message": "ETA: entity discovery"
+        },
+        "discovery_progress": {
+            "message": "Searching for entities of {name}: {percent} %. They are added automatically when the search is finished."
+        },
+        "discovery_finished": {
+            "message": "Entity discovery for {name} finished: {count} entities were added."
+        },
+        "discovery_legacy_mode": {
+            "message": "The terminal does not support API v1.2, so the compatibility mode was used."
+        },
+        "discovery_failed": {
+            "message": "Entity discovery for {name} failed. It is retried on the next restart or reload of the integration. See the log for details."
         }
     },
     "services": {
