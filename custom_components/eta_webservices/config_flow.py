@@ -398,6 +398,7 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
 
         user_input = {}
         # Keep previously entered values when coming back from the progress screen.
+        user_input[CONF_NAME] = self.data.get(CONF_NAME)
         user_input[CONF_HOST] = self.data.get(CONF_HOST, "0.0.0.0")
         user_input[CONF_PORT] = self.data.get(CONF_PORT, "8080")
 
