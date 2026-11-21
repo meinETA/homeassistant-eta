@@ -23,6 +23,7 @@ from .api import EtaAPI, ETAEndpoint
 from .const import (
     ADVANCED_OPTIONS_IGNORE_DECIMAL_PLACES_RESTRICTION,
     AUTO_SELECT_ALL_ENTITIES,
+    BACKGROUND_DISCOVERY,
     CHOSEN_FLOAT_SENSORS,
     CHOSEN_PENDING_SENSORS,
     CHOSEN_SWITCHES,
@@ -383,6 +384,8 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
                 _LOGGER.parent.setLevel(logging.DEBUG)
 
             self.data = user_input
+            # Name = frozen identity (konzept-v2), needed by both discovery modes.
+            self.data.setdefault(STABLE_ID, slugify(self.data[CONF_NAME]))
             self._endpoint_discovery_error = None
             self._endpoint_discovery_task = self.hass.async_create_task(
                 self._async_validate_and_discover_endpoints(
@@ -453,7 +456,19 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
             return self.async_show_progress_done(next_step_id="user")
 
         self._endpoint_discovery_task = None
+        if self.data.get(BACKGROUND_DISCOVERY):
+            return self.async_show_progress_done(next_step_id="create_background_entry")
         return self.async_show_progress_done(next_step_id="select_entities")
+
+    async def async_step_create_background_entry(self, user_input=None):
+        """Create the entry; endpoints are discovered after setup in the background."""
+        self._restore_logging_level()
+        self.data.setdefault(MAX_PARALLEL_REQUESTS, DEFAULT_MAX_PARALLEL_REQUESTS)
+        self.data.setdefault(UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+        return self.async_create_entry(
+            title=self.data.get(CONF_NAME) or f"ETA at {self.data[CONF_HOST]}",
+            data=self.data,
+        )
 
     async def _async_validate_and_discover_endpoints(
         self, host: str, port: str, force_legacy_mode: bool
@@ -481,6 +496,11 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
                 self._endpoint_discovery_error = (
                     "no_eta_endpoint" if valid == 0 else "unknown_host"
                 )
+                return
+
+            if self.data.get(BACKGROUND_DISCOVERY):
+                # Endpoints are discovered after setup (see discovery.py).
+                self._on_discovery_progress("Connection successful", 1.0)
                 return
 
             await self._async_discover_possible_endpoints(host, port, force_legacy_mode)
@@ -568,6 +588,7 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
             self._restore_logging_level()
 
             # User is done, create the config entry.
+            self.data.pop(BACKGROUND_DISCOVERY, None)
             self.data.setdefault(MAX_PARALLEL_REQUESTS, DEFAULT_MAX_PARALLEL_REQUESTS)
             self.data.setdefault(UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
             return self.async_create_entry(
@@ -595,6 +616,7 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_PORT, default=user_input[CONF_PORT]): vol.All(
                         vol.Coerce(int), vol.Range(min=1, max=65535)
                     ),
+                    vol.Required(BACKGROUND_DISCOVERY, default=True): cv.boolean,
                     vol.Required(FORCE_LEGACY_MODE, default=False): cv.boolean,
                     vol.Required(ENABLE_DEBUG_LOGGING, default=False): cv.boolean,
                 }
@@ -774,6 +796,10 @@ class EtaOptionsFlowHandler(OptionsFlow):
         current_data = self._get_runtime_config()
         if current_data is None:
             return self.async_abort(reason="integration_busy")
+        if current_data.get(BACKGROUND_DISCOVERY):
+            # A second discovery would run in parallel, and saving the options
+            # would reload the entry and cancel the running one.
+            return self.async_abort(reason="discovery_running")
         self.max_parallel_requests = current_data.get(
             MAX_PARALLEL_REQUESTS, DEFAULT_MAX_PARALLEL_REQUESTS
         )
