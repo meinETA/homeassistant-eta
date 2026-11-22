@@ -1663,15 +1663,10 @@
         // open the window synchronously, otherwise the popup blocker kicks in
         const win = window.open("about:blank", "_blank");
         if (!(await this._makeReport())) { if (win) win.close(); this._render(); return; }
-        // the full plant file is downloaded and dragged into the issue form by the user;
-        // the short report goes into the form directly when it fits into the link
+        // the encrypted plant file is downloaded and dragged into the issue form by the user
         this._download();
         const base = `https://github.com/${REPORT_REPO}/issues/new?template=plant-card.yml&title=${encodeURIComponent("Plant card: ")}`;
-        // URL-safe base64 in one line: keeps the link short
-        const short = this._sealedSummary.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-        let data = `eta-plant-report v3, sealed\n${short}`;
-        if ((base + encodeURIComponent(data)).length > 8000) data = `see attached file ${REPORT_FILE}`;
-        const url = `${base}&data=${encodeURIComponent(data)}`;
+        const url = `${base}&data=${encodeURIComponent(`see attached file ${REPORT_FILE}`)}`;
         if (win) win.location.href = url; else window.open(url, "_blank");
         this._render();
       });
@@ -1917,16 +1912,12 @@
         hidden: c.hidden || [], extra: (c.extra || []).map((x) => x.type), icons: c.icons || {},
         renamed: Object.keys(c.names || {}).length, language: c.language || "",
       };
-      // the short report (issue link) leaves out the big parts: every endpoint and the terminal menu
-      const { tree, terminal, ...short } = rep;
-      this._summary = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...short });
-      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...short, tree, terminal }, null, 1);
-      // the issue is public: file and short report are encrypted for the maintainers by the
+      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...rep }, null, 1);
+      // the issue is public: the plant file is encrypted for the maintainers by the
       // integration; the text field above still shows the plain content
       try {
         const seal = async (text) => (await this._hass.callWS({ type: "eta_webservices/seal", data: text })).sealed;
         this._sealed = JSON.stringify({ eta_plant_file: "sealed", v: 1, data: await seal(JSON.stringify(JSON.parse(this._report))) });
-        this._sealedSummary = await seal(this._summary);
         this._sealErr = null;
         return true;
       } catch (err) {
