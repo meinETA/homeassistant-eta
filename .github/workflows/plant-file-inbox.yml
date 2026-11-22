@@ -2,6 +2,9 @@ name: Store plant files
 
 # Copies plant files attached to plant card issues (and their comments) into the
 # private fixtures repository (meinETA/eta-dev), so new plants can be analysed and become tests.
+# Plant files are encrypted by the integration (only eta-dev can read them); older
+# unencrypted uploads are copied too and their link is then removed from the issue; data blocks
+# of older cards are only removed.
 # Issue content is untrusted: nothing from it is executed or put into a shell;
 # only GitHub attachment links to .json files are downloaded, checked and stored.
 
@@ -13,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   store:
@@ -26,16 +30,18 @@ jobs:
     steps:
       - name: Copy attached plant files
         uses: actions/github-script@v7
+        env:
+          ISSUES_TOKEN: ${{ github.token }}
         with:
           github-token: ${{ secrets.ETA_FIXTURES_TOKEN }}
           script: |
-            const zlib = require("zlib");
             const MAX = 5 * 1024 * 1024;
             const issue = context.payload.issue.number;
             const comment = context.payload.comment;
-            const text = (comment ? comment.body : context.payload.issue.body) || "";
+            let text = (comment ? comment.body : context.payload.issue.body) || "";
             const source = comment ? `c${comment.id}` : "issue";
             const files = [];
+            const sealed = (d) => d && d.eta_plant_file === "sealed" && typeof d.data === "string";
 
             // attachments: only GitHub's own attachment links to .json files
             const links = [...text.matchAll(/https:\/\/github\.com\/user-attachments\/files\/\d+\/[A-Za-z0-9._-]+\.json/g)].map((m) => m[0]);
@@ -44,22 +50,21 @@ jobs:
               if (!res.ok) { core.warning(`download failed ${res.status}: ${url}`); continue; }
               const buf = Buffer.from(await res.arrayBuffer());
               if (buf.length > MAX) { core.warning(`too large: ${url}`); continue; }
-              files.push({ name: url.split("/").pop(), body: buf.toString("utf8") });
+              files.push({ name: url.split("/").pop(), body: buf.toString("utf8"), url });
             }
 
-            // short report filled in by the card: "eta-plant-report v2, gzip+base64" + base64
-            const packed = text.match(/eta-plant-report v\d, gzip\+base64[):\s]*(?:```[a-z]*\s*)?([A-Za-z0-9+\/=\s]{40,})/);
-            if (packed) {
-              try {
-                const raw = zlib.gunzipSync(Buffer.from(packed[1].replace(/\s+/g, ""), "base64"));
-                if (raw.length <= MAX) files.push({ name: "summary.json", body: raw.toString("utf8") });
-              } catch (err) { core.warning(`summary not readable: ${err.message}`); }
-            }
+            // short report of older cards (gzip+base64 in the issue text): not stored, only
+            // removed from the public issue below
+            const blocks = [...text.matchAll(/eta-plant-report v\d[^\n]*\n?\s*(?:```[a-z]*\s*)?([A-Za-z0-9+\/=_\-\s]{40,})/g)].map((m) => m[1]);
 
+            const plain = [];
             for (const f of files) {
               let data;
               try { data = JSON.parse(f.body); } catch { core.warning(`not JSON: ${f.name}`); continue; }
-              if (!data || typeof data !== "object" || !(data.objects || data.tree)) {
+              // diagnostics download of the integration: its plant file part
+              const diag = data && data.data && data.data.plant_file;
+              if (sealed(diag)) data = diag;
+              if (!data || typeof data !== "object" || !(sealed(data) || data.objects || data.tree)) {
                 core.warning(`not a plant file: ${f.name}`); continue;
               }
               const safe = f.name.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 80);
@@ -74,6 +79,22 @@ jobs:
                 owner: "meinETA", repo: "eta-dev", path, sha, content,
                 message: `Plant file from issue ${issue}`,
               });
-              core.info(`stored ${path}`);
+              core.info(`stored ${path}${sealed(data) ? " (encrypted)" : ""}`);
+              if (!sealed(data)) plain.push(f);
             }
             if (!files.length) core.info("no plant file in this issue or comment");
+
+            // unencrypted plant data stays out of the public issue once it is stored
+            if (plain.length || blocks.length) {
+              const urls = new Set(plain.map((f) => f.url).filter(Boolean));
+              const gone = "_(plant file stored privately)_";
+              text = text.replace(/\[[^\]]*\]\((https:\/\/github\.com\/user-attachments\/files\/\d+\/[A-Za-z0-9._-]+\.json)\)/g,
+                (m, u) => (urls.has(u) ? gone : m));
+              urls.forEach((u) => { text = text.split(u).join(gone); });
+              blocks.forEach((b) => { text = text.split(b).join("\n_(removed)_\n"); });
+              const gh = getOctokit(process.env.ISSUES_TOKEN);
+              const { owner, repo } = context.repo;
+              if (comment) await gh.rest.issues.updateComment({ owner, repo, comment_id: comment.id, body: text });
+              else await gh.rest.issues.update({ owner, repo, issue_number: issue, body: text });
+              core.info(`removed ${plain.length} unencrypted plant file(s) and ${blocks.length} data block(s) from the issue`);
+            }

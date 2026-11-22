@@ -4,7 +4,7 @@
   const H = 860;
   const FLOOR = 610;
   // bump when icon files change, so browsers do not keep stale images
-  const ICON_REV = "2026-11-20b";
+  const ICON_REV = "2026-11-22c";
 
   // type -> [icon file, icon width on the 1600px canvas, aspect w/h]
   const ICONS = {
@@ -35,7 +35,16 @@
       ["Schubboden 2-fach", "Austragungen_Befuellungen/Schubboden/Schubboden_2er.webp", 300 / 300],
       ["Schubboden 3-fach", "Austragungen_Befuellungen/Schubboden/Schubboden_3er.webp", 300 / 300],
   ];
+  // other heat sources the ETA controls (object 10281 "Brenner") or parts the card does not know
+  const HEAT_CHOICES = [
+    ["Modul", "FUBs/System/System.webp", 1200 / 1000],
+    ["Wärmepumpe", "Kessel/Brenner/Waermepumpe_ein.webp", 540 / 440],
+    ["Öl-/Gasbrenner", "Kessel/Brenner/Brenner_ein.webp", 540 / 440],
+    ["Biomasse", "Kessel/Brenner/Biomasse_ein.webp", 540 / 440],
+  ];
   const ICON_CHOICES = {
+    unknown: HEAT_CHOICES,
+    external_heat: HEAT_CHOICES,
     silo: STORE_CHOICES,
     chip_store: STORE_CHOICES,
     boiler: [
@@ -116,6 +125,7 @@
     "FUBs/Heizkreise/Radiator_ein.webp": [0.014,0.133,0.967,0.985],
     "FUBs/Heizkreise/Radiator_aus.webp": [0.014,0.133,0.967,0.985],
     "FUBs/Heizkreise/FBH_ein.webp": [0.0,0.18,0.956,0.95],
+    "FUBs/Heizkreise/FBH_aus.webp": [0.0,0.18,0.956,0.95],
     "FUBs/FWM/FWM.webp": [0.234,0.131,0.469,0.803],
     "FUBs/FWM/FWM_Brauchwasser.webp": [0.056,0.131,0.913,0.916],
     "FUBs/Warmwasser/WW.webp": [0.139,0.078,0.858,0.906],
@@ -123,6 +133,12 @@
     "FUBs/Externe_Waermeanforderung/Externe_Waermeanforderung.webp": [0.013,0.089,0.958,0.909],
     "Austragungen_Befuellungen/Hack_Austragung/Ruehrwerk.webp": [0.045,0.194,0.999,0.867],
     "FUBs/System/System.webp": [0.08,0.068,0.916,0.927],
+    "Kessel/Brenner/Waermepumpe_ein.webp": [0.098,0.066,0.902,0.948],
+    "Kessel/Brenner/Waermepumpe_aus.webp": [0.098,0.066,0.902,0.948],
+    "Kessel/Brenner/Brenner_ein.webp": [0.072,0.066,0.928,0.957],
+    "Kessel/Brenner/Brenner_aus.webp": [0.072,0.066,0.928,0.957],
+    "Kessel/Brenner/Biomasse_ein.webp": [0.046,0.066,0.946,0.961],
+    "Kessel/Brenner/Biomasse_aus.webp": [0.046,0.066,0.946,0.961],
   };
   // pipe connections inside the icon: [x, y, dir] as image fractions; dir "h" leaves sideways,
   // "v" downwards, "u" straight up (behind the image) to the return line
@@ -130,8 +146,13 @@
     "FUBs/Heizkreise/Radiator_ein.webp": { in: [0.014, 0.239, "h"], out: [0.141, 0.985, "v"] },
     "FUBs/Heizkreise/Radiator_aus.webp": { in: [0.014, 0.239, "h"], out: [0.141, 0.985, "v"] },
     "FUBs/Heizkreise/FBH_ein.webp": { in: [0.0, 0.72, "h"], out: [0.805, 0.44, "u"] },
+    "FUBs/Heizkreise/FBH_aus.webp": { in: [0.0, 0.72, "h"], out: [0.805, 0.44, "u"] },
     "FUBs/Externe_Waermeanforderung/Externe_Waermeanforderung.webp": { in: [0.03, 0.184, "h"], out: [0.013, 0.827, "h"] },
     "FUBs/FWM/FWM_Brauchwasser.webp": { in: [0.07, 0.719, "h"], out: [0.056, 0.207, "h"] },
+  };
+  // tank body inside images with parts beside it (x fractions): sensors sit on it, pipes leave it
+  const BODY = {
+    "FUBs/PufferFlex/Kombi.webp": [0.08, 0.62],
   };
   // pellet hose entry per boiler image (fraction of the image): first solid pixel from the left
   const FEED = {
@@ -178,11 +199,15 @@
   // default icon per ETA object id where the type alone is ambiguous
   const DEFAULT_BY_OBJECT = {
     "10561": ["Kessel/Hack/Hack.webp", 1],
+    "10261": ["Kessel/Pellets/PEK.webp", 840 / 1000],
     // SH-TWIN: log wood boiler (10391) with pellet unit (10401)
     "10391": ["Kessel/SH/SH_neu.webp", 780 / 980],
     "10401": ["Kessel/TWIN/SH_TWIN_neu.webp", 1020 / 920],
+    // other heat source controlled by the ETA (oil / gas burner, heat pump, ...)
+    "10281": ["Kessel/Brenner/Brenner_ein.webp", 540 / 440],
   };
-  const ICON_OFF = { heating_circuit: "FUBs/Heizkreise/Radiator_aus.webp" };
+  // heating circuit pictures with an "off" variant (…_aus.webp)
+  const HK_OFF = /^FUBs\/Heizkreise\/(Radiator|FBH)_ein\.webp$/;
   // SH-TWIN: the pellet unit (key) is built onto the wood boiler (value). ETA controls them as two
   // function blocks, but it is one boiler with one water side: the plant view draws one block
   // with the SH-TWIN icon, the control tab keeps both (each has its own on/off).
@@ -198,12 +223,15 @@
     });
     return out;
   };
-  // particle separator: not part of the heat flow, shown in the control tab only
-  const EP_ICON = { off: "Kessel/EP_Abscheider/EP.webp", on: "Kessel/EP_Abscheider/EP_aktiv.webp" };
+  // parts beside the heat flow (particle separator, condensing heat exchanger): control tab only
+  const SIDE_ICONS = {
+    particle_separator: { off: "Kessel/EP_Abscheider/EP.webp", on: "Kessel/EP_Abscheider/EP_aktiv.webp" },
+    condenser: { off: "Kessel/Brennwert_WT/Brennwert_WT.webp", on: "Kessel/Brennwert_WT/Brennwert_WT.webp" },
+  };
   const LABELS = {
     de: {
       silo: "Silo", chip_store: "Hackgutlager", boiler: "Kessel", buffer: "Puffer", heating_circuit: "Heizkreis",
-      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider",
+      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider", condenser: "Brennwertwärmetauscher",
       external_demand: "Ext. Anforderung", external_heat: "Fremdwärme",
       no_blocks: "Keine Anlagenteile erkannt. Wähle in den Integrationsoptionen die Entitäten von Kessel, Heizkreis usw. aus oder melde deine Anlage über das Zahnrad.", outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
       heat: "Heizen", lower: "Absenken", auto: "Zeitautomatik", ask_off: "wirklich ausschalten?",
@@ -216,10 +244,12 @@
       fc_seasonal: "Prognose aus Vorjahr", fc_average: "Prognose aus Ø 14 Tagen",
       in_days: (n) => `leeren in ca. ${n} ${n === 1 ? "Tag" : "Tagen"}`,
       in_weeks: (n) => `leeren in ca. ${n} Wochen`, in_months: (n) => `leeren in ca. ${n} Monaten`,
+      not_selected: "nicht ausgewählt",
+      hint_selected: "Dieser Wert ist am Terminal vorhanden, aber in der Integration nicht ausgewählt. Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → „Ausgewählte Entitäten aktualisieren“ → Wert auswählen. Soll er nicht angezeigt werden: Zahnrad → Werte manuell zuordnen → „nicht anzeigen“.",
     },
     en: {
       silo: "Storage", chip_store: "Chip store", boiler: "Boiler", buffer: "Buffer", heating_circuit: "Heating circuit",
-      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator",
+      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator", condenser: "Condensing heat exchanger",
       external_demand: "Ext. demand", external_heat: "External heat",
       no_blocks: "No plant parts detected. Select the boiler, heating circuit, ... entities in the integration options or report your plant via the gear.", outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
       heat: "Heat", lower: "Setback", auto: "Time program", ask_off: "really switch off?",
@@ -232,6 +262,8 @@
       fc_seasonal: "forecast from last year", fc_average: "forecast from 14-day average",
       in_days: (n) => `empty in approx. ${n} ${n === 1 ? "day" : "days"}`,
       in_weeks: (n) => `empty in approx. ${n} weeks`, in_months: (n) => `empty in approx. ${n} months`,
+      not_selected: "not selected",
+      hint_selected: "This value exists on the terminal but is not selected in the integration. Settings → Devices & services → ETA Heating → Configure → \u201cUpdate selected entities\u201d → select the value. To hide it: gear → Assign values manually → \u201cdo not show\u201d.",
     },
   };
   // value roles shown above the icon
@@ -249,6 +281,29 @@
   const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "ausgeschaltet", "unavailable", "unknown"];
   const ON = ["ein", "an", "on", "true", "läuft", "running"];
   const CONSUMERS = ["heating_circuit", "external_demand", "fwm", "dhw", "unknown"];
+  // other heat sources (heat pump, oil / gas burner, ...) feed the buffer like a boiler:
+  // parts of type "Fremdwärme", the ETA burner object 10281 and parts shown with such an image
+  const HEAT_IMG = /^Kessel\/Brenner\//;
+  // height of the lines at a heat source (image fraction): the heat pump's outdoor unit sits low
+  const HEAT_PIPE_Y = { "Kessel/Brenner/Waermepumpe_ein.webp": 0.56, "Kessel/Brenner/Waermepumpe_aus.webp": 0.56 };
+  const isHeat = (b, icons) => {
+    const pick = (icons || {})[b.id];
+    if (pick) return HEAT_IMG.test(pick);
+    return b.type === "external_heat" || b.object === "10281";
+  };
+  // heat sources not placed by hand sit right before the buffer (without buffer: right after
+  // the last boiler), so they connect like a boiler and not across the consumers
+  const placeHeat = (list, order, icons) => {
+    const free = list.filter((b) => !order.includes(b.id) && isHeat(b, icons));
+    free.forEach((b) => {
+      list.splice(list.indexOf(b), 1);
+      const buf = list.findIndex((x) => x.type === "buffer");
+      const boil = list.map((x) => x.type).lastIndexOf("boiler");
+      const at = buf >= 0 ? buf : boil >= 0 ? boil + 1 : list.length;
+      list.splice(Math.min(at, list.length), 0, b);
+    });
+    return list;
+  };
 
   // roles a user can assign by hand in the editor, per block type: [role, German label, English label, kind]
   const EDIT_ROLES = {
@@ -270,12 +325,13 @@
     solar: [["collector", "Kollektor", "Collector", "temp"], ["storage_top", "Speicher oben", "Storage top", "temp"],
       ["status", "Status", "Status", "text"], ["pump", "Pumpe", "Pump", "onoff"]],
     external_heat: [["temperature", "Temperatur", "Temperature", "temp"], ["storage", "Speicher", "Storage", "temp"],
-      ["pump", "Pumpe", "Pump", "onoff"]],
+      ["pump", "Pumpe", "Pump", "onoff"], ["status", "Status", "Status", "text"]],
     fwm: [["hot_water", "Warmwasser", "Hot water", "temp"], ["primary_flow", "Vorlauf primär", "Primary flow", "temp"],
       ["primary_return", "Rücklauf primär", "Primary return", "temp"], ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"]],
     external_demand: [["status", "Status", "Status", "text"]],
     particle_separator: [["status", "Status", "Status", "text"]],
+    condenser: [["status", "Status", "Status", "text"], ["return", "Rücklauf", "Return", "temp"]],
     unknown: [["temperature", "Temperatur", "Temperature", "temp"], ["status", "Status", "Status", "text"]],
   };
   // block types a user can add by hand
@@ -288,15 +344,17 @@
     const ov = cfg.roles || {};
     const names = cfg.names || {};
     const hidden = new Set(cfg.hidden || []);
-    const blocks = topo.blocks.map((b) => ({ ...b, roles: { ...b.roles }, entities: [...b.entities] }));
+    const blocks = topo.blocks.map((b) => ({ ...b, roles: { ...b.roles }, entities: [...b.entities], unselected: { ...(b.unselected || {}) } }));
     (cfg.extra || []).forEach((x) => blocks.push({ id: x.id, type: x.type, object: "", name: null, roles: {}, entities: [], manual: true }));
     blocks.forEach((b) => {
       const o = ov[b.id] || {};
       Object.entries(o).forEach(([role, e]) => {
+        if (b.unselected && e) delete b.unselected[role]; // picked or hidden by hand: no hint
         if (e === "-") delete b.roles[role];
         else if (e) {
           b.roles[role] = e;
           if (!b.entities.includes(e)) b.entities.push(e);
+          (b.picked = b.picked || []).push(role);
         }
       });
       // a hand-picked top / middle / bottom sensor replaces the numbered buffer sensors
@@ -320,6 +378,7 @@
     const order = cfg.order || [];
     const pos = (b, i) => { const k = order.indexOf(b.id); return k < 0 ? order.length + i : k; };
     const sorted = blocks.map((b, i) => [pos(b, i), b]).sort((x, y) => x[0] - y[0]).map(([, b]) => b);
+    placeHeat(sorted, order, cfg.icons);
     return { ...topo, plant, blocks: sorted.filter((b) => !hidden.has(b.id) && !dups.has(b.id)) };
   };
 
@@ -394,6 +453,7 @@
   .blk{position:absolute;z-index:4;top:64px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
   .vals{display:flex;align-items:flex-end;gap:8px;padding-bottom:14px}
   .pill.na{display:none}
+  .pill.ghost{border:1px dashed #888;background:transparent;box-shadow:none;color:#aaa}
   .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
   .t-silo .vals{flex-direction:column;align-items:center;gap:6px}
   .t-boiler .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
@@ -570,17 +630,26 @@
         if (pick) { file = pick; aspect = choice ? choice[2] : aspect; }
         const bx = BBOX[file] || [0, 0, 1, 1];
         // same visible device height per type, independent of the image margins
-        let h = (TARGET_H[b.type] || TARGET_H.unknown) / (bx[3] - bx[1]);
+        // other heat sources are drawn like a small boiler, not like a module
+        const th = /^Kessel\/Brenner\//.test(file) ? 230 : TARGET_H[b.type] || TARGET_H.unknown;
+        let h = th / (bx[3] - bx[1]);
         let w = h * aspect;
         const maxVisW = colW * 0.85;
         const visW = (bx[2] - bx[0]) * w;
         if (visW > maxVisW) { w *= maxVisW / visW; h *= maxVisW / visW; }
         const cx = colW * (i + 0.5);
-        const x0 = cx - w / 2;
+        // the tank body, not the whole image, is centred in its column, as far as the
+        // column has room: parts beside it (tap) must leave space for the next pipes
+        const body = BODY[file] || [bx[0], bx[2]];
+        const room = Math.max(0, colW / 2 - 40 - (bx[2] - 0.5) * w);
+        const dx = BODY[file] ? Math.min((0.5 - (body[0] + body[1]) / 2) * w, room) : 0;
+        const x0 = cx - w / 2 + dx;
         const sink = (1 - bx[3]) * h; // transparent margin below the device
         const y0 = FLOOR - h + sink;
         return {
-          b, file, bx, cx, w, h, x0, y0, sink, left: x0 + bx[0] * w, right: x0 + bx[2] * w,
+          b, file, bx, body, cx, w, h, x0, y0, sink, dx: dx || 0, left: x0 + bx[0] * w, right: x0 + bx[2] * w,
+          bodyRight: x0 + body[1] * w,
+          shift: BODY[file] ? x0 + (body[0] + body[1]) / 2 * w - cx : 0,
           top: y0 + bx[1] * h, bottom: y0 + bx[3] * h, anchors: ANCHORS[file],
         };
       });
@@ -597,22 +666,29 @@
         const numbered = Object.keys(b.roles).filter((r) => /^sensor_\d+$/.test(r)).sort((x, y) => +x.slice(7) - +y.slice(7));
         const inner = numbered.length ? numbered : ["top", "middle", "bottom"].filter((r) => b.roles[r]);
         const hasInner = b.type === "buffer" && inner.length > 0;
-        if (!shown.length && !hasInner) shown = this._autoValues(b); // no known roles: pick measurements
+        // main value found on the terminal but not selected in the integration: placeholder with a hint
+        const main = (TOP_VALUES[b.type] || [])[0];
+        const ghost = main && !b.roles[main] && (b.unselected || {})[main] ? main : null;
+        if (!shown.length && !hasInner && !ghost) shown = this._autoValues(b); // no known roles: pick measurements
         if (b.type === "silo" && plant.silo_days) shown.push(plant.silo_days); // forecast: pellets last approx. n days
         // narrow columns: fewer value boxes; boilers keep up to four and wrap into a second row
         shown = shown.slice(0, b.type === "boiler" ? 4 : Math.max(1, Math.floor(colW / 110)));
-        const vals = shown.map((e) => `<div class="pill" data-e="${e}"></div>`).join("");
+        const ghostUnit = ((EDIT_ROLES[b.type] || []).find((r) => r[0] === ghost) || [])[3] === "temp" ? " °C" : "";
+        const vals = (ghost ? `<div class="pill ghost" data-hint="${esc(this._roleLabel(b.type, ghost))}: ${this._t("not_selected")}">?${ghostUnit}</div>` : "")
+          + shown.map((e) => `<div class="pill" data-e="${e}"></div>`).join("");
         const tank = b.type === "buffer"
-          ? `<div class="tank${inner.length > 4 ? " many" : ""}">${inner
+          ? `<div class="tank${inner.length > 4 ? " many" : ""}" style="left:${g.body[0] * 100}%;right:${(1 - g.body[1]) * 100}%">${inner
               .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("")}</div>`
           : "";
+        // values, name and status stand over the tank body
+        const mv = g.shift ? ` style="transform:translateX(${g.shift}px)"` : "";
         html += `<div class="blk t-${b.type}" data-b="${b.id}" style="left:${g.cx - colW / 2}px;width:${colW}px">
-          <div class="stack">${this._boilerRows(b, b === firstBoiler)}<div class="vals">${vals}</div>
-          <div class="icon" style="margin-bottom:${-g.sink}px${g.dx ? `;transform:translateX(${g.dx}px)` : ""}"><div class="shadow" style="bottom:${g.sink - 12}px"></div><img data-type="${b.type}" src="${iconSrc(g.file)}" style="width:${g.w}px">${tank}</div></div>
-          <div class="name">${this._name(b)}</div>
+          <div class="stack">${this._boilerRows(b, b === firstBoiler)}<div class="vals"${mv}>${vals}</div>
+          <div class="icon" style="margin-bottom:${-g.sink}px${g.dx ? `;transform:translateX(${g.dx}px)` : ""}"><div class="shadow" style="bottom:${g.sink - 12}px"></div><img data-type="${b.type}"${/^Kessel\/Brenner\/.*_ein\.webp$/.test(g.file) ? ` data-onoff="${g.file}"` : ""}${b.type === "heating_circuit" ? ` data-file="${g.file}"` : ""} src="${iconSrc(g.file)}" style="width:${g.w}px">${tank}</div></div>
+          <div class="name"${mv}>${this._name(b)}</div>
           ${b.partner && b.partner.roles.status && b.roles.status
-            ? `<div class="chips"><div class="chip" data-chip="${b.roles.status}" data-pre="${this._t("pellets")}"></div><div class="chip" data-chip="${b.partner.roles.status}" data-pre="${this._t("wood")}"></div></div>`
-            : b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}
+            ? `<div class="chips"${mv}><div class="chip" data-chip="${b.roles.status}" data-pre="${this._t("pellets")}"></div><div class="chip" data-chip="${b.partner.roles.status}" data-pre="${this._t("wood")}"></div></div>`
+            : b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"${mv}></div>` : ""}
         </div>`;
       }
       const ctl = this._controlHtml();
@@ -665,6 +741,10 @@
       cv.querySelectorAll("[data-e],[data-chip],[data-ash],[data-hop]").forEach((el) => el.addEventListener("click", (ev) => {
         ev.stopPropagation();
         this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: el.dataset.e || el.dataset.chip || el.dataset.ash || el.dataset.hop }, bubbles: true, composed: true }));
+      }));
+      cv.querySelectorAll("[data-hint]").forEach((el) => el.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        this._hint(el.dataset.hint);
       }));
       const outEl = cv.querySelector("#outside");
       if (outEl) outEl.addEventListener("click", () => {
@@ -726,13 +806,14 @@
       const all = this._blocks.flatMap((b) => (b.partner ? [b, b.partner] : [b]));
       const tiles = all.filter((b) => b.roles.switch || b.roles.heat || b.roles.auto || b.roles.lower);
       const plant = this._topo.plant || {};
-      const eps = this._topo.blocks.filter((b) => b.type === "particle_separator");
-      const epHtml = eps.map((b) => {
+      const side = this._topo.blocks.filter((b) => SIDE_ICONS[b.type]);
+      const epHtml = side.map((b) => {
         const st = b.roles.status || this._guessStatus(b);
+        const ret = b.roles.return ? `<div class="vrow"><div class="pill" data-e="${b.roles.return}"></div></div>` : "";
         return `<div class="tile" data-tile="${b.id}"><div class="th">
-          <img src="${iconSrc(EP_ICON.off)}" data-ep="${st || ""}">
+          <img src="${iconSrc(SIDE_ICONS[b.type].off)}" data-ep="${st || ""}" data-side="${b.type}">
           <div class="tx"><div class="tn">${this._name(b)}</div>${st ? `<div class="chip" data-chip="${st}"></div>` : ""}</div>
-        </div></div>`;
+        </div>${ret}</div>`;
       }).join("");
       if (!tiles.length && epHtml) return `<div class="tiles">${epHtml}</div>`;
       if (!tiles.length) {
@@ -908,12 +989,27 @@
         - units.indexOf(this._hass.states[y].attributes.unit_of_measurement)).slice(0, 2);
     }
 
+    _roleLabel(type, role) {
+      const row = (EDIT_ROLES[type] || []).find((r) => r[0] === role);
+      return row ? row[this._lang() === "de" ? 1 : 2] : role;
+    }
+
+    // short note for a value that is not selected in the integration
+    _hint(title) {
+      const dlg = document.createElement("div");
+      dlg.className = "dlg";
+      dlg.innerHTML = `<div class="in"><h2>${esc(title)}</h2><div>${esc(this._t("hint_selected"))}</div>
+        <div class="bt"><button class="no">OK</button></div></div>`;
+      this.shadowRoot.appendChild(dlg);
+      dlg.addEventListener("click", (ev) => { if (ev.target === dlg || ev.target.classList.contains("no")) dlg.remove(); });
+    }
+
     _name(b) {
       if (b.label) return esc(b.label);
       let n = (b.name || "").split(">").pop().trim();
       const title = (this._topo.title || "").trim();
       if (title && n.toLowerCase().startsWith(title.toLowerCase() + " ")) n = n.slice(title.length + 1);
-      return n.replace(/\[/g, "(").replace(/\]/g, ")") || this._t(b.type);
+      return n.replace(/\[/g, "(").replace(/\]/g, ")") || this._t(b.object === "10281" ? "external_heat" : b.type);
     }
 
     // pellet hoses need room between store and boiler: move the store image left, then
@@ -936,7 +1032,7 @@
       const sink = (1 - st.bx[3]) * h;
       const y0 = FLOOR - h + sink;
       Object.assign(st, {
-        w, h, x0, y0, sink, dx: x0 + w / 2 - st.cx, left, right: x0 + st.bx[2] * w,
+        w, h, x0, y0, sink, dx: x0 + w / 2 - st.cx, left, right: x0 + st.bx[2] * w, bodyRight: x0 + st.body[1] * w,
         top: y0 + st.bx[1] * h, bottom: y0 + st.bx[3] * h,
       });
     }
@@ -948,7 +1044,9 @@
       const boilers = g.filter((x) => x.b.type === "boiler");
       const buffers = g.filter((x) => x.b.type === "buffer");
       const boiler = boilers[0];
-      const consumers = g.filter((x) => CONSUMERS.includes(x.b.type));
+      const icons = this._config.icons || {};
+      const heats = g.filter((x) => isHeat(x.b, icons));
+      const consumers = g.filter((x) => CONSUMERS.includes(x.b.type) && !heats.includes(x));
       const T = 9;
       const ys = FLOOR - 300; // supply line height, above the consumers and their values
       const yr = ys + 34; // return runs close below the supply
@@ -1018,30 +1116,84 @@
           s += group(silo.b.id, `<div class="band" style="left:${silo.right - 10}px;top:${y}px;width:${boiler.left - silo.right + 20}px"><i></i></div>`);
         }
       }
-      // producers chain at device height: boiler 1 -> boiler 2 -> buffer 1 -> buffer 2;
-      // every piece carries flow when any boiler pump runs
-      const chain = [...boilers, ...buffers];
+      // producers at device height: boiler 1 -> boiler 2 -> buffer 1 -> buffer 2 carry flow when a
+      // boiler runs; other heat sources charge the buffer in parallel on their own lines
+      const chain = [...boilers, ...heats, ...buffers].sort((p, q) => p.cx - q.cx);
       const ysb = FLOOR - 190;
-      const allBoilers = boilers.map((x) => x.b.id).join(",");
-      for (let i = 1; i < chain.length; i++) {
-        const a = chain[i - 1];
-        const b = chain[i];
-        const key = a.b.type === "boiler" && b.b.type === "boiler" ? a.b.id : allBoilers;
-        if (!key) continue;
-        s += group(key,
-          line([[a.right, ysb], [b.left, ysb]], "vl") +
-          line([[b.left, ysb + 34], [a.right, ysb + 34]], "rl"));
+      const allBoilers = [...boilers, ...heats].map((x) => x.b.id).join(",");
+      // lines start and end a little inside the devices (hidden behind the images), so they
+      // never stop short of a soft image edge
+      const pair = (a, b, y, key) => group(key,
+        line([[a.bodyRight - 10, y], [b.left + 10, y]], "vl") +
+        line([[b.left + 10, y + 34], [a.bodyRight - 10, y + 34]], "rl"));
+      // boilers and buffers in a row; boilers pass behind a heat source straight to the buffer
+      const main = chain.filter((x) => !heats.includes(x));
+      const boilerKey = boilers.map((x) => x.b.id).join(",");
+      // both lines of a pair must lie inside both devices (a small boiler in a narrow column sits low)
+      const fits = (a, b) => [Math.max(a.top, b.top) + 14, Math.min(a.bottom, b.bottom) - 48];
+      const cross = {}; // height of the boiler lines passing behind each heat source
+      const mains = []; // drawn after the heat sources, which may share them
+      for (let i = 1; i < main.length; i++) {
+        const a = main[i - 1];
+        const b = main[i];
+        const key = a.b.type === "boiler" && b.b.type === "boiler" ? a.b.id : boilerKey;
+        const [lo, hi] = fits(a, b);
+        let y = Math.min(Math.max(ysb, lo), hi);
+        // the supply line stays visible just above a heat source that reaches up to it
+        // (the return passes behind)
+        const between = heats.filter((h) => h.cx > a.cx && h.cx < b.cx);
+        const low = Math.min(...between.map((h) => h.top - 10));
+        if (between.length && low >= lo && low < y) y = low;
+        const m = { a, b, y, key };
+        between.forEach((h) => { cross[h.b.id] = m; });
+        mains.push(m);
       }
-      const src = buffers[buffers.length - 1] || boilers[boilers.length - 1];
+      // each heat source has its own lines, lower down, into the next part on its right
+      // (heat pump: out of the outdoor unit); with nothing on its right it joins from the left.
+      // Several heat sources feeding the same part get their lines one above the other.
+      const used = [];
+      [...heats].sort((p, q) => q.cx - p.cx).forEach((h) => {
+        const next = main.find((x) => x.cx > h.cx);
+        const prev = [...main].reverse().find((x) => x.cx < h.cx);
+        const other = next || prev;
+        if (!other) return;
+        const [lo0, hi] = fits(h, other);
+        const behind = cross[h.b.id];
+        const lo = Math.max(lo0, behind ? behind.y + 58 : -Infinity);
+        const want = Math.min(Math.max(h.y0 + (HEAT_PIPE_Y[h.file] || 0.6) * h.h, lo), hi);
+        const free = (y) => y >= lo - 0.5 && y <= hi + 0.5 && used.every((u) => u.to !== other || Math.abs(u.y - y) >= 68);
+        const y = [0, 68, -68, 136, -136].map((d) => want + d).find(free);
+        if (y === undefined) {
+          // no room for another pair (narrow columns): join the heat source next to it
+          const near = heats.filter((x) => x !== h && (next ? x.cx > h.cx : x.cx < h.cx))
+            .sort((p, q) => Math.abs(p.cx - h.cx) - Math.abs(q.cx - h.cx))[0];
+          if (near) {
+            const yy = used.find((u) => u.h === near)?.y ?? want;
+            s += next ? pair(h, near, yy, h.b.id) : pair(near, h, yy, allBoilers);
+            used.push({ h, to: near, y: yy });
+          } else if (behind) {
+            // tiny devices: the boiler line behind it carries its heat too
+            behind.key = [behind.key, h.b.id].filter(Boolean).join(",");
+          } else {
+            s += next ? pair(h, next, want, h.b.id) : pair(prev, h, want, allBoilers);
+          }
+          return;
+        }
+        used.push({ h, to: other, y });
+        s += next ? pair(h, next, y, h.b.id) : pair(prev, h, y, allBoilers);
+      });
+      mains.forEach((m) => { if (m.key) s += pair(m.a, m.b, m.y, m.key); });
+      const src = buffers[buffers.length - 1] || chain[chain.length - 1];
       if (src) {
         // supply line above the producer (boiler without buffer): both lines drop
         // straight into its top (the image hides the rest), so none starts in the air
         const air = src.top > ys - 4;
-        const xR = src.right - 44;
-        const xB = src.right - 20;
+        // risers come out of the tank body (not out of a tap beside it)
+        const xR = src.bodyRight - 44;
+        const xB = src.bodyRight - 20;
         const yIn = src.top + (src.bottom - src.top) * 0.2;
-        const head = air ? [[xR, yIn], [xR, ys]] : [[src.right, ys]];
-        const tail = air ? [[xB, yr], [xB, yIn]] : [[src.right, yr]];
+        const head = air ? [[xR, yIn], [xR, ys]] : [[src.bodyRight, ys]];
+        const tail = air ? [[xB, yr], [xB, yIn]] : [[src.bodyRight, yr]];
         // each consumer: own riser and connection; the shared trunk lines along ys / yr
         // are drawn once, piece by piece, so no two pipes lie on top of each other
         const legs = consumers.map((c) => {
@@ -1303,6 +1455,10 @@
       const active = (b) => {
         if (!b) return false;
         if (b.partner && active(b.partner)) return true;
+        // a value picked by hand in the settings decides first: pump, else status
+        const picked = b.picked || [];
+        if (picked.includes("pump")) return this._isOn(b.roles.pump);
+        if (picked.includes("status")) return !this._isIdle(b.roles.status);
         if (b.roles.pump) return this._isOn(b.roles.pump);
         if (b.roles.auger && this._isOn(b.roles.auger)) return true;
         if (b.roles.discharge && this._isOn(b.roles.discharge)) return true;
@@ -1314,14 +1470,25 @@
         if (el._on !== on) { el.classList.toggle("on", on); el.classList.toggle("off", !on); el._on = on; }
       });
       root.querySelectorAll("img[data-ep]").forEach((img) => {
-        const file = img.dataset.ep && !this._isIdle(img.dataset.ep) ? EP_ICON.on : EP_ICON.off;
+        const ic = SIDE_ICONS[img.dataset.side] || SIDE_ICONS.particle_separator;
+        const file = img.dataset.ep && !this._isIdle(img.dataset.ep) ? ic.on : ic.off;
         if (!img.src.includes(file)) img.src = iconSrc(file);
       });
+      // other heat sources: flame / coloured fan only while running, same test as their lines
+      root.querySelectorAll("img[data-onoff]").forEach((img) => {
+        const on = img.dataset.onoff;
+        const b = this._blocks.find((x) => x.id === img.closest(".blk").dataset.b);
+        const file = active(b) ? on : on.replace(/_ein\.webp$/, "_aus.webp");
+        if (!img.src.includes(file)) img.src = iconSrc(file);
+      });
+      // radiator / underfloor heating: the "off" picture while the circuit does not run
       root.querySelectorAll("img[data-type=heating_circuit]").forEach((img) => {
         const b = this._blocks.find((x) => x.id === img.closest(".blk").dataset.b);
-        if (b && (this._config.icons || {})[b.id]) return;
-        const off = b && b.roles.pump && !this._isOn(b.roles.pump);
-        const file = off ? ICON_OFF.heating_circuit : ICONS.heating_circuit[0];
+        const shown = img.dataset.file || ICONS.heating_circuit[0];
+        if (!HK_OFF.test(shown)) return;
+        // same rule as the lines: a hand-picked value first, else the pump
+        const off = b && (b.roles.pump || (b.picked || []).length) && !active(b);
+        const file = off ? shown.replace(/_ein\.webp$/, "_aus.webp") : shown;
         const src = iconSrc(file);
         if (!img.src.includes(file)) img.src = src;
       });
@@ -1339,8 +1506,9 @@
       auto: "Automatisch", plant: "Anlage", language: "Sprache", lang_auto: "Automatisch (HA)", title: "Name der Anlage",
       store: "Lager", no_icons: "Keine Anlagenteile mit Icon-Auswahl erkannt.", loading: "Anlage wird geladen …",
       report: "Anlage melden",
-      report_text: "Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ lädt die Anlagendatei herunter und öffnet ein Formular auf GitHub. Zieh die Datei dort in das Feld „Plant file“. Die Datei enthält alle Werte der Anlage mit ETA-Namen, Einheiten und aktuellen Messwerten, aber keine IP-Adresse, keine Seriennummer, keine selbst vergebenen Namen und keinen Verlauf. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst. Das Issue ist öffentlich sichtbar. Achte auf dem Screenshot auf persönliche Namen.",
-      download: "Anlagendatei herunterladen", open_issue: "GitHub-Issue öffnen", file: "Inhalt der Datei",
+      report_text: "Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ lädt die Anlagendatei herunter und öffnet ein Formular auf GitHub. Zieh die Datei dort in das Feld „Plant file“. Die Datei enthält alle Werte der Anlage mit ETA-Namen, Einheiten und aktuellen Messwerten, aber keine IP-Adresse, keine Seriennummer, keine selbst vergebenen Namen und keinen Verlauf. Die Datei ist verschlüsselt, lesen können sie nur die Entwickler der Integration. Unten siehst du ihren Inhalt. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst. Das Issue ist öffentlich sichtbar. Achte auf dem Screenshot auf persönliche Namen.",
+      download: "Anlagendatei herunterladen", open_issue: "GitHub-Issue öffnen", file: "Inhalt der Datei (wird verschlüsselt)",
+      seal_failed: "Die Anlagendatei konnte nicht verschlüsselt werden:",
     },
     en: {
       settings: "Settings", reset_all: "Reset everything", cancel: "Cancel", save: "Save",
@@ -1348,8 +1516,9 @@
       auto: "Automatic", plant: "Plant", language: "Language", lang_auto: "Automatic (HA)", title: "Plant name",
       store: "Store", no_icons: "No plant parts with an icon choice detected.", loading: "Loading plant …",
       report: "Report plant",
-      report_text: "Is your plant not shown correctly? \u201cOpen GitHub issue\u201d downloads the plant file and opens a form on GitHub. Drag the file into the \u201cPlant file\u201d field there. The file contains every value of the plant with ETA names, units and current readings, but no IP address, no serial number, no names you gave and no history. Nothing is sent until you submit the issue on GitHub yourself. The issue is public. Check the screenshot for personal names.",
-      download: "Download plant file", open_issue: "Open GitHub issue", file: "Content of the file",
+      report_text: "Is your plant not shown correctly? \u201cOpen GitHub issue\u201d downloads the plant file and opens a form on GitHub. Drag the file into the \u201cPlant file\u201d field there. The file contains every value of the plant with ETA names, units and current readings, but no IP address, no serial number, no names you gave and no history. The file is encrypted, only the developers of the integration can read it. Its content is shown below. Nothing is sent until you submit the issue on GitHub yourself. The issue is public. Check the screenshot for personal names.",
+      download: "Download plant file", open_issue: "Open GitHub issue", file: "Content of the file (gets encrypted)",
+      seal_failed: "The plant file could not be encrypted:",
     },
   };
   const REPORT_FILE = "eta-plant-report.json";
@@ -1363,6 +1532,7 @@
     "SH alt": "SH old", "SH-TWIN alt": "SH-TWIN old", "HACK VR (gelb)": "HACK VR (yellow)", "HACK VR (grau)": "HACK VR (grey)",
     "Puffer": "Buffer", "Puffer mit Wendel": "Buffer with coil", "Kombispeicher": "Combi tank", "Heizkörper": "Radiator",
     "Fußbodenheizung": "Underfloor heating", "Frischwassermodul": "Fresh water module", "FWM Brauchwasser": "FWM domestic water",
+    "Modul": "Module", "Wärmepumpe": "Heat pump", "Öl-/Gasbrenner": "Oil / gas burner", "Biomasse": "Biomass",
   };
 
   class EtaPlantCardEditor extends HTMLElement {
@@ -1437,7 +1607,8 @@
         <b>${T.report}</b>
         <p>${T.report_text}</p>
         <button id="dl">${T.download}</button> <button id="gh">${T.open_issue}</button>
-        ${this._report ? `<p>${T.file} <code>${REPORT_FILE}</code>:</p><textarea readonly rows="10">${this._report}</textarea>` : ""}
+        ${this._sealErr ? `<p style="color:#e53935">${T.seal_failed} ${esc(this._sealErr)}</p>` : ""}
+        ${this._report ? `<p>${T.file} <code>${REPORT_FILE}</code>:</p><textarea readonly rows="10">${esc(this._report)}</textarea>` : ""}
       </div>`;
       this.shadowRoot.getElementById("lang").addEventListener("change", (ev) => {
         const cfg = { ...this._config, language: ev.target.value };
@@ -1485,22 +1656,16 @@
       if (this._topo) this._wireValues();
       const $ = (id) => this.shadowRoot.getElementById(id);
       $("dl").addEventListener("click", async () => {
-        await this._makeReport();
-        this._download();
+        if (await this._makeReport()) this._download();
         this._render();
       });
       $("gh").addEventListener("click", async () => {
         // open the window synchronously, otherwise the popup blocker kicks in
         const win = window.open("about:blank", "_blank");
-        await this._makeReport();
-        // the full plant file is downloaded and dragged into the issue form by the user;
-        // the short report goes into the form directly when it fits into the link
+        if (!(await this._makeReport())) { if (win) win.close(); this._render(); return; }
+        // the encrypted plant file is downloaded and dragged into the issue form by the user
         this._download();
-        const base = `https://github.com/${REPORT_REPO}/issues/new?template=plant-card.yml&title=${encodeURIComponent("Plant card: ")}`;
-        const packed = await this._pack(this._summary);
-        let data = `eta-plant-report v2, gzip+base64\n${packed}`;
-        if (!packed || (base + encodeURIComponent(data)).length > 8000) data = `see attached file ${REPORT_FILE}`;
-        const url = `${base}&data=${encodeURIComponent(data)}`;
+        const url = `https://github.com/${REPORT_REPO}/issues/new?template=plant-card.yml&title=${encodeURIComponent("Plant card: ")}`;
         if (win) win.location.href = url; else window.open(url, "_blank");
         this._render();
       });
@@ -1568,10 +1733,11 @@
 
     // current order of the plant parts (detected and added, hidden ones included)
     _orderIds() {
-      const ids = this._blockList().filter((b) => b.type !== "plant").map((b) => b.id);
+      const list = this._blockList().filter((b) => b.type !== "plant");
       const order = this._config.order || [];
-      const pos = (id, i) => { const k = order.indexOf(id); return k < 0 ? order.length + i : k; };
-      return ids.map((id, i) => [pos(id, i), id]).sort((x, y) => x[0] - y[0]).map(([, id]) => id);
+      const pos = (b, i) => { const k = order.indexOf(b.id); return k < 0 ? order.length + i : k; };
+      const sorted = list.map((b, i) => [pos(b, i), b]).sort((x, y) => x[0] - y[0]).map(([, b]) => b);
+      return placeHeat(sorted, order, this._config.icons).map((b) => b.id);
     }
 
     _orderHtml(T) {
@@ -1620,7 +1786,9 @@
       const rows = (EDIT_ROLES[b.type] || EDIT_ROLES.unknown).map(([role, lde, len, kind]) => {
         const cur = o[role] || "";
         const det = b.roles[role];
-        const auto = det && this._hass.states[det] ? this._optText(det) : (de ? "nichts erkannt" : "nothing detected");
+        const auto = det && this._hass.states[det] ? this._optText(det)
+          : (b.unselected || {})[role] ? (de ? "in der Integration nicht ausgewählt" : "not selected in the integration")
+          : (de ? "nichts erkannt" : "nothing detected");
         const fit = cands.filter((e) => this._fits(e, kind));
         fit.sort((x, y) => (own.has(y) - own.has(x)) || this._optText(x).localeCompare(this._optText(y)));
         const rest = cands.filter((e) => !fit.includes(e)).sort((x, y) => this._optText(x).localeCompare(this._optText(y)));
@@ -1743,25 +1911,24 @@
         hidden: c.hidden || [], extra: (c.extra || []).map((x) => x.type), icons: c.icons || {},
         renamed: Object.keys(c.names || {}).length, language: c.language || "",
       };
-      // the short report (issue link) leaves out the big parts: every endpoint and the terminal menu
-      const { tree, terminal, ...short } = rep;
-      this._summary = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...short });
-      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...short, tree, terminal }, null, 1);
-    }
-
-    async _pack(text) {
-      if (!window.CompressionStream) return null;
-      const min = JSON.stringify(JSON.parse(text));
-      const stream = new Blob([min]).stream().pipeThrough(new CompressionStream("gzip"));
-      const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
-      let bin = "";
-      bytes.forEach((b) => { bin += String.fromCharCode(b); });
-      return btoa(bin).replace(/(.{76})/g, "$1\n");
+      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...rep }, null, 1);
+      // the issue is public: the plant file is encrypted for the maintainers by the
+      // integration; the text field above still shows the plain content
+      try {
+        const seal = async (text) => (await this._hass.callWS({ type: "eta_webservices/seal", data: text })).sealed;
+        this._sealed = JSON.stringify({ eta_plant_file: "sealed", v: 1, data: await seal(JSON.stringify(JSON.parse(this._report))) });
+        this._sealErr = null;
+        return true;
+      } catch (err) {
+        this._sealed = null;
+        this._sealErr = (err && err.message) || String(err);
+        return false;
+      }
     }
 
     _download() {
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([this._report], { type: "application/json" }));
+      a.href = URL.createObjectURL(new Blob([this._sealed], { type: "application/json" }));
       a.download = REPORT_FILE;
       document.body.appendChild(a);
       a.click();
