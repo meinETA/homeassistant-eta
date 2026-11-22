@@ -16,6 +16,7 @@ from custom_components.eta_webservices.topology import (
     parse_unique_id,
     report_text,
     unselected_report,
+    unselected_roles,
 )
 
 STABLE = "keller"
@@ -538,3 +539,40 @@ async def test_terminal_info_keeps_details_on_timeout(monkeypatch):
     assert info["skipped_count"] == 2
     assert info["skipped"] == {"1/2/0/0/1": {"unit": "kV", "type": "DEFAULT"}}
     assert info["skipped_timeout"] == 1
+
+
+def test_pe_k_boiler_object_is_a_boiler():
+    """ETA PE-K reports its boiler under object 10261 (#26)."""
+    assert block_type_for_object("10261") == "boiler"
+
+
+def test_condenser_status_and_return():
+    """Condensing heat exchanger 10851 is its own part with status and return (#25)."""
+    rows = [
+        (f"eta_{STABLE}_120_10851_0_0_19457", "sensor.bw_status", None),
+        (f"eta_{STABLE}_120_10851_0_11160_0", "sensor.bw_return", None),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    assert blocks[0].type == "condenser"
+    assert blocks[0].roles == {
+        "status": "sensor.bw_status",
+        "return": "sensor.bw_return",
+    }
+
+
+def test_unselected_roles_mark_found_but_not_selected_values():
+    """Flow temperature exists on the terminal but is not selected: hint for the card (#25)."""
+    rows = [(f"eta_{STABLE}_120_10101_0_0_12090", "sensor.hk_status", None)]
+    blocks, _ = build_blocks(rows, STABLE)
+    unselected_roles(
+        blocks,
+        {
+            f"eta_{STABLE}_120_10101_0_11060_0",  # flow
+            f"eta_{STABLE}_120_10101_0_0_12090",  # already a role
+            f"eta_{STABLE}_120_10101_0_11060_2049",  # no role
+            f"eta_{STABLE}_120_10102_0_11060_0",  # block without selected values
+        },
+        STABLE,
+    )
+    assert blocks[0].unselected == {"flow": "0/11060/0"}
+    assert blocks[0].as_dict()["unselected"] == {"flow": "0/11060/0"}

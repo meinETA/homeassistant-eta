@@ -131,6 +131,8 @@ class Block:
     name: str | None = None
     roles: dict[str, str] = field(default_factory=dict)
     entities: list[str] = field(default_factory=list)
+    # roles found by the discovery but not selected: role -> address
+    unselected: dict[str, str] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:  # noqa: D102
         return {
@@ -140,6 +142,7 @@ class Block:
             "name": self.name,
             "roles": self.roles,
             "entities": self.entities,
+            "unselected": self.unselected,
         }
 
 
@@ -258,6 +261,50 @@ def build_report(entries: list[tuple[Any, ...]], stable: str) -> list[dict[str, 
 
 
 @callback
+def discovered_ids(conf: dict[str, Any]) -> set[str]:
+    """Unique ids of every endpoint the discovery found."""
+    found: set[str] = set()
+    for key in (FLOAT_DICT, SWITCHES_DICT, TEXT_DICT, WRITABLE_DICT):
+        found.update(conf.get(key) or {})
+    return found
+
+
+def chosen_ids(conf: dict[str, Any]) -> set[str]:
+    """Unique ids selected in the integration options."""
+    chosen: set[str] = set()
+    for key in (
+        CHOSEN_FLOAT_SENSORS,
+        CHOSEN_SWITCHES,
+        CHOSEN_TEXT_SENSORS,
+        CHOSEN_WRITABLE_SENSORS,
+    ):
+        chosen.update(conf.get(key) or [])
+    return chosen
+
+
+def unselected_roles(blocks: list[Block], unselected: set[str], stable: str) -> None:
+    """Note roles a block lacks although the discovery found them (not selected).
+
+    The card shows a hint there, e.g. the flow temperature of a heating circuit
+    that exists on the terminal but was not selected in the options.
+    """
+    by_key = {block.id: block for block in blocks}
+    best: dict[tuple[str, str], int] = {}
+    for unique_id in unselected:
+        parsed = parse_unique_id(unique_id, stable)
+        if parsed is None:
+            continue
+        node, obj, address = parsed
+        block = by_key.get(f"{node}/{obj}")
+        if block is None:
+            continue
+        role, prio = _ROLE_INDEX.get(block.type, {}).get(address, (None, 0))
+        if not role or role in block.roles or best.get((block.id, role), 99) < prio:
+            continue
+        best[(block.id, role)] = prio
+        block.unselected[role] = address
+
+
 def async_get_topology(hass: HomeAssistant) -> list[dict[str, Any]]:
     """Return the topology of every loaded ETA config entry."""
     ent_reg = er.async_get(hass)
@@ -277,6 +324,8 @@ def async_get_topology(hass: HomeAssistant) -> list[dict[str, Any]]:
             device_name = (device.name_by_user or device.name) if device else None
             rows.append((reg_entry.unique_id, reg_entry.entity_id, device_name))
         blocks, plant = build_blocks(rows, stable)
+        conf = {**entry.data, **entry.options}
+        unselected_roles(blocks, discovered_ids(conf) - chosen_ids(conf), stable)
         # computed values of the integration ("Auswertung" device)
         prefix = f"eta_{stable}_analytics_"
         for reg_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):

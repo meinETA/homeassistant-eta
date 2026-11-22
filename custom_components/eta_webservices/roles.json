@@ -6,6 +6,7 @@
     "10511": "boiler",
     "10391": "boiler",
     "10401": "boiler",
+    "10261": "boiler",
     "10201": "silo",
     "10211": "silo",
     "10221": "solar",
@@ -16,6 +17,7 @@
     "10311": "external_demand",
     "10531": "fwm",
     "10571": "particle_separator",
+    "10851": "condenser",
     "10911": "diagnostics",
     "10961": "pv",
     "1010*": "heating_circuit",
@@ -104,6 +106,11 @@
     ],
     "external_demand": [
       ["0/0/19416", "status"]
+    ],
+    "condenser": [
+      ["0/0/19457", "status"],
+      ["0/0/12731", "status"],
+      ["0/11160/0", "return"]
     ],
     "system": [
       ["0/11127/0", "outside"],

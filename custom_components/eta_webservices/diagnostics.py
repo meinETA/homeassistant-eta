@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
@@ -18,6 +19,7 @@ from .const import (
     REQUEST_SEMAPHORE,
 )
 from .plant_file import async_terminal_info
+from .seal import seal
 from .topology import async_get_report, async_get_topology
 
 # the terminal address and anything that could identify the owner
@@ -64,6 +66,16 @@ async def async_get_config_entry_diagnostics(
         "api_version": str(api_version),
         "menu": user_menu,
         "topology": topology,
-        # same content as the plant file of the card (report, every endpoint)
-        "plant_file": plant_file,
+        # same content as the plant file of the card (report, every endpoint),
+        # encrypted for the maintainers like the card's file (diagnostics end up in public issues)
+        "plant_file": await _sealed(hass, plant_file),
     }
+
+
+async def _sealed(hass: HomeAssistant, plant_file: dict[str, Any]) -> dict[str, Any]:
+    data = json.dumps(plant_file, separators=(",", ":")).encode("utf-8")
+    try:
+        sealed = await hass.async_add_executor_job(seal, data)
+    except (OSError, ValueError, TypeError) as err:
+        return {"error": f"not encrypted: {err}"}
+    return {"eta_plant_file": "sealed", "v": 1, "data": sealed}

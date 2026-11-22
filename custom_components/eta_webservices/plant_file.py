@@ -36,7 +36,7 @@ _LOGGER = logging.getLogger(__name__)
 
 # keep the button responsive on slow terminals
 SKIPPED_MAX = 150
-TIMEOUT = 30
+TIMEOUT = 60
 # variable attributes that explain how the discovery treats an endpoint
 _VAR_KEYS = ("unit", "decPlaces", "scaleFactor", "advTextOffset", "isWritable")
 
