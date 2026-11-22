@@ -1665,8 +1665,7 @@
         if (!(await this._makeReport())) { if (win) win.close(); this._render(); return; }
         // the encrypted plant file is downloaded and dragged into the issue form by the user
         this._download();
-        const base = `https://github.com/${REPORT_REPO}/issues/new?template=plant-card.yml&title=${encodeURIComponent("Plant card: ")}`;
-        const url = `${base}&data=${encodeURIComponent(`see attached file ${REPORT_FILE}`)}`;
+        const url = `https://github.com/${REPORT_REPO}/issues/new?template=plant-card.yml&title=${encodeURIComponent("Plant card: ")}`;
         if (win) win.location.href = url; else window.open(url, "_blank");
         this._render();
       });

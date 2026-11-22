@@ -3,7 +3,8 @@ name: Store plant files
 # Copies plant files attached to plant card issues (and their comments) into the
 # private fixtures repository (meinETA/eta-dev), so new plants can be analysed and become tests.
 # Plant files are encrypted by the integration (only eta-dev can read them); older
-# unencrypted uploads are copied too and their link / data block is then removed from the issue.
+# unencrypted uploads are copied too and their link is then removed from the issue; data blocks
+# of older cards are only removed.
 # Issue content is untrusted: nothing from it is executed or put into a shell;
 # only GitHub attachment links to .json files are downloaded, checked and stored.
 
@@ -34,7 +35,6 @@ jobs:
         with:
           github-token: ${{ secrets.ETA_FIXTURES_TOKEN }}
           script: |
-            const zlib = require("zlib");
             const MAX = 5 * 1024 * 1024;
             const issue = context.payload.issue.number;
             const comment = context.payload.comment;
@@ -53,21 +53,9 @@ jobs:
               files.push({ name: url.split("/").pop(), body: buf.toString("utf8"), url });
             }
 
-            // short report filled in by the card: v3 encrypted, v1/v2 gzip+base64 (older cards)
-            const v3 = text.match(/eta-plant-report v3, sealed\s*(?:```[a-z]*\s*)?([A-Za-z0-9+\/=_\-\s]{40,})/);
-            if (v3) {
-              // the card writes URL-safe base64 without padding
-              let data = v3[1].replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
-              data += "=".repeat((4 - (data.length % 4)) % 4);
-              files.push({ name: "summary.json", body: JSON.stringify({ eta_plant_file: "sealed", v: 1, data }) });
-            }
-            const old = text.match(/eta-plant-report v[12], gzip\+base64[):\s]*(?:```[a-z]*\s*)?([A-Za-z0-9+\/=\s]{40,})/);
-            if (old) {
-              try {
-                const raw = zlib.gunzipSync(Buffer.from(old[1].replace(/\s+/g, ""), "base64"));
-                if (raw.length <= MAX) files.push({ name: "summary.json", body: raw.toString("utf8"), block: old[1] });
-              } catch (err) { core.warning(`summary not readable: ${err.message}`); }
-            }
+            // short report of older cards (gzip+base64 in the issue text): not stored, only
+            // removed from the public issue below
+            const blocks = [...text.matchAll(/eta-plant-report v\d[^\n]*\n?\s*(?:```[a-z]*\s*)?([A-Za-z0-9+\/=_\-\s]{40,})/g)].map((m) => m[1]);
 
             const plain = [];
             for (const f of files) {
@@ -97,16 +85,16 @@ jobs:
             if (!files.length) core.info("no plant file in this issue or comment");
 
             // unencrypted plant data stays out of the public issue once it is stored
-            if (plain.length) {
+            if (plain.length || blocks.length) {
               const urls = new Set(plain.map((f) => f.url).filter(Boolean));
               const gone = "_(plant file stored privately)_";
               text = text.replace(/\[[^\]]*\]\((https:\/\/github\.com\/user-attachments\/files\/\d+\/[A-Za-z0-9._-]+\.json)\)/g,
                 (m, u) => (urls.has(u) ? gone : m));
               urls.forEach((u) => { text = text.split(u).join(gone); });
-              plain.filter((f) => f.block).forEach((f) => { text = text.split(f.block).join("\n_(stored privately)_\n"); });
+              blocks.forEach((b) => { text = text.split(b).join("\n_(removed)_\n"); });
               const gh = getOctokit(process.env.ISSUES_TOKEN);
               const { owner, repo } = context.repo;
               if (comment) await gh.rest.issues.updateComment({ owner, repo, comment_id: comment.id, body: text });
               else await gh.rest.issues.update({ owner, repo, issue_number: issue, body: text });
-              core.info(`removed ${plain.length} unencrypted plant file(s) from the issue`);
+              core.info(`removed ${plain.length} unencrypted plant file(s) and ${blocks.length} data block(s) from the issue`);
             }

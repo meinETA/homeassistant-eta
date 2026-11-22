@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Easiest way: open the card settings (gear) and click **Open GitHub issue**. It downloads the plant file and opens this form with the plant data filled in.
+        Easiest way: open the card settings (gear) and click **Open GitHub issue**. It downloads the plant file and opens this form; drag the file into **Plant file**.
   - type: textarea
     id: what
     attributes:
@@ -25,14 +25,6 @@ body:
     id: file
     attributes:
       label: Plant file
-      description: Drag the downloaded file `eta-plant-report.json` here (it is in your download folder). It contains every value of the plant, without IP address, serial number or names you gave.
-    validations:
-      required: false
-  - type: textarea
-    id: data
-    attributes:
-      label: Plant data
-      description: Filled in by the card (short version of the plant file). Leave as it is.
-      render: text
+      description: Drag the downloaded file `eta-plant-report.json` here (it is in your download folder). It is encrypted, only the maintainers can read it. It contains every value of the plant, without IP address, serial number or names you gave.
     validations:
       required: false
