@@ -197,6 +197,18 @@ def test_status_display_addresses() -> None:
     }
 
 
+def test_buffer_status_display_address() -> None:
+    """Buffer status from 0/0/19403 when the detailed state 0/0/12208 is missing."""
+    blocks, _ = build_blocks([_row("/264/10601/0/0/19403", "sensor.pu_state")], STABLE)
+    assert blocks[0].roles["status"] == "sensor.pu_state"
+    rows = [
+        _row("/264/10601/0/0/19403", "sensor.pu_state"),
+        _row("/264/10601/0/0/12208", "sensor.pu_detail"),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    assert blocks[0].roles["status"] == "sensor.pu_detail"
+
+
 def test_roles_json_is_consistent() -> None:
     """roles.json: valid object ids and addresses, no duplicates, known types."""
     path = Path(__file__).parents[3] / "custom_components/eta_webservices/roles.json"
