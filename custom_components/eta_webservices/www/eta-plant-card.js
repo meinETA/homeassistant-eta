@@ -1042,6 +1042,7 @@
       const heats = g.filter((x) => isHeat(x.b, icons));
       const consumers = g.filter((x) => CONSUMERS.includes(x.b.type) && !heats.includes(x));
       const T = 9;
+      const BEND = 5; // radius of the dash curve at pipe bends
       const ys = FLOOR - 300; // supply line height, above the consumers and their values
       const yr = ys + 34; // return runs close below the supply
       const segs = [];
@@ -1058,8 +1059,18 @@
       const line = (pts, cls) => {
         let out = "";
         for (let i = 1; i < pts.length; i++) out += seg(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], cls);
-        // dashes run along the whole line in flow direction, around the bends
-        const d = pts.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join("");
+        // dashes run along the whole line in flow direction, with a small curve at each bend
+        let d = `M${pts[0][0]} ${pts[0][1]}`;
+        for (let i = 1; i < pts.length; i++) {
+          const [x, y] = pts[i];
+          const next = pts[i + 1];
+          if (!next) { d += `L${x} ${y}`; break; }
+          const [px, py] = pts[i - 1];
+          const r = Math.min(BEND, Math.hypot(x - px, y - py) / 2, Math.hypot(next[0] - x, next[1] - y) / 2);
+          const ux = Math.sign(x - px), uy = Math.sign(y - py);
+          const vx = Math.sign(next[0] - x), vy = Math.sign(next[1] - y);
+          d += `L${x - ux * r} ${y - uy * r}Q${x} ${y} ${x + vx * r} ${y + vy * r}`;
+        }
         return `${out}<svg class="fl ${cls}"><path d="${d}"/></svg>`;
       };
       const group = (key, inner) => `<div class="g" data-flow="${key}">${inner}</div>`;
