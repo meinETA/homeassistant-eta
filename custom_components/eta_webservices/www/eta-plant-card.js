@@ -1056,9 +1056,11 @@
         const h = hz ? T : Math.abs(y2 - y1) + T;
         return `<div class="p ${cls} ${hz ? "h" : "v"}" style="left:${l}px;top:${t}px;width:${w}px;height:${h}px"></div>`;
       };
-      const line = (pts, cls) => {
+      // dash: the path of the moving dashes, may reach a little into the pipe it branches off
+      const line = (pts, cls, dash = pts) => {
         let out = "";
         for (let i = 1; i < pts.length; i++) out += seg(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], cls);
+        pts = dash;
         // dashes run along the whole line in flow direction, with a small curve at each bend
         let d = `M${pts[0][0]} ${pts[0][1]}`;
         for (let i = 1; i < pts.length; i++) {
@@ -1249,7 +1251,14 @@
           if (l.xr > x) s += group(ids(byRet.slice(i)), line([[l.xr, yr], [x, yr]], "rl"));
           x = Math.max(x, l.xr);
         });
-        legs.forEach((l) => { s += group(l.id, line(l.vl, "vl") + line(l.rl, "rl")); });
+        // branch dashes curve out of / into the trunk instead of starting on it
+        const x0 = head[head.length - 1][0];
+        const x1 = tail[0][0];
+        legs.forEach((l) => {
+          const vl = [[l.xv + (l.xv >= x0 ? -BEND : BEND), ys], ...l.vl];
+          const rl = [...l.rl, [l.xr + (l.xr >= x1 ? -BEND : BEND), yr]];
+          s += group(l.id, line(l.vl, "vl", vl) + line(l.rl, "rl", rl));
+        });
       }
       // supply crossing a return pipe: the supply runs on top, the return gets a gap (bridge)
       const vl = segs.filter((x) => x.cls === "vl");
