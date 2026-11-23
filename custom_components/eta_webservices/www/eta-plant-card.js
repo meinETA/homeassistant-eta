@@ -441,7 +441,7 @@
   .band i{position:absolute;left:-20px;right:-20px;top:0;bottom:0;will-change:transform;
     background:repeating-linear-gradient(45deg,#ffc400 0 9px,#2a2400 9px 14px)}
   .on .band i{animation:mb 1.2s linear infinite}.off .band i{display:none}
-  @keyframes fd{to{stroke-dashoffset:-24}}
+  @keyframes fd{from{stroke-dashoffset:var(--o,0px)}to{stroke-dashoffset:calc(var(--o,0px) - 24px)}}
   @keyframes mb{to{transform:translateX(19.8px)}}
   .blk{position:absolute;z-index:4;top:64px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
   .vals{display:flex;align-items:flex-end;gap:8px;padding-bottom:14px}
@@ -1057,23 +1057,30 @@
         return `<div class="p ${cls} ${hz ? "h" : "v"}" style="left:${l}px;top:${t}px;width:${w}px;height:${h}px"></div>`;
       };
       // dash: the path of the moving dashes, may reach a little into the pipe it branches off
-      const line = (pts, cls, dash = pts) => {
+      // phase: {start: g} or {end: g}, the position g on the trunk where the dashes start or end,
+      // so the dash pattern runs on across joints instead of starting anew in every piece
+      const line = (pts, cls, dash = pts, phase = null) => {
         let out = "";
         for (let i = 1; i < pts.length; i++) out += seg(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], cls);
         pts = dash;
         // dashes run along the whole line in flow direction, with a small curve at each bend
         let d = `M${pts[0][0]} ${pts[0][1]}`;
+        let len = 0;
         for (let i = 1; i < pts.length; i++) {
           const [x, y] = pts[i];
+          const [px, py] = pts[i - 1];
+          len += Math.hypot(x - px, y - py);
           const next = pts[i + 1];
           if (!next) { d += `L${x} ${y}`; break; }
-          const [px, py] = pts[i - 1];
           const r = Math.min(BEND, Math.hypot(x - px, y - py) / 2, Math.hypot(next[0] - x, next[1] - y) / 2);
           const ux = Math.sign(x - px), uy = Math.sign(y - py);
           const vx = Math.sign(next[0] - x), vy = Math.sign(next[1] - y);
+          if (ux !== vx || uy !== vy) len -= 0.38 * r; // the curve is a little shorter than the corner
           d += `L${x - ux * r} ${y - uy * r}Q${x} ${y} ${x + vx * r} ${y + vy * r}`;
         }
-        return `${out}<svg class="fl ${cls}"><path d="${d}"/></svg>`;
+        const o = !phase ? 0 : "start" in phase ? phase.start : phase.end - len;
+        const st = o ? ` style="--o:${(((o % 24) + 24) % 24).toFixed(1)}px"` : "";
+        return `${out}<svg class="fl ${cls}"><path d="${d}"${st}/></svg>`;
       };
       const group = (key, inner) => `<div class="g" data-flow="${key}">${inner}</div>`;
       let s = "";
@@ -1235,8 +1242,8 @@
         const ids = (xs) => xs.map((l) => l.id).join(",");
         const all = ids(legs);
         if (legs.length) {
-          if (head.length > 1) s += group(all, line(head, "vl"));
-          if (tail.length > 1) s += group(all, line(tail, "rl"));
+          if (head.length > 1) s += group(all, line(head, "vl", head, { end: head[head.length - 1][0] }));
+          if (tail.length > 1) s += group(all, line(tail, "rl", tail, { start: -tail[0][0] }));
         }
         // supply trunk: from the producer to each riser; a piece carries flow when a consumer behind it runs
         const bySup = [...legs].sort((p, q) => p.xv - q.xv);
@@ -1246,14 +1253,14 @@
         bySup.forEach((l, i) => {
           // the last piece ends in a bend: its dashes stop short and the riser's curve takes over
           const endV = l.xv === lastV ? l.xv - BEND : l.xv;
-          if (l.xv > x) s += group(ids(bySup.slice(i)), line([[x, ys], [l.xv, ys]], "vl", [[x, ys], [endV, ys]]));
+          if (l.xv > x) s += group(ids(bySup.slice(i)), line([[x, ys], [l.xv, ys]], "vl", [[x, ys], [endV, ys]], { start: x }));
           x = Math.max(x, l.xv);
         });
         const byRet = [...legs].sort((p, q) => p.xr - q.xr);
         x = tail[0][0];
         byRet.forEach((l, i) => {
           const startR = l.xr === lastR ? l.xr - BEND : l.xr;
-          if (l.xr > x) s += group(ids(byRet.slice(i)), line([[l.xr, yr], [x, yr]], "rl", [[startR, yr], [x, yr]]));
+          if (l.xr > x) s += group(ids(byRet.slice(i)), line([[l.xr, yr], [x, yr]], "rl", [[startR, yr], [x, yr]], { start: -startR }));
           x = Math.max(x, l.xr);
         });
         // branch dashes curve out of / into the trunk instead of starting on it
@@ -1262,7 +1269,7 @@
         legs.forEach((l) => {
           const vl = [[l.xv + (l.xv >= x0 ? -BEND : BEND), ys], ...l.vl];
           const rl = [...l.rl, [l.xr + (l.xr >= x1 ? -BEND : BEND), yr]];
-          s += group(l.id, line(l.vl, "vl", vl) + line(l.rl, "rl", rl));
+          s += group(l.id, line(l.vl, "vl", vl, { start: vl[0][0] }) + line(l.rl, "rl", rl, { end: -rl[rl.length - 1][0] }));
         });
       }
       // supply crossing a return pipe: the supply runs on top, the return gets a gap (bridge)
