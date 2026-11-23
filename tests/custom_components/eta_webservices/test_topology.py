@@ -558,6 +558,14 @@ def test_pe_k_boiler_object_is_a_boiler():
     assert block_type_for_object("10261") == "boiler"
 
 
+def test_every_buffer_and_node_24_boiler_are_detected():
+    """Buffers 2 and 3 use 10252/10253, a boiler can sit on node 24 as 10301 (#37)."""
+    assert block_type_for_object("10251") == "buffer"
+    assert block_type_for_object("10252") == "buffer"
+    assert block_type_for_object("10253") == "buffer"
+    assert block_type_for_object("10301") == "boiler"
+
+
 def test_condenser_status_and_return():
     """Condensing heat exchanger 10851 is its own part with status and return (#25)."""
     rows = [

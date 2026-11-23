@@ -11,7 +11,7 @@
     "10211": "silo",
     "10221": "solar",
     "10241": "system",
-    "10251": "buffer",
+    "10301": "boiler",
     "10601": "buffer",
     "10291": "external_heat",
     "10311": "external_demand",
@@ -21,7 +21,8 @@
     "10911": "diagnostics",
     "10961": "pv",
     "1010*": "heating_circuit",
-    "1011*": "dhw"
+    "1011*": "dhw",
+    "1025*": "buffer"
   },
   "roles": {
     "boiler": [
