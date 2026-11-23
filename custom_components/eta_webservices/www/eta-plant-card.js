@@ -1240,15 +1240,20 @@
         }
         // supply trunk: from the producer to each riser; a piece carries flow when a consumer behind it runs
         const bySup = [...legs].sort((p, q) => p.xv - q.xv);
+        const lastV = Math.max(...legs.map((l) => l.xv));
+        const lastR = Math.max(...legs.map((l) => l.xr));
         let x = head[head.length - 1][0];
         bySup.forEach((l, i) => {
-          if (l.xv > x) s += group(ids(bySup.slice(i)), line([[x, ys], [l.xv, ys]], "vl"));
+          // the last piece ends in a bend: its dashes stop short and the riser's curve takes over
+          const endV = l.xv === lastV ? l.xv - BEND : l.xv;
+          if (l.xv > x) s += group(ids(bySup.slice(i)), line([[x, ys], [l.xv, ys]], "vl", [[x, ys], [endV, ys]]));
           x = Math.max(x, l.xv);
         });
         const byRet = [...legs].sort((p, q) => p.xr - q.xr);
         x = tail[0][0];
         byRet.forEach((l, i) => {
-          if (l.xr > x) s += group(ids(byRet.slice(i)), line([[l.xr, yr], [x, yr]], "rl"));
+          const startR = l.xr === lastR ? l.xr - BEND : l.xr;
+          if (l.xr > x) s += group(ids(byRet.slice(i)), line([[l.xr, yr], [x, yr]], "rl", [[startR, yr], [x, yr]]));
           x = Math.max(x, l.xr);
         });
         // branch dashes curve out of / into the trunk instead of starting on it
