@@ -566,6 +566,16 @@ def test_every_buffer_and_node_24_boiler_are_detected():
     assert block_type_for_object("10301") == "boiler"
 
 
+def test_fwm_flow_rate():
+    """The fresh water module shows its secondary flow rate (#38)."""
+    rows = [
+        (f"eta_{STABLE}_79_10531_0_11148_0", "sensor.fwm_hot_water", None),
+        (f"eta_{STABLE}_79_10531_12785_0_0", "sensor.fwm_flow", None),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    assert blocks[0].roles["flow"] == "sensor.fwm_flow"
+
+
 def test_condenser_status_and_return():
     """Condensing heat exchanger 10851 is its own part with status and return (#25)."""
     rows = [

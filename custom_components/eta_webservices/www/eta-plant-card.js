@@ -4,7 +4,7 @@
   const H = 860;
   const FLOOR = 610;
   // bump when icon files change, so browsers do not keep stale images
-  const ICON_REV = "2026-11-22c";
+  const ICON_REV = "2026-11-23a";
 
   // type -> [icon file, icon width on the 1600px canvas, aspect w/h]
   const ICONS = {
@@ -273,7 +273,7 @@
     boiler: ["temperature", "hopper", "pressure", "oxygen"],
     buffer: ["charge"],
     heating_circuit: ["flow"],
-    fwm: ["hot_water", "primary_flow"],
+    fwm: ["hot_water", "flow", "primary_flow"],
     dhw: ["temperature"],
     solar: ["collector"],
     external_heat: ["temperature"],
@@ -326,7 +326,8 @@
       ["status", "Status", "Status", "text"], ["pump", "Pumpe", "Pump", "onoff"]],
     external_heat: [["temperature", "Temperatur", "Temperature", "temp"], ["storage", "Speicher", "Storage", "temp"],
       ["pump", "Pumpe", "Pump", "onoff"], ["status", "Status", "Status", "text"]],
-    fwm: [["hot_water", "Warmwasser", "Hot water", "temp"], ["primary_flow", "Vorlauf primär", "Primary flow", "temp"],
+    fwm: [["hot_water", "Warmwasser", "Hot water", "temp"], ["flow", "Durchfluss", "Flow rate", "flow"],
+      ["primary_flow", "Vorlauf primär", "Primary flow", "temp"],
       ["primary_return", "Rücklauf primär", "Primary return", "temp"], ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"]],
     external_demand: [["status", "Status", "Status", "text"]],
@@ -456,7 +457,8 @@
   .pill.ghost{border:1px dashed #888;background:transparent;box-shadow:none;color:#aaa}
   .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
   .t-silo .vals{flex-direction:column;align-items:center;gap:6px}
-  .t-boiler .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
+  .t-boiler .vals,.t-fwm .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
+  .t-fwm .stack{max-width:100%}
   .stack{height:${FLOOR - 64}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
   .icon{display:flex;align-items:flex-end;position:relative}
   .icon img{display:block;position:relative}
@@ -671,8 +673,8 @@
         const ghost = main && !b.roles[main] && (b.unselected || {})[main] ? main : null;
         if (!shown.length && !hasInner && !ghost) shown = this._autoValues(b); // no known roles: pick measurements
         if (b.type === "silo" && plant.silo_days) shown.push(plant.silo_days); // forecast: pellets last approx. n days
-        // narrow columns: fewer value boxes; boilers keep up to four and wrap into a second row
-        shown = shown.slice(0, b.type === "boiler" ? 4 : Math.max(1, Math.floor(colW / 110)));
+        // narrow columns: fewer value boxes; boilers and fresh water modules keep theirs and wrap into a second row
+        shown = shown.slice(0, b.type === "boiler" ? 4 : b.type === "fwm" ? 3 : Math.max(1, Math.floor(colW / 110)));
         const ghostUnit = ((EDIT_ROLES[b.type] || []).find((r) => r[0] === ghost) || [])[3] === "temp" ? " °C" : "";
         const vals = (ghost ? `<div class="pill ghost" data-hint="${esc(this._roleLabel(b.type, ghost))}: ${this._t("not_selected")}">?${ghostUnit}</div>` : "")
           + shown.map((e) => `<div class="pill" data-e="${e}"></div>`).join("");
@@ -1291,7 +1293,7 @@
       let v = st.state;
       const num = Number(v);
       if (v !== "" && !Number.isNaN(num)) {
-        const digits = unit === "bar" ? 2 : 0;
+        const digits = unit === "bar" ? 2 : unit === "l/min" ? 1 : 0;
         v = num.toLocaleString(this._hass.locale ? this._hass.locale.language : undefined, {
           maximumFractionDigits: digits, minimumFractionDigits: digits,
         });
@@ -1716,6 +1718,7 @@
       const dom = e.split(".")[0];
       if (kind === "temp") return unit === "°C" || unit === "K";
       if (kind === "bar") return unit === "bar";
+      if (kind === "flow") return ["l/min", "l/h", "m³/h"].includes(unit);
       if (kind === "level") return ["kg", "%", "t"].includes(unit);
       if (kind === "switch") return dom === "switch";
       if (kind === "text") return dom === "sensor" && !num && !unit;
