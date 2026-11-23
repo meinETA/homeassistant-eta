@@ -425,31 +425,23 @@
   .ash .col{flex:1;min-width:0}.ash .fc{margin-top:6px;font-size:14px;color:#888}
   .ash .bar{height:12px;margin-top:8px;border-radius:6px;background:#3a3a3a;overflow:hidden}
   .ash .tx{min-width:0;white-space:nowrap}.ash .tx b{font-weight:600;color:#fff}.ash .tx span{color:#aaa;margin-left:8px}
-  .p i{position:absolute;will-change:transform}
-  .p.h i{left:-24px;right:-24px;top:2.5px;height:4px;
-    background:repeating-linear-gradient(90deg,transparent 0 12px,var(--dc) 12px 19px,transparent 19px 24px)}
-  .p.v i{top:-24px;bottom:-24px;left:2.5px;width:4px;
-    background:repeating-linear-gradient(180deg,transparent 0 12px,var(--dc) 12px 19px,transparent 19px 24px)}
-  .p.vl{--dc:#ff8a7a}.p.rl{--dc:#7fb2ff}
-  .on .p.h i{animation:mx .9s linear infinite}.on .p.v i{animation:my .9s linear infinite}
-  .on .p.rev i{animation-direction:reverse}
-  .off .p i{display:none}.off .p{opacity:.65}
-  .p.pe{background:#4a4a4a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);--dc:#ffc400}
-  .p.pe.h i{background:radial-gradient(circle at 3px 2px,#ffc400 0 2.2px,transparent 2.6px) 0 0/8px 4px repeat-x}
-  .p.pe.v i{background:radial-gradient(circle at 2px 3px,#ffc400 0 2.2px,transparent 2.6px) 0 0/4px 8px repeat-y}
-  .on .p.pe.h i{animation:mx .6s linear infinite}.on .p.pe.v i{animation:my .6s linear infinite}
-  .on .p.pe.rev i{animation-direction:reverse}
+  .p.pe{background:#4a4a4a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
   .p.air{background:#3f4850;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
-  .p.air.h i{background:radial-gradient(circle at 3px 2px,#9fd8ff 0 1.8px,transparent 2.2px) 0 0/8px 4px repeat-x}
-  .p.air.v i{background:radial-gradient(circle at 2px 3px,#9fd8ff 0 1.8px,transparent 2.2px) 0 0/4px 8px repeat-y}
-  .on .p.air.h i{animation:mx .6s linear infinite}.on .p.air.v i{animation:my .6s linear infinite}
-  .on .p.air.rev i{animation-direction:reverse}
+  .off .p{opacity:.65}
+  /* moving dashes: one path per pipe run, so they follow the bends */
+  .fl{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
+  .fl.vl{z-index:3}.fl.rl{z-index:1}
+  .fl path{fill:none;stroke-width:4;stroke-dasharray:7 17;stroke-linejoin:round}
+  .fl.vl path{stroke:#ff8a7a}.fl.rl path{stroke:#7fb2ff}
+  .fl.pe path,.fl.air path{stroke-linecap:round;stroke-dasharray:0 8}
+  .fl.pe path{stroke:#ffc400;stroke-width:4.4}.fl.air path{stroke:#9fd8ff;stroke-width:3.6}
+  .on .fl path{animation:fd .9s linear infinite}.on .fl.pe path,.on .fl.air path{animation-duration:.6s}
+  .off .fl{display:none}
   .band{position:absolute;height:16px;border-radius:4px;overflow:hidden;background:#3a3a3a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
   .band i{position:absolute;left:-20px;right:-20px;top:0;bottom:0;will-change:transform;
     background:repeating-linear-gradient(45deg,#ffc400 0 9px,#2a2400 9px 14px)}
   .on .band i{animation:mb 1.2s linear infinite}.off .band i{display:none}
-  @keyframes mx{to{transform:translateX(24px)}}
-  @keyframes my{to{transform:translateY(24px)}}
+  @keyframes fd{to{stroke-dashoffset:-24}}
   @keyframes mb{to{transform:translateX(19.8px)}}
   .blk{position:absolute;z-index:4;top:64px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
   .vals{display:flex;align-items:flex-end;gap:8px;padding-bottom:14px}
@@ -1057,17 +1049,18 @@
       const seg = (x1, y1, x2, y2, cls) => {
         const hz = y1 === y2;
         segs.push({ cls, hz, x1: Math.min(x1, x2), x2: Math.max(x1, x2), y1: Math.min(y1, y2), y2: Math.max(y1, y2) });
-        const rev = hz ? x2 < x1 : y2 < y1;
         const l = Math.min(x1, x2) - T / 2;
         const t = Math.min(y1, y2) - T / 2;
         const w = hz ? Math.abs(x2 - x1) + T : T;
         const h = hz ? T : Math.abs(y2 - y1) + T;
-        return `<div class="p ${cls} ${hz ? "h" : "v"}${rev ? " rev" : ""}" style="left:${l}px;top:${t}px;width:${w}px;height:${h}px"><i></i></div>`;
+        return `<div class="p ${cls} ${hz ? "h" : "v"}" style="left:${l}px;top:${t}px;width:${w}px;height:${h}px"></div>`;
       };
       const line = (pts, cls) => {
         let out = "";
         for (let i = 1; i < pts.length; i++) out += seg(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], cls);
-        return out;
+        // dashes run along the whole line in flow direction, around the bends
+        const d = pts.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join("");
+        return `${out}<svg class="fl ${cls}"><path d="${d}"/></svg>`;
       };
       const group = (key, inner) => `<div class="g" data-flow="${key}">${inner}</div>`;
       let s = "";
