@@ -70,6 +70,7 @@ from .panel import (
 from .services import async_setup_services
 from .topology import async_ensure_fast_label, async_sync_card_label
 from .utils.instance_uuid import create_new_instance_uuid
+from .utils.raw_data import async_remove_raw_data, async_start_raw_data_collection
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -343,6 +344,8 @@ async def async_setup_entry(
             async_run_background_discovery(hass, entry, config),
             name=f"{DOMAIN} endpoint discovery {entry.entry_id}",
         )
+    else:
+        await async_start_raw_data_collection(hass, entry, config)
 
     return True
 
@@ -575,8 +578,9 @@ async def async_unload_entry(
 async def async_remove_entry(
     hass: core.HomeAssistant, entry: config_entries.ConfigEntry
 ) -> None:
-    """Forget the sidebar settings of a deleted entry."""
+    """Forget the sidebar settings and the raw API data of a deleted entry."""
     async_forget_entry(hass, entry.entry_id)
+    await async_remove_raw_data(hass, entry.entry_id)
     persistent_notification.async_dismiss(
         hass, discovery_notification_id(entry.entry_id)
     )

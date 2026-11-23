@@ -284,5 +284,13 @@
                 }
             }
         }
+    },
+    "exceptions": {
+        "raw_data_title": {
+            "message": "ETA: API data collected"
+        },
+        "raw_data_finished": {
+            "message": "The raw API data of {name} was collected ({count} responses) and stored in Home Assistant."
+        }
     }
 }

@@ -89,6 +89,16 @@ class APIClient:
         data = await self.get_menu()
         return data["eta"]["menu"]["fub"]
 
+    def extract_uris(self, menu: dict) -> list[str]:
+        """Return all unique URIs of a parsed menu, in the order of the menu.
+
+        :param menu: Menu as returned by get_menu()
+        :return: List of URIs, including the URIs of the fubs
+        """
+        uri_dict: dict[str, list[str]] = {}
+        self._evaluate_xml_dict(menu["eta"]["menu"]["fub"], uri_dict)
+        return list(dict.fromkeys(uri for uris in uri_dict.values() for uri in uris))
+
     async def get_sensors_dict(self):
         """Get flattened sensor dictionary with URIs."""
         raw_dict = await self._get_raw_sensor_dict()

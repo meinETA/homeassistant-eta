@@ -2496,3 +2496,112 @@ async def test_get_all_sensors_v12_non_writable_custom_unit_nodes():
     assert CUSTOM_UNIT_MINUTES_SINCE_MIDNIGHT in units_in_text_dict, (
         "MINUTES_SINCE_MIDNIGHT sensor should be detected and placed in text_dict"
     )
+
+
+def _raw_response(text: str):
+    response = AsyncMock()
+    response.text = AsyncMock(return_value=text)
+    return response
+
+
+@pytest.mark.asyncio
+async def test_get_all_raw_responses_matches_fixture(load_fixture):
+    """All fixture endpoints are requested and returned with their raw text."""
+    api_endpoint_data = load_fixture("api_endpoint_data.json")
+    api = EtaAPI(AsyncMock(spec=ClientSession), "192.168.0.25", 8080)
+    requested: list[str] = []
+
+    async def mock_get_request(suffix):
+        requested.append(suffix)
+        if suffix == "/user/api":
+            return _raw_response('<eta><api version="1.2"/></eta>')
+        return _raw_response(api_endpoint_data[suffix])
+
+    api._http.get_request = mock_get_request
+    progress: list[float | None] = []
+
+    result = await api.get_all_raw_responses(
+        progress_callback=lambda _msg, value: progress.append(value)
+    )
+
+    assert result.pop("/user/api") == '<eta><api version="1.2"/></eta>'
+    assert result == api_endpoint_data
+    assert len(requested) == len(set(requested))
+    assert progress[-1] == 1.0
+    assert len(progress) <= 11
+
+
+@pytest.mark.asyncio
+async def test_get_all_raw_responses_skips_failed_requests(load_fixture):
+    """Failed endpoint requests are skipped; the rest is still returned."""
+    api_endpoint_data = load_fixture("api_endpoint_data.json")
+    failing = next(key for key in api_endpoint_data if key.startswith("/user/var/"))
+    api = EtaAPI(AsyncMock(spec=ClientSession), "192.168.0.25", 8080)
+
+    async def mock_get_request(suffix):
+        if suffix in (failing, "/user/api"):
+            raise ClientError("boom")
+        return _raw_response(api_endpoint_data[suffix])
+
+    api._http.get_request = mock_get_request
+
+    result = await api.get_all_raw_responses()
+
+    assert failing not in result
+    assert "/user/api" not in result
+    assert len(result) == len(api_endpoint_data) - 1
+
+
+@pytest.mark.asyncio
+async def test_get_all_raw_responses_menu_failure_propagates():
+    """Without the menu nothing can be collected."""
+    api = EtaAPI(AsyncMock(spec=ClientSession), "192.168.0.25", 8080)
+    api._http.get_request = AsyncMock(side_effect=ClientError("boom"))
+
+    with pytest.raises(ClientError):
+        await api.get_all_raw_responses()
+
+
+@pytest.mark.asyncio
+async def test_get_all_raw_responses_cancel_cancels_all_requests(load_fixture):
+    """Cancelling the collection cancels all running and queued requests."""
+    api_endpoint_data = load_fixture("api_endpoint_data.json")
+    api = EtaAPI(
+        AsyncMock(spec=ClientSession),
+        "192.168.0.25",
+        8080,
+        request_semaphore=asyncio.Semaphore(2),
+    )
+    sent: list[str] = []
+    cancelled: list[str] = []
+    blocker = asyncio.Event()
+
+    async def mock_session_get(url):
+        suffix = url.removeprefix("http://192.168.0.25:8080")
+        if suffix in ("/user/menu", "/user/api"):
+            return _raw_response(api_endpoint_data.get(suffix, "<eta/>"))
+        sent.append(suffix)
+        try:
+            await blocker.wait()
+        except asyncio.CancelledError:
+            cancelled.append(suffix)
+            raise
+        return _raw_response("")
+
+    api._http._session.get = mock_session_get
+
+    task = asyncio.create_task(api.get_all_raw_responses())
+    while len(sent) < 2:
+        await asyncio.sleep(0)
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    # Only the two requests allowed by the semaphore were ever sent; both were
+    # cancelled, and the queued ones never reached the session.
+    assert len(sent) == 2
+    assert sorted(cancelled) == sorted(sent)
+    for _ in range(5):
+        await asyncio.sleep(0)
+    assert len(sent) == 2
