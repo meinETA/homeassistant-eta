@@ -181,6 +181,9 @@
                     "seasonal": "Vorjahr (saisonal)",
                     "average": "Ø 14 Tage"
                 }
+            },
+            "instance_uuid": {
+                "name": "UUID der Instanz"
             }
         }
     },

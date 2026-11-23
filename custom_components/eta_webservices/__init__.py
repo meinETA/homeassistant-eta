@@ -34,6 +34,7 @@ from .const import (
     FAST_UPDATE_COORDINATOR,
     FLOAT_DICT,
     FORCE_LEGACY_MODE,
+    INSTANCE_UUID,
     MAX_PARALLEL_REQUESTS,
     PENDING_DICT,
     PENDING_UPDATE_COORDINATOR,
@@ -68,6 +69,7 @@ from .panel import (
 )
 from .services import async_setup_services
 from .topology import async_ensure_fast_label, async_sync_card_label
+from .utils.instance_uuid import create_new_instance_uuid
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -482,6 +484,9 @@ async def async_migrate_entry(  # noqa: C901, D103
             )
             assigned.add(new_unique_id)
 
+    def migrate_to_v10(new_data: dict[str, Any]):
+        new_data.setdefault(INSTANCE_UUID, create_new_instance_uuid())
+
     def _get_current_data():
         current_data = config_entry.data.copy()
         if config_entry.options:
@@ -524,6 +529,10 @@ async def async_migrate_entry(  # noqa: C901, D103
     if current_version == 8:
         migrate_to_v9(new_data)
         current_version = 9
+        is_migrated = True
+    if current_version == 9:
+        migrate_to_v10(new_data)
+        current_version = 10
         is_migrated = True
     if is_migrated:
         hass.config_entries.async_update_entry(

@@ -45,6 +45,7 @@ from .const import (
 from .coordinator import ETAErrorUpdateCoordinator, ETASensorUpdateCoordinator
 from .entity import EtaCoordinatedSensorEntity, EtaErrorEntity
 from .utils import get_native_unit
+from .utils.instance_uuid import EtaInstanceUUIDSensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -189,6 +190,8 @@ async def async_setup_entry(
             [*chosen_float_sensors, *chosen_text_sensors, *chosen_writable_sensors],
         )
     )
+    # add Instance UUID sensor
+    sensors.extend([EtaInstanceUUIDSensor(config, hass)])
     # Final safety net: avoid HA startup failures if config data still contains
     # the same unique_id in multiple sensor categories.
     sensors = _deduplicate_entities_by_unique_id(sensors)

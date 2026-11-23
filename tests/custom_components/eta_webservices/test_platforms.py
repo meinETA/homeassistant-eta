@@ -137,8 +137,8 @@ async def test_all_writable_sensors_handled(hass: HomeAssistant, load_fixture):
         await binary_sensor_async_setup_entry(hass, config_entry, add_entities)
 
     # Every writable sensor produces exactly one entity across all platforms,
-    # plus 2 error sensors from sensor.py and 1 EtaErrorSensor from binary_sensor.py.
-    assert len(all_entities) == len(chosen_writable_sensors) + 3
+    # plus 2 error sensors from sensor.py, 1 EtaErrorSensor from binary_sensor.py and 1 EtaInstanceUUIDSensor from instance_uuid.py.
+    assert len(all_entities) == len(chosen_writable_sensors) + 4
 
 
 @pytest.mark.asyncio
@@ -210,9 +210,9 @@ async def test_all_non_writable_sensors_handled(hass: HomeAssistant, load_fixtur
         await binary_sensor_async_setup_entry(hass, config_entry, add_entities)
 
     # Every non-writable sensor produces exactly one entity across all platforms,
-    # plus 2 error sensors from sensor.py and 1 EtaErrorSensor from binary_sensor.py.
+    # plus 2 error sensors from sensor.py, 1 EtaErrorSensor from binary_sensor.py and 1 EtaInstanceUUIDSensor from instance_uuid.py.
     assert len(all_entities) == (
-        len(chosen_float_sensors) + len(chosen_text_sensors) + len(chosen_switches) + 3
+        len(chosen_float_sensors) + len(chosen_text_sensors) + len(chosen_switches) + 4
     )
 
 
@@ -302,7 +302,7 @@ async def test_all_writable_and_non_writable_sensors_handled(
         await binary_sensor_async_setup_entry(hass, config_entry, add_entities)
 
     assert len(all_entities) == (
-        len(float_dict) + len(text_dict) + len(writable_dict) + len(switch_dict) + 3
+        len(float_dict) + len(text_dict) + len(writable_dict) + len(switch_dict) + 4
     )
 
 
@@ -361,5 +361,5 @@ async def test_sensor_platform_skips_duplicate_unique_ids(
 
     unique_ids = [entity.unique_id for entity in all_entities if entity.unique_id]
     assert len(unique_ids) == len(set(unique_ids))
-    # 1 deduplicated regular sensor + 2 always-present error sensors
-    assert len(all_entities) == 3
+    # 1 deduplicated regular sensor + 2 always-present error sensors + 1 always-present instance UUID sensor
+    assert len(all_entities) == 4

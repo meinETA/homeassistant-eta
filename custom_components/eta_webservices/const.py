@@ -23,6 +23,8 @@ FORCE_LEGACY_MODE = "force_legacy_mode"
 ENABLE_DEBUG_LOGGING = "enable_debug_logging"
 AUTO_SELECT_ALL_ENTITIES = "auto_select_all_entities"
 BACKGROUND_DISCOVERY = "background_discovery"
+INSTANCE_UUID = "instance_uuid"
+
 
 OPTIONS_UPDATE_ACTION = "options_update_action"
 OPTIONS_ACTION_PARALLEL_ONLY = "update_parallel_requests"

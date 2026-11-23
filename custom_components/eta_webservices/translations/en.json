@@ -181,6 +181,9 @@
                     "seasonal": "Last year (seasonal)",
                     "average": "14-day average"
                 }
+            },
+            "instance_uuid": {
+                "name": "Instance UUID"
             }
         }
     },
