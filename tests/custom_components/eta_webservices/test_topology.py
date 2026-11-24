@@ -609,7 +609,7 @@ def test_unselected_roles_mark_found_but_not_selected_values():
 
 
 def test_esh_burner_and_switch_valve():
-    """eSH 10921, burner 10281 and switch valve 10651 are detected (#40)."""
+    """Detect eSH 10921, burner 10281 and switch valve 10651 (#40)."""
     rows = [
         (f"eta_{STABLE}_272_10921_0_0_12161", "sensor.esh_temp", None),
         (f"eta_{STABLE}_272_10921_0_0_12000", "sensor.esh_status", None),
