@@ -634,3 +634,13 @@ def test_esh_burner_and_switch_valve():
         "source_1": "sensor.uv_source_1",
         "source_2": "sensor.uv_source_2",
     }
+
+
+def test_buffer_hot_water_zone():
+    """Combi tank: hot water temperature of the buffer's hot water zone (#42)."""
+    rows = [
+        (f"eta_{STABLE}_120_10601_0_11327_0", "sensor.pu_top", None),
+        (f"eta_{STABLE}_120_10601_0_0_13434", "sensor.pu_hot_water", None),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    assert blocks[0].roles["hot_water"] == "sensor.pu_hot_water"

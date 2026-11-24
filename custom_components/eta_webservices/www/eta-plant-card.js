@@ -275,7 +275,7 @@
     silo: ["stock"],
     chip_store: ["discharge"],
     boiler: ["temperature", "hopper", "pressure", "oxygen"],
-    buffer: ["charge"],
+    buffer: ["hot_water", "charge"],
     heating_circuit: ["flow"],
     fwm: ["hot_water", "flow", "primary_flow"],
     dhw: ["temperature"],
@@ -319,7 +319,8 @@
     silo: [["stock", "Vorrat", "Stock", "level"], ["status", "Status", "Status", "text"], ["auger", "Förderung", "Conveyor", "onoff"]],
     chip_store: [["auger", "Förderung", "Conveyor", "onoff"], ["discharge", "Austragung", "Discharge", "onoff"]],
     buffer: [["top", "Oben", "Top", "temp"], ["middle", "Mitte", "Middle", "temp"], ["bottom", "Unten", "Bottom", "temp"],
-      ["charge", "Ladezustand", "Charge", "level"], ["status", "Status", "Status", "text"]],
+      ["hot_water", "Warmwasser", "Hot water", "temp"], ["charge", "Ladezustand", "Charge", "level"],
+      ["status", "Status", "Status", "text"]],
     heating_circuit: [["flow", "Vorlauftemperatur", "Flow temperature", "temp"], ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"],
       ["heat", "Taste Heizen", "Heat button", "switch"], ["lower", "Taste Absenken", "Setback button", "switch"],
@@ -593,6 +594,12 @@
       return lang.startsWith("de") ? "de" : "en";
     }
 
+    // entity with a real value (not missing, unknown or "xxx")
+    _valid(entityId) {
+      const st = entityId && this._hass && this._hass.states[entityId];
+      return !!st && !["unknown", "unavailable", "", "---", "xxx"].includes(String(st.state));
+    }
+
     _t(key) {
       const lang = this._lang();
       return (LABELS[lang.startsWith("de") ? "de" : "en"] || LABELS.en)[key] || key;
@@ -626,6 +633,8 @@
       this._geo = blocks.map((b, i) => {
         let [file, iw, aspect] = ICONS[b.type] || ICONS.unknown;
         if (DEFAULT_BY_OBJECT[b.object]) [file, aspect] = DEFAULT_BY_OBJECT[b.object];
+        // buffer whose hot water zone has a sensor (not "xxx") and no own hot water tank: combi tank
+        if (b.type === "buffer" && this._valid(b.roles.hot_water) && !blocks.some((x) => ["dhw", "fwm"].includes(x.type))) [file, aspect] = ["FUBs/PufferFlex/Kombi.webp", 300 / 300];
         const pick = webp((this._config.icons || {})[b.id]);
         const choice = pick && (ICON_CHOICES[b.type] || []).find((c) => c[1] === pick);
         if (pick) { file = pick; aspect = choice ? choice[2] : aspect; }
@@ -668,7 +677,8 @@
         const inner = numbered.length ? numbered : ["top", "middle", "bottom"].filter((r) => b.roles[r]);
         const hasInner = b.type === "buffer" && inner.length > 0;
         // main value found on the terminal but not selected in the integration: placeholder with a hint
-        const main = (TOP_VALUES[b.type] || [])[0];
+        // the buffer's hot water zone often has no sensor: no hint for it, only for the charge
+        const main = b.type === "buffer" ? "charge" : (TOP_VALUES[b.type] || [])[0];
         const ghost = main && !b.roles[main] && (b.unselected || {})[main] ? main : null;
         if (!shown.length && !hasInner && !ghost) shown = this._autoValues(b); // no known roles: pick measurements
         if (b.type === "silo" && plant.silo_days) shown.push(plant.silo_days); // forecast: pellets last approx. n days
