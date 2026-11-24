@@ -207,6 +207,8 @@
     // other heat source controlled by the ETA (oil / gas burner, heat pump, ...)
     "10281": ["Kessel/Brenner/Brenner_ein.webp", 540 / 440],
   };
+  // tap of the combi tank (x, y fractions of the image): its hot water value stands above
+  const TAP = { "FUBs/PufferFlex/Kombi.webp": [0.84, 0.1] };
   // heating circuit pictures with an "off" variant (…_aus.webp)
   const HK_OFF = /^FUBs\/Heizkreise\/(Radiator|FBH)_ein\.webp$/;
   // SH-TWIN: the pellet unit (key) is built onto the wood boiler (value). ETA controls them as two
@@ -461,6 +463,7 @@
   .stack{height:${FLOOR - 64}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
   .icon{display:flex;align-items:flex-end;position:relative}
   .icon img{display:block;position:relative}
+  .tapv{position:absolute;transform:translateX(-50%);margin-bottom:26px;z-index:4}
   .shadow{position:absolute;left:8%;right:8%;bottom:-12px;height:26px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(0,0,0,.7),transparent 70%)}
   .cv{contain:layout paint}
   .name{font-size:22px;font-weight:600;margin-top:40px;text-align:center;max-width:300px}
@@ -684,12 +687,17 @@
         if (b.type === "silo" && plant.silo_days) shown.push(plant.silo_days); // forecast: pellets last approx. n days
         // narrow columns: fewer value boxes; boilers and fresh water modules keep theirs and wrap into a second row
         shown = shown.slice(0, b.type === "boiler" ? 4 : b.type === "fwm" ? 3 : Math.max(1, Math.floor(colW / 110)));
+        // combi tank: the hot water temperature stands over the tap, not in the row above
+        const tapAt = TAP[g.file];
+        const tapE = b.type === "buffer" && tapAt && b.roles.hot_water;
+        if (tapE) shown = shown.filter((e) => e !== b.roles.hot_water);
         const ghostUnit = ((EDIT_ROLES[b.type] || []).find((r) => r[0] === ghost) || [])[3] === "temp" ? " °C" : "";
         const vals = (ghost ? `<div class="pill ghost" data-hint="${esc(this._roleLabel(b.type, ghost))}: ${this._t("not_selected")}">?${ghostUnit}</div>` : "")
           + shown.map((e) => `<div class="pill" data-e="${e}"></div>`).join("");
         const tank = b.type === "buffer"
           ? `<div class="tank${inner.length > 4 ? " many" : ""}" style="left:${g.body[0] * 100}%;right:${(1 - g.body[1]) * 100}%">${inner
               .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("")}</div>`
+            + (tapE ? `<div class="tapv" style="left:${tapAt[0] * 100}%;bottom:${(1 - tapAt[1]) * 100}%"><div class="pill" data-e="${b.roles.hot_water}"></div></div>` : "")
           : "";
         // values, name and status stand over the tank body
         const mv = g.shift ? ` style="transform:translateX(${g.shift}px)"` : "";
