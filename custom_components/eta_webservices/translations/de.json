@@ -137,6 +137,9 @@
         "button": {
             "send_error_events_btn": {
                 "name": "Fehler-Ereignisse neu senden"
+            },
+            "store_api_responses_btn": {
+                "name": "Roh-API-Daten anfordern"
             }
         },
         "binary_sensor": {
@@ -291,6 +294,9 @@
         },
         "raw_data_finished": {
             "message": "Die Roh-API-Daten von {name} wurden gesammelt ({count} Antworten) und in Home Assistant gespeichert."
+        },
+        "raw_data_already_running": {
+            "message": "Die Roh-API-Daten von {name} werden bereits gesammelt. Bitte warte, bis die Sammlung abgeschlossen ist."
         }
     }
 }

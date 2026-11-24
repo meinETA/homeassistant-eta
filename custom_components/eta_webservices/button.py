@@ -12,6 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN, ERROR_UPDATE_COORDINATOR, STABLE_ID
 from .coordinator import ETAErrorUpdateCoordinator
 from .utils import create_device_info
+from .utils.raw_data import async_start_raw_data_collection
 
 
 async def async_setup_entry(
@@ -25,13 +26,14 @@ async def async_setup_entry(
 
     buttons = [
         EtaResendErrorEventsButton(config, hass, error_coordinator),
+        EtaStoreApiResponsesButton(config, hass, config_entry),
     ]
 
     async_add_entities(buttons)
 
 
 class EtaResendErrorEventsButton(ButtonEntity):
-    """Representation of a Button."""
+    """Representation of a Button, which can be used to force HA to resend all error events."""
 
     _attr_has_entity_name = True
     _attr_should_poll = False
@@ -59,3 +61,42 @@ class EtaResendErrorEventsButton(ButtonEntity):
         # Delete the old error list to force the coordinator to resend all events
         self.coordinator.data = []
         await self.coordinator.async_refresh()
+
+
+class EtaStoreApiResponsesButton(ButtonEntity):
+    """Representation of a Button, which can be used to rerun the background task to fetch the ETA API raw responses."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(  # noqa: D107
+        self,
+        config: dict,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+    ) -> None:
+        host = config.get(CONF_HOST, "")
+        port = config.get(CONF_PORT, "")
+
+        self._attr_translation_key = "store_api_responses_btn"
+        stable = config.get(STABLE_ID) or host.replace(".", "_")
+        self._attr_unique_id = (
+            "eta_" + stable + "_" + str(port) + "_store_api_responses_btn"
+        )
+        self.entity_id = generate_entity_id(
+            ENTITY_ID_FORMAT, self._attr_unique_id, hass=hass
+        )
+        self._attr_device_info = create_device_info(
+            host, port, None, config.get(CONF_NAME)
+        )
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_entity_registry_enabled_default = False
+
+        self._config_entry = config_entry
+        self._config = config
+
+    async def async_press(self) -> None:
+        """Start the raw data collection background task again."""
+        await async_start_raw_data_collection(
+            self.hass, self._config_entry, self._config, force=True
+        )

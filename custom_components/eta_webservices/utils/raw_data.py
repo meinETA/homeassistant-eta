@@ -1,7 +1,9 @@
 """Collect the raw responses of all ETA API endpoints once per config entry.
 
-The responses are stored in the Home Assistant store (one file per entry) and
-have the same format as the test fixture tests/fixtures/api_endpoint_data.json.
+The data is stored in the Home Assistant store (one file per entry) as
+{"version": 1, "instance_uuid": ..., "collected_at": ..., "responses": {...}}.
+"responses" has the same format as the test fixture
+tests/fixtures/api_endpoint_data.json.
 """
 
 from __future__ import annotations
@@ -14,15 +16,25 @@ from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 
 from ..api import EtaAPI  # noqa: TID252
 from ..const import DOMAIN, INSTANCE_UUID  # noqa: TID252
 
 STORAGE_VERSION = 1
-RAW_DATA_MAX_PARALLEL_REQUESTS = 4
+# Version of the layout of the stored dict.
+RAW_DATA_VERSION = 1
+# we use a separate SEMAPHORE to limit the requests, because using the shared one from the config
+# would cause the coordinators to fail with a timeout error
+RAW_DATA_MAX_PARALLEL_REQUESTS = 2
+
+# hass.data key of the running collection tasks, by config entry id.
+# this must be a global key in case of multiple config entries
+_TASKS_KEY = f"{DOMAIN}_raw_data_tasks"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,6 +50,10 @@ _FALLBACK_TEXTS = {
 
 def _store(hass: HomeAssistant, entry_id: str) -> Store[dict[str, Any]]:
     return Store(hass, STORAGE_VERSION, f"{DOMAIN}.raw_eta_data_{entry_id}")
+
+
+def _running_tasks(hass: HomeAssistant) -> dict[str, asyncio.Task[None]]:
+    return hass.data.setdefault(_TASKS_KEY, {})
 
 
 def raw_data_notification_id(entry_id: str) -> str:
@@ -58,20 +74,42 @@ def _text(texts: dict[str, str], key: str, **placeholders: Any) -> str:
 
 
 async def async_start_raw_data_collection(
-    hass: HomeAssistant, entry: ConfigEntry, config: dict[str, Any]
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    config: dict[str, Any],
+    force: bool = False,
 ) -> None:
-    """Start collecting the raw API data if it was not stored for this entry yet."""
-    if not config.get(INSTANCE_UUID):
+    """Start collecting the raw API data if it was not stored for this entry yet.
+
+    :param force: Collect the data again and overwrite the stored data
+    :raises HomeAssistantError: If force is set and a collection is already running
+    """
+    tasks = _running_tasks(hass)
+    running = tasks.get(entry.entry_id)
+    if running is not None and not running.done():
+        if force:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="raw_data_already_running",
+                translation_placeholders={"name": entry.title},
+            )
         return
-    if await _store(hass, entry.entry_id).async_load() is not None:
+    if not force and await _store(hass, entry.entry_id).async_load() is not None:
         return
     # Cancelled by Home Assistant when the entry is unloaded; nothing is stored
     # then, so the collection runs again on the next setup.
-    entry.async_create_background_task(
+    task = entry.async_create_background_task(
         hass,
         _async_collect_raw_data(hass, entry, config),
         f"{DOMAIN}_raw_data_{entry.entry_id}",
     )
+    tasks[entry.entry_id] = task
+
+    def _forget_task(finished: asyncio.Task[None]) -> None:
+        if tasks.get(entry.entry_id) is finished:
+            del tasks[entry.entry_id]
+
+    task.add_done_callback(_forget_task)
 
 
 async def async_remove_raw_data(hass: HomeAssistant, entry_id: str) -> None:
@@ -100,7 +138,7 @@ async def _async_collect_raw_data(
 
     _LOGGER.info("Starting raw API data collection for %s", name)
     try:
-        responses: dict[str, Any] = await eta_client.get_all_raw_responses(
+        responses = await eta_client.get_all_raw_responses(
             progress_callback=_on_progress
         )
     except asyncio.CancelledError:
@@ -117,8 +155,15 @@ async def _async_collect_raw_data(
         return
 
     count = len(responses)
-    responses[INSTANCE_UUID] = config[INSTANCE_UUID]
-    await _store(hass, entry.entry_id).async_save(responses)
+    await _store(hass, entry.entry_id).async_save(
+        {
+            "version": RAW_DATA_VERSION,
+            # A missing UUID is stored empty instead of skipping the collection.
+            INSTANCE_UUID: config.get(INSTANCE_UUID) or "",
+            "collected_at": dt_util.utcnow().isoformat(),
+            "responses": responses,
+        }
+    )
     _LOGGER.info(
         "Raw API data collection for %s finished: %d responses stored", name, count
     )
