@@ -4,7 +4,7 @@
   const H = 860;
   const FLOOR = 610;
   // bump when icon files change, so browsers do not keep stale images
-  const ICON_REV = "2026-11-23a";
+  const ICON_REV = "2026-11-24a";
 
   // type -> [icon file, icon width on the 1600px canvas, aspect w/h]
   const ICONS = {
@@ -203,6 +203,7 @@
     // SH-TWIN: log wood boiler (10391) with pellet unit (10401)
     "10391": ["Kessel/SH/SH_neu.webp", 780 / 980],
     "10401": ["Kessel/TWIN/SH_TWIN_neu.webp", 1020 / 920],
+    "10921": ["Kessel/eSH/FUB_eSH_BE-P3.webp", 904 / 900],
     // other heat source controlled by the ETA (oil / gas burner, heat pump, ...)
     "10281": ["Kessel/Brenner/Brenner_ein.webp", 540 / 440],
   };
@@ -227,11 +228,13 @@
   const SIDE_ICONS = {
     particle_separator: { off: "Kessel/EP_Abscheider/EP.webp", on: "Kessel/EP_Abscheider/EP_aktiv.webp" },
     condenser: { off: "Kessel/Brennwert_WT/Brennwert_WT.webp", on: "Kessel/Brennwert_WT/Brennwert_WT.webp" },
+    switch_valve: { off: "FUBs/Umschaltventil/Umschaltventil.webp", on: "FUBs/Umschaltventil/Umschaltventil.webp" },
   };
   const LABELS = {
     de: {
       silo: "Silo", chip_store: "Hackgutlager", boiler: "Kessel", buffer: "Puffer", heating_circuit: "Heizkreis",
-      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider", condenser: "Brennwertwärmetauscher",
+      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider", condenser: "Brennwertwärmetauscher", switch_valve: "Umschaltventil",
+      source_1: "Erzeuger 1", source_2: "Erzeuger 2",
       external_demand: "Ext. Anforderung", external_heat: "Fremdwärme",
       no_blocks: "Keine Anlagenteile erkannt. Wähle in den Integrationsoptionen die Entitäten von Kessel, Heizkreis usw. aus oder melde deine Anlage über das Zahnrad.", outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
       heat: "Heizen", lower: "Absenken", auto: "Zeitautomatik", ask_off: "wirklich ausschalten?",
@@ -249,7 +252,8 @@
     },
     en: {
       silo: "Storage", chip_store: "Chip store", boiler: "Boiler", buffer: "Buffer", heating_circuit: "Heating circuit",
-      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator", condenser: "Condensing heat exchanger",
+      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator", condenser: "Condensing heat exchanger", switch_valve: "Switch valve",
+      source_1: "Source 1", source_2: "Source 2",
       external_demand: "Ext. demand", external_heat: "External heat",
       no_blocks: "No plant parts detected. Select the boiler, heating circuit, ... entities in the integration options or report your plant via the gear.", outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
       heat: "Heat", lower: "Setback", auto: "Time program", ask_off: "really switch off?",
@@ -333,6 +337,8 @@
     external_demand: [["status", "Status", "Status", "text"]],
     particle_separator: [["status", "Status", "Status", "text"]],
     condenser: [["status", "Status", "Status", "text"], ["return", "Rücklauf", "Return", "temp"]],
+    switch_valve: [["status", "Status", "Status", "text"], ["source_1", "Erzeuger 1", "Source 1", "temp"],
+      ["source_2", "Erzeuger 2", "Source 2", "temp"]],
     unknown: [["temperature", "Temperatur", "Temperature", "temp"], ["status", "Status", "Status", "text"]],
   };
   // block types a user can add by hand
@@ -495,6 +501,7 @@
   .md i{font-style:normal;line-height:0}
   .md.act{color:#ffc400;border-color:#ffc400;background:#2b2610}
   .tile .vrow{display:flex;gap:10px;margin-top:14px}
+  .tile .src{display:flex;flex-direction:column;align-items:flex-start;gap:4px}.tile .src span{font-size:13px;color:#aaa}
   .tile .pill{font-size:22px}
   .busy{opacity:.5;pointer-events:none}
   .ts{position:relative;margin-top:18px;height:46px;cursor:pointer}
@@ -804,10 +811,13 @@
       const epHtml = side.map((b) => {
         const st = b.roles.status || this._guessStatus(b);
         const ret = b.roles.return ? `<div class="vrow"><div class="pill" data-e="${b.roles.return}"></div></div>` : "";
+        // switch valve: temperature of both heat sources, with their names
+        const src = ["source_1", "source_2"].filter((r) => b.roles[r]).map((r) =>
+          `<div class="src"><span>${this._t(r)}</span><div class="pill" data-e="${b.roles[r]}"></div></div>`).join("");
         return `<div class="tile" data-tile="${b.id}"><div class="th">
           <img src="${iconSrc(SIDE_ICONS[b.type].off)}" data-ep="${st || ""}" data-side="${b.type}">
           <div class="tx"><div class="tn">${this._name(b)}</div>${st ? `<div class="chip" data-chip="${st}"></div>` : ""}</div>
-        </div>${ret}</div>`;
+        </div>${ret}${src ? `<div class="vrow">${src}</div>` : ""}</div>`;
       }).join("");
       if (!tiles.length && epHtml) return `<div class="tiles">${epHtml}</div>`;
       if (!tiles.length) {
@@ -839,7 +849,7 @@
           return `<button class="md" data-mode="${r}" data-md="${target(r)}"${also}><i>${ic}</i>${this._t(r)}</button>`;
         }).join("");
         return `<div class="tile" data-tile="${b.id}">
-          <div class="th">${geo[b.id] ? `<img src="${iconSrc(geo[b.id].file)}">`
+          <div class="th">${geo[b.id] ? `<img${/^Kessel\/Brenner\/.*_ein\.webp$/.test(geo[b.id].file) ? ` data-onoff="${geo[b.id].file}"` : ""} src="${iconSrc(geo[b.id].file)}">`
             : DEFAULT_BY_OBJECT[b.object] ? `<img src="${iconSrc(DEFAULT_BY_OBJECT[b.object][0])}">` : ""}
             <div class="tx"><div class="tn">${name}</div>${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}</div>
             ${b.roles.switch ? `<div class="tg" data-sw="${b.roles.switch}" data-n="${name}">0<b></b>I</div>` : ""}
@@ -1504,7 +1514,8 @@
       // other heat sources: flame / coloured fan only while running, same test as their lines
       root.querySelectorAll("img[data-onoff]").forEach((img) => {
         const on = img.dataset.onoff;
-        const b = this._blocks.find((x) => x.id === img.closest(".blk").dataset.b);
+        const host = img.closest(".blk, [data-tile]");
+        const b = this._blocks.find((x) => x.id === (host.dataset.b || host.dataset.tile));
         const file = active(b) ? on : on.replace(/_ein\.webp$/, "_aus.webp");
         if (!img.src.includes(file)) img.src = iconSrc(file);
       });

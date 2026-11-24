@@ -222,7 +222,7 @@ def test_roles_json_is_consistent() -> None:
         assert len(addresses) == len(set(addresses)), block_type
         for address, role in pairs:
             assert re.fullmatch(r"\d+/\d+/\d+", address), address
-            assert re.fullmatch(r"[a-z_]+", role), role
+            assert re.fullmatch(r"[a-z][a-z0-9_]*", role), role
 
 
 def test_manual_report_has_addresses_only() -> None:
@@ -606,3 +606,31 @@ def test_unselected_roles_mark_found_but_not_selected_values():
     )
     assert blocks[0].unselected == {"flow": "0/11060/0"}
     assert blocks[0].as_dict()["unselected"] == {"flow": "0/11060/0"}
+
+
+def test_esh_burner_and_switch_valve():
+    """eSH 10921, burner 10281 and switch valve 10651 are detected (#40)."""
+    rows = [
+        (f"eta_{STABLE}_272_10921_0_0_12161", "sensor.esh_temp", None),
+        (f"eta_{STABLE}_272_10921_0_0_12000", "sensor.esh_status", None),
+        (f"eta_{STABLE}_272_10281_0_0_12006", "sensor.burner_requested", None),
+        (f"eta_{STABLE}_272_10281_0_0_12361", "sensor.burner_temp", None),
+        (f"eta_{STABLE}_272_10281_0_0_12289", "sensor.burner_status", None),
+        (f"eta_{STABLE}_272_10651_0_0_12326", "sensor.uv_hysteresis", None),
+        (f"eta_{STABLE}_272_10651_0_0_19447", "sensor.uv_status", None),
+        (f"eta_{STABLE}_272_10651_0_0_13458", "sensor.uv_source_1", None),
+        (f"eta_{STABLE}_272_10651_0_0_13461", "sensor.uv_source_2", None),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    by_object = {b.object: b for b in blocks}
+    assert by_object["10921"].type == "boiler"
+    assert by_object["10921"].roles["temperature"] == "sensor.esh_temp"
+    assert by_object["10281"].type == "external_heat"
+    assert by_object["10281"].roles["temperature"] == "sensor.burner_temp"
+    assert by_object["10281"].roles["status"] == "sensor.burner_status"
+    assert by_object["10651"].type == "switch_valve"
+    assert by_object["10651"].roles == {
+        "status": "sensor.uv_status",
+        "source_1": "sensor.uv_source_1",
+        "source_2": "sensor.uv_source_2",
+    }

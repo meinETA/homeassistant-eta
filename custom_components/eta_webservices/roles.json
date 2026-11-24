@@ -12,12 +12,15 @@
     "10221": "solar",
     "10241": "system",
     "10301": "boiler",
+    "10921": "boiler",
+    "10281": "external_heat",
     "10601": "buffer",
     "10291": "external_heat",
     "10311": "external_demand",
     "10531": "fwm",
     "10571": "particle_separator",
     "10851": "condenser",
+    "10651": "switch_valve",
     "10911": "diagnostics",
     "10961": "pv",
     "1010*": "heating_circuit",
@@ -94,8 +97,11 @@
     ],
     "external_heat": [
       ["0/0/12161", "temperature"],
+      ["0/0/12361", "temperature"],
       ["0/0/12491", "storage"],
-      ["0/11088/0", "pump"]
+      ["0/11088/0", "pump"],
+      ["0/0/12289", "status"],
+      ["0/0/12080", "switch"]
     ],
     "fwm": [
       ["0/11148/0", "hot_water"],
@@ -114,6 +120,11 @@
       ["0/0/19457", "status"],
       ["0/0/12731", "status"],
       ["0/11160/0", "return"]
+    ],
+    "switch_valve": [
+      ["0/0/19447", "status"],
+      ["0/0/13458", "source_1"],
+      ["0/0/13461", "source_2"]
     ],
     "system": [
       ["0/11127/0", "outside"],
