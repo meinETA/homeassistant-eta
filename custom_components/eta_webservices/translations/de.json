@@ -300,6 +300,9 @@
         },
         "raw_data_already_running": {
             "message": "Die Roh-API-Daten von {name} werden bereits gesammelt. Bitte warte, bis die Sammlung abgeschlossen ist."
+        },
+        "upload_not_ready": {
+            "message": "Ein Upload ist noch nicht möglich. Bitte warte ein paar Minuten und versuche es nochmal. Falls das Problem weiterhin besteht, versuche Home Assistant neu zu starten."
         }
     }
 }

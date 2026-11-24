@@ -165,8 +165,8 @@ async def _async_collect_raw_data(
     await _store(hass, entry.entry_id).async_save(
         {
             "version": RAW_DATA_VERSION,
-            # A missing UUID is stored empty instead of skipping the collection.
-            INSTANCE_UUID: config.get(INSTANCE_UUID) or "",
+            # A missing UUID is stored empty instead of skipping the collection. This should never happen.
+            "instance_uuid": config.get(INSTANCE_UUID) or "",
             "collected_at": dt_util.utcnow().isoformat(),
             "responses": responses,
         }

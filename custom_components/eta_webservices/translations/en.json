@@ -300,6 +300,9 @@
         },
         "raw_data_already_running": {
             "message": "The raw API data of {name} is already being collected. Please wait until it is finished."
+        },
+        "upload_not_ready": {
+            "message": "Upload is not yet ready. Please wait a few minutes and try again. If this issue persists, please try restarting Home Assistant."
         }
     }
 }
