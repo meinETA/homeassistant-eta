@@ -40,10 +40,12 @@ _LOGGER = logging.getLogger(__name__)
 
 # Used if a translation is missing (the keys live in the "exceptions" category).
 _FALLBACK_TEXTS = {
-    "raw_data_title": "ETA: API data collected",
+    "raw_data_title": "ETA: Upload Plant Data",
     "raw_data_finished": (
-        "The raw API data of {name} was collected ({count} responses) and "
-        "stored in Home Assistant."
+        "You can help further development of this integration by uploading your anonymized plant data for debugging purposes. "
+        "Please click the button in the general ETA device ('ETA {name} > Upload Plant Data').\n\n"
+        "This step is completely optional and no personal information is ever transmitted. "
+        "You can download the integration diagnostic data to check what would be transmitted."
     ),
 }
 
@@ -117,6 +119,11 @@ async def async_remove_raw_data(hass: HomeAssistant, entry_id: str) -> None:
     await _store(hass, entry_id).async_remove()
 
 
+async def async_get_raw_data(hass: HomeAssistant, entry: ConfigEntry) -> dict | None:
+    """Load the stored raw API data and return them."""
+    return await _store(hass, entry.entry_id).async_load()
+
+
 async def _async_collect_raw_data(
     hass: HomeAssistant, entry: ConfigEntry, config: dict[str, Any]
 ) -> None:
@@ -170,7 +177,7 @@ async def _async_collect_raw_data(
 
     persistent_notification.async_create(
         hass,
-        _text(texts, "raw_data_finished", name=name, count=count),
+        _text(texts, "raw_data_finished", name=name),
         title=_text(texts, "raw_data_title"),
         notification_id=raw_data_notification_id(entry.entry_id),
     )

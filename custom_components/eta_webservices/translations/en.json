@@ -139,7 +139,10 @@
                 "name": "Resend Error Events"
             },
             "store_api_responses_btn": {
-                "name": "Fetch raw API data"
+                "name": "Fetch Raw API Data"
+            },
+            "upload_plant_data_btn" : {
+                "name": "Upload Plant Data"
             }
         },
         "binary_sensor": {
@@ -290,10 +293,10 @@
     },
     "exceptions": {
         "raw_data_title": {
-            "message": "ETA: API data collected"
+            "message": "ETA: Upload Plant Data"
         },
         "raw_data_finished": {
-            "message": "The raw API data of {name} was collected ({count} responses) and stored in Home Assistant."
+            "message": "You can help further development of this integration by uploading your anonymized plant data for debugging purposes. Please click the button in the general ETA device ('ETA {name} > Upload Plant Data').\n\nThis step is completely optional and no personal information is ever transmitted. You can download the integration diagnostic data to check what would be transmitted."
         },
         "raw_data_already_running": {
             "message": "The raw API data of {name} is already being collected. Please wait until it is finished."

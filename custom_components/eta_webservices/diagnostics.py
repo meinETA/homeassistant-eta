@@ -21,6 +21,7 @@ from .const import (
 from .plant_file import async_terminal_info
 from .seal import seal
 from .topology import async_get_report, async_get_topology
+from .utils.raw_data import async_get_raw_data
 
 # the terminal address and anything that could identify the owner
 TO_REDACT = {CONF_HOST, "username", "password", "token", REQUEST_SEMAPHORE}
@@ -69,6 +70,7 @@ async def async_get_config_entry_diagnostics(
         # same content as the plant file of the card (report, every endpoint),
         # encrypted for the maintainers like the card's file (diagnostics end up in public issues)
         "plant_file": await _sealed(hass, plant_file),
+        "raw_responses": await async_get_raw_data(hass, entry),
     }
 
 

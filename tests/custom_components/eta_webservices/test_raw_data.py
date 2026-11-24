@@ -154,9 +154,7 @@ def _patched_collection(store, get_all_raw_responses):
     """
     api = Mock()
     api.get_all_raw_responses = get_all_raw_responses
-    texts = {
-        f"component.{DOMAIN}.exceptions.raw_data_finished.message": "{name}: {count}"
-    }
+    texts = {f"component.{DOMAIN}.exceptions.raw_data_finished.message": "Done: {name}"}
     with (
         patch.object(raw_data, "_store", return_value=store),
         patch.object(raw_data, "EtaAPI", return_value=api) as eta_api,
@@ -200,8 +198,10 @@ async def test_collect_stores_responses_and_notifies():
     )
     notification.assert_called_once_with(
         hass,
-        "ETA Boiler: 2",
-        title=raw_data._FALLBACK_TEXTS["raw_data_title"],
+        # The texts themselves may change; only check that the translation is
+        # used and that the title falls back when it is not translated.
+        "Done: ETA Boiler",
+        title=raw_data._text({}, "raw_data_title"),
         notification_id=f"{DOMAIN}_raw_data_entry1",
     )
 
@@ -234,8 +234,8 @@ async def test_collect_cancel_stores_nothing():
 def test_broken_translation_falls_back():
     """A translation with unknown placeholders uses the fallback text."""
     texts = {f"component.{DOMAIN}.exceptions.raw_data_finished.message": "{oops}"}
-    assert raw_data._text(texts, "raw_data_finished", name="X", count=3) == (
-        raw_data._FALLBACK_TEXTS["raw_data_finished"].format(name="X", count=3)
+    assert raw_data._text(texts, "raw_data_finished", name="X") == (
+        raw_data._FALLBACK_TEXTS["raw_data_finished"].format(name="X")
     )
 
 

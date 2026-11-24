@@ -140,6 +140,9 @@
             },
             "store_api_responses_btn": {
                 "name": "Roh-API-Daten anfordern"
+            },
+            "upload_plant_data_btn" : {
+                "name": "Anlagendaten hochladen"
             }
         },
         "binary_sensor": {
@@ -290,10 +293,10 @@
     },
     "exceptions": {
         "raw_data_title": {
-            "message": "ETA: API-Daten gesammelt"
+            "message": "ETA: Anlagendaten hochladen"
         },
         "raw_data_finished": {
-            "message": "Die Roh-API-Daten von {name} wurden gesammelt ({count} Antworten) und in Home Assistant gespeichert."
+            "message": "Du kannst der Entwicklung dieser Integration helfen, indem du die anonymisierten Anlagendaten hochlädst. Bitte drücke dazu den Button im allgemeinen ETA Gerät ('ETA {name} > Anlagendaten hochladen').\n\nDieser Schritt ist komplett optional und es werden keine persönlichen Daten übertragen. Du kannst dir die Daten ansehen, indem du die Diagnosedaten der Integration herunterlädst."
         },
         "raw_data_already_running": {
             "message": "Die Roh-API-Daten von {name} werden bereits gesammelt. Bitte warte, bis die Sammlung abgeschlossen ist."
