@@ -69,6 +69,7 @@ from .panel import (
 )
 from .services import async_setup_services
 from .topology import async_ensure_fast_label, async_sync_card_label
+from .upload import async_remove_upload_info
 from .utils.instance_uuid import create_new_instance_uuid
 from .utils.raw_data import async_remove_raw_data, async_start_raw_data_collection
 
@@ -579,9 +580,10 @@ async def async_unload_entry(
 async def async_remove_entry(
     hass: core.HomeAssistant, entry: config_entries.ConfigEntry
 ) -> None:
-    """Forget the sidebar settings and the raw API data of a deleted entry."""
+    """Forget the sidebar settings, the raw API data and the upload token of a deleted entry."""
     async_forget_entry(hass, entry.entry_id)
     await async_remove_raw_data(hass, entry.entry_id)
+    await async_remove_upload_info(hass, entry.entry_id)
     persistent_notification.async_dismiss(
         hass, discovery_notification_id(entry.entry_id)
     )

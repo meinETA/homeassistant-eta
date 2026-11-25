@@ -12,8 +12,9 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, ERROR_UPDATE_COORDINATOR, STABLE_ID
+from .const import DOMAIN, ERROR_UPDATE_COORDINATOR, INSTANCE_UUID, STABLE_ID
 from .coordinator import ETAErrorUpdateCoordinator
+from .upload import async_notify_uploaded, async_upload_plant_file
 from .utils import create_device_info
 from .utils.raw_data import async_get_raw_data, async_start_raw_data_collection
 
@@ -141,10 +142,10 @@ class EtaUploadPlantDataButton(ButtonEntity):
 
     async def async_press(self) -> None:
         """Upload the plant data to the backend."""
-        raw_responses = await async_get_raw_data(self.hass, self._config_entry)
+        data = await async_get_raw_data(self.hass, self._config_entry)
 
-        if raw_responses is None or raw_responses.get("instance_uuid", "") == "":
-            if raw_responses is not None:
+        if data is None or data.get(INSTANCE_UUID, "") == "":
+            if data is not None:
                 _LOGGER.error("Instance UUID in raw data is empty")
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
@@ -152,6 +153,7 @@ class EtaUploadPlantDataButton(ButtonEntity):
                 translation_placeholders={"name": self._config_entry.title},
             )
 
-        # TODO get data, seal(?), hash, upload
-        # TODO what to upload?
-        # probably config (found + chosen sensors, settings), eta_version, topology, plant_file (minus terminal_info), raw_responses
+        result = await async_upload_plant_file(self.hass, self._config_entry, data)
+        await async_notify_uploaded(
+            self.hass, self._config_entry, str(data[INSTANCE_UUID]), result
+        )
