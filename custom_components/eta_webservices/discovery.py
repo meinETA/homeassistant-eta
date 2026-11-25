@@ -93,7 +93,7 @@ def _text(texts: dict[str, str], key: str, **placeholders: Any) -> str:
     )
     try:
         return template.format(**placeholders)
-    except KeyError, IndexError, ValueError:
+    except (KeyError, IndexError, ValueError):
         # A broken translation must never stop the discovery.
         return _FALLBACK_TEXTS[key].format(**placeholders)
 
