@@ -2,8 +2,9 @@
 
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
+from xml.parsers.expat import ExpatError
 
-from aiohttp import ClientSession
+from aiohttp import ClientError, ClientSession
 import pytest
 
 from custom_components.eta_webservices.const import (
@@ -32,6 +33,7 @@ from custom_components.eta_webservices.coordinator import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -562,3 +564,23 @@ async def test_error_coordinator_proceeds_when_no_pause_set(
     await coordinator._async_update_data()
 
     coordinator._create_eta_client.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(ExpatError("no element found"), id="empty 503 body"),
+        pytest.param(ClientError("connection refused"), id="unreachable"),
+    ],
+)
+async def test_error_coordinator_unreachable_terminal_fails_cleanly(
+    mock_hass, mock_client_session, error
+):
+    """An unreachable terminal or an empty answer is an UpdateFailed, not a crash."""
+    coordinator = _make_error_coordinator(mock_hass)
+    coordinator._create_eta_client.return_value.get_errors = AsyncMock(
+        side_effect=error
+    )
+
+    with pytest.raises(UpdateFailed, match="not reachable"):
+        await coordinator._async_update_data()

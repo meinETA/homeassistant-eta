@@ -7,12 +7,15 @@ from datetime import timedelta
 import logging
 import time
 from typing import Any
+from xml.parsers.expat import ExpatError
+
+from aiohttp import ClientError
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import EtaAPI, ETAEndpoint, ETAError
 from .const import (
@@ -132,10 +135,15 @@ class ETAErrorUpdateCoordinator(DataUpdateCoordinator[list[ETAError]]):
 
         eta_client = self._create_eta_client()
 
-        async with timeout(REQUEST_TIMEOUT):
-            errors = await eta_client.get_errors()
-            self._handle_error_events(errors)
-            return errors
+        try:
+            async with timeout(REQUEST_TIMEOUT):
+                errors = await eta_client.get_errors()
+        except (ClientError, ExpatError, KeyError, TimeoutError) as err:
+            # unreachable or an empty/invalid answer (e.g. 503 while the
+            # terminal restarts): HA logs this once, not a traceback per poll
+            raise UpdateFailed(f"ETA terminal not reachable: {err!r}") from err
+        self._handle_error_events(errors)
+        return errors
 
 
 class ETASensorUpdateCoordinator(DataUpdateCoordinator[dict[str, float | str | bool]]):
