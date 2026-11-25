@@ -17,6 +17,9 @@ def create_device_info(
     identifier = f"eta_{host.replace('.', '_')}_{port}" + (
         f"_{fub_name}" if fub_name else ""
     )
+    # "ETA" as install name would repeat the prefix ("ETA > ETA > Kessel")
+    if install_name and install_name.strip().lower() == "eta":
+        install_name = None
     parts = " > ".join(p for p in (install_name, fub_name) if p)
     eta_device_name = f"ETA > {parts}" if parts else "ETA"
 
