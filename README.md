@@ -36,7 +36,7 @@ Your ETA plant on a dashboard, like on the touch display: detected automatically
 
 ## Features
 
-- **Automatic discovery** of every available endpoint on your ETA unit — with live values shown during setup so you can pick the ones you want.
+- **Automatic discovery** of every available endpoint on your ETA unit — in the background after setup, or with live values in the setup dialog so you can pick the ones you want.
 - **Sensors** for all numeric values (temperatures, pressures, power, flow, counters, …).
 - **State sensors** for text states (e.g. `Ready`, `Heating`).
 - **Switches** for on/off parameters, detected language-independently.
@@ -47,6 +47,7 @@ Your ETA plant on a dashboard, like on the touch display: detected automatically
 - **Stable entity identities**: entity ids stay stable across firmware updates, terminal language changes and IP changes.
 - **Analytics**: ash box fill level, pellet consumption per day and forecasts for ash box and pellet store ([details](#analytics)).
 - **Energy Dashboard** ready ([details](#integrating-the-eta-unit-into-the-energy-dashboard)).
+- **Plant data upload**: send the data of your unit encrypted to the maintainers with one button, so support for more ETA systems can be added ([details](#plant-data-upload)).
 
 ## Plant Card
 
@@ -246,17 +247,20 @@ Then add the new sensor to the gas sources of your Energy Dashboard.
 
 ## Plant Data Upload
 
-After the setup, the integration reads all endpoints of the ETA unit once and stores the answers. Pressing **Upload Plant Data** on the ETA device sends them to the maintainers, so support for more ETA systems can be built and tested. This is optional; nothing is sent without pressing the button.
+After the setup, the integration reads all endpoints of the ETA unit once and stores the answers (the complete raw data of the unit). Pressing **Upload Plant Data** sends them to the maintainers, so support for more ETA systems can be built and tested. This is optional; nothing is sent without pressing the button.
 
-- The data is encrypted before it leaves Home Assistant; only the maintainers can read it. It contains the menu, units and current values of the unit, the integration and Home Assistant version, but no IP address and no names you gave in Home Assistant.
-- The diagnostics (Settings → Devices & services → ETA Heating → ⋮ → Download diagnostics) contain the same data unencrypted, so you can check what is sent.
-- To have uploaded data deleted, open an issue with the instance UUID and the deletion code. Both are shown in Settings → Devices & services → ETA Heating → Configure → Plant data upload.
+- **Where:** Settings → Devices & services → ETA Heating → the ETA device → **Diagnostic** → **Upload Plant Data**. A notification confirms the upload.
+- **What:** the menu, units and current values of the unit, the integration and Home Assistant version; no IP address and no names you gave in Home Assistant. It is encrypted before it leaves Home Assistant, only the maintainers can read it.
+- **Check it:** the diagnostics (Settings → Devices & services → ETA Heating → ⋮ → Download diagnostics) contain the same data unencrypted.
+- **Instance UUID and deletion code:** Settings → Devices & services → ETA Heating → Configure → Plant data upload. The UUID identifies your upload in an issue; keep the deletion code to yourself.
+- **Report a problem:** after the upload, open a [plant card issue](https://github.com/meinETA/homeassistant-eta/issues/new?template=plant-card.yml) (or use **Open GitHub issue** in the card settings, which fills in the UUID). Issues are public: never attach the diagnostics.
+- **Delete:** to have uploaded data deleted, open an issue with the instance UUID and the deletion code.
 
 ## Troubleshooting
 
 Enable verbose logs in the setup dialog (where you enter host and port) to log all communication. After setup, download them at `Settings → System → Logs → Download Full Log`.
 
-If entities are missing or wrong, press **Upload Plant Data** on the ETA device and put the instance UUID into the issue, instead of attaching the diagnostics: issues are public, the upload is encrypted. To read the raw API answers again (e.g. after a firmware update), enable and press **Fetch Raw API Data** on the ETA device.
+If entities are missing or wrong, [upload the plant data](#plant-data-upload) and put the instance UUID into the issue instead of attaching the diagnostics: issues are public, the upload is encrypted. To read the raw API answers again (e.g. after a firmware update), enable and press **Fetch Raw API Data** on the ETA device, then upload again.
 
 > Logs can be large and may contain data from other integrations. Trim the file before sharing it publicly.
 
