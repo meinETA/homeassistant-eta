@@ -5,13 +5,16 @@ Home Assistant; only a SHA-256 of the plaintext travels next to it, so the
 server can skip a file it already has. A small proof of work (ALTCHA) protects
 the server against floods.
 
+Besides the raw API answers, the sealed file carries the config entry (selected
+entities, options; without the terminal address and the name the user gave), so
+problems with the setup can be reproduced, and the short deletion code.
+
 Every config entry gets a random upload token on its first upload. The server
 binds it to the instance UUID, so nobody else can overwrite the plant data of
-this instance. Next to it, each entry has a short deletion code: it travels
-sealed with every upload, and a user who asks for the deletion of the data names
-it (shown in the options), so the maintainers can check the request.
-Both are kept in their own store, not in the config entry (changing the entry
-would reload the integration), and never in the diagnostics.
+this instance. The deletion code is shown in the options; a user who asks for
+the deletion of the data names it, so the maintainers can check the request.
+Token and code are kept in their own store, not in the config entry (changing
+the entry would reload the integration), and never in the diagnostics.
 """
 
 from __future__ import annotations
@@ -28,7 +31,7 @@ from aiohttp import ClientError, ClientTimeout
 
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import __version__ as HA_VERSION
+from homeassistant.const import CONF_HOST, CONF_NAME, __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
@@ -37,7 +40,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, INSTANCE_UUID
+from .const import DOMAIN, INSTANCE_UUID, RENAME_PENDING_FROM, STABLE_ID
 from .seal import seal
 from .utils.raw_data import async_get_raw_data
 
@@ -53,12 +56,28 @@ _RUNNING_KEY = f"{DOMAIN}_uploads_running"
 # deletion code: easy to read out, no 0/O or 1/I/L
 _CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 _CODE_LENGTH = 6
+# left out of the uploaded config: the terminal address and the name the user gave
+_CONFIG_SKIP = {CONF_HOST, CONF_NAME, STABLE_ID, RENAME_PENDING_FROM}
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def _store(hass: HomeAssistant, entry_id: str) -> Store[dict[str, Any]]:
     return Store(hass, STORAGE_VERSION, f"{DOMAIN}.upload_{entry_id}")
+
+
+def _entry_config(entry: ConfigEntry) -> dict[str, Any]:
+    """The config entry like tests/fixtures/v5_config_data.json, without address and name."""
+
+    def clean(values: Any) -> dict[str, Any]:
+        return {k: v for k, v in dict(values).items() if k not in _CONFIG_SKIP}
+
+    return {
+        "version": entry.version,
+        "minor_version": entry.minor_version,
+        "data": clean(entry.data),
+        "options": clean(entry.options),
+    }
 
 
 def _new_code() -> str:
@@ -136,11 +155,12 @@ async def _async_upload(
         info["token"] = secrets.token_urlsafe(32)
         await store.async_save(info)
 
-    # the deletion code goes sealed with the data, only the maintainers see it
+    # deletion code and config go sealed with the data, only the maintainers see them
     plain = json.dumps(
-        {**data, "deletion_code": info["code"]},
+        {**data, "deletion_code": info["code"], "config": _entry_config(entry)},
         ensure_ascii=False,
         separators=(",", ":"),
+        default=str,
     ).encode()
     sealed = await hass.async_add_executor_job(seal, plain)
     integration = await async_get_integration(hass, DOMAIN)

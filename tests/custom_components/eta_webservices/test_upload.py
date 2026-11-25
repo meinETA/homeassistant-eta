@@ -76,6 +76,15 @@ def _entry():
     entry = Mock()
     entry.entry_id = "entry1"
     entry.title = "ETA Boiler"
+    entry.version, entry.minor_version = 10, 1
+    entry.data = {
+        "host": "192.168.0.25",
+        "port": 8080,
+        "name": "Pichler",
+        "stable_id": "pichler",
+        "chosen_float_sensors": ["eta_pichler_112_10021_0_11109_0"],
+    }
+    entry.options = {"update_interval": 60}
     return entry
 
 
@@ -147,7 +156,21 @@ async def test_deletion_code_travels_sealed():
         await upload.async_upload_plant_file(_hass(), _entry(), DATA)
 
     plain = sealed_plain[0]
-    assert json.loads(plain) == {**DATA, "deletion_code": "K7MQ2X"}
+    sent = json.loads(plain)
+    assert sent["deletion_code"] == "K7MQ2X"
+    assert {k: sent[k] for k in DATA} == DATA
+    # the config like v5_config_data.json, without address and user-given name
+    assert sent["config"] == {
+        "version": 10,
+        "minor_version": 1,
+        "data": {
+            "port": 8080,
+            "chosen_float_sensors": ["eta_pichler_112_10021_0_11109_0"],
+        },
+        "options": {"update_interval": 60},
+    }
+    assert b"192.168.0.25" not in plain
+    assert b"Pichler" not in plain
     assert session.posted["sha256"] == hashlib.sha256(plain).hexdigest()
     assert "K7MQ2X" not in json.dumps(session.posted)
 

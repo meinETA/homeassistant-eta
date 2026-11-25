@@ -250,7 +250,7 @@ Then add the new sensor to the gas sources of your Energy Dashboard.
 After the setup, the integration reads all endpoints of the ETA unit once and stores the answers (the complete raw data of the unit). Pressing **Upload Plant Data** sends them to the maintainers, so support for more ETA systems can be built and tested. This is optional; nothing is sent without pressing the button.
 
 - **Where:** Settings → Devices & services → ETA Heating → the ETA device → **Diagnostic** → **Upload Plant Data**. A notification confirms the upload.
-- **What:** the menu, units and current values of the unit, the integration and Home Assistant version; no IP address and no names you gave in Home Assistant. It is encrypted before it leaves Home Assistant, only the maintainers can read it.
+- **What:** the menu, units and current values of the unit, the integration settings (selected entities, options), the integration and Home Assistant version; no IP address and no names you gave in Home Assistant. It is encrypted before it leaves Home Assistant, only the maintainers can read it.
 - **Check it:** the diagnostics (Settings → Devices & services → ETA Heating → ⋮ → Download diagnostics) contain the same data unencrypted.
 - **Instance UUID and deletion code:** Settings → Devices & services → ETA Heating → Configure → Plant data upload. The UUID identifies your upload in an issue; keep the deletion code to yourself.
 - **Report a problem:** after the upload, open a [plant card issue](https://github.com/meinETA/homeassistant-eta/issues/new?template=plant-card.yml) (or use **Open GitHub issue** in the card settings, which fills in the UUID). Issues are public: never attach the diagnostics.
