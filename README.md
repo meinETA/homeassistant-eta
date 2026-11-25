@@ -148,7 +148,7 @@ If the sensors on the ETA unit change (e.g. new hardware is added), you can refr
 - Newer ETA units: `8–15` (if stable)
 - If you see API errors/timeouts, reduce the value step by step.
 
-**Faster updates for single entities:** values on the [plant card](#plant-card) are read every 10 seconds. To read another entity that often too (e.g. the flow rate of the fresh water module), add the label **ETA Fast Update** to it in the entity settings. The integration creates this label automatically. Each labelled entity adds requests to the unit, so use it for a few values only.
+**Faster updates for single entities:** values on the [plant card](#plant-card) are read every 10 seconds. To read another entity that often too (e.g. the flow rate of the fresh water module), add the label **ETA Fast Update** to it in the entity settings. The integration creates this label automatically. Each labelled entity adds requests to the unit, so use it for a few values only. At most 50 values are read this fast (plant card values first); further labelled entities keep the normal update interval and a warning is logged. The integration marks the entities shown on the plant card with the label **ETA Fast Update Card**; filtering the entity list by both labels shows all values that are read this fast.
 
 ## Error Events
 

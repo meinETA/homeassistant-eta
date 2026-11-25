@@ -92,8 +92,12 @@ DEFAULT_FAST_UPDATE_INTERVAL = 10  # seconds, values shown on the plant card
 # entities with this label are polled fast as well (label id = slug of the name)
 FAST_UPDATE_LABEL_ID = "eta_fast_update"
 FAST_UPDATE_LABEL_NAME = "ETA Fast Update"
-# more fast values than this load the terminal noticeably: warn once
-FAST_UPDATE_WARN_COUNT = 50
+# set and removed by the integration on the entities shown on the plant card
+CARD_LABEL_ID = "eta_fast_update_card"
+CARD_LABEL_NAME = "ETA Fast Update Card"
+# at most this many values are polled fast; labelled entities beyond it are
+# left to the regular poll (plant card values always come first)
+FAST_UPDATE_MAX = 50
 COORDINATOR_WARNING_INTERVAL = (
     30 * 60
 )  # seconds between coordinator performance warnings

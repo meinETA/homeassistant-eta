@@ -30,7 +30,7 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     FAST_UPDATE_INTERVAL,
-    FAST_UPDATE_WARN_COUNT,
+    FAST_UPDATE_MAX,
     FLOAT_DICT,
     LAST_COORDINATOR_WARNING_TIMESTAMP,
     MAX_PARALLEL_REQUESTS,
@@ -553,7 +553,16 @@ class ETAFastUpdateCoordinator(DataUpdateCoordinator[int]):
         dict[str, dict[str, bool]],
     ]:
         """Split the card uris by the coordinator that owns them."""
-        fast = async_fast_uris(self.hass, self.entry)
+        fast, dropped = async_fast_uris(self.hass, self.entry)
+        if dropped and not self._warned:
+            self._warned = True
+            _LOGGER.warning(
+                "%d entities with the ETA Fast Update label are not polled fast: "
+                "at most %d values are, to keep the load on the ETA terminal low. "
+                "They keep the regular update interval",
+                dropped,
+                FAST_UPDATE_MAX,
+            )
         sensors: dict[str, dict[str, bool]] = {}
         for uri, force_string_handling in self._sensor.sensor_queries.values():
             if uri in fast:
@@ -609,17 +618,6 @@ class ETAFastUpdateCoordinator(DataUpdateCoordinator[int]):
         sensors, switches, writables = self._queries()
         if not (sensors or switches or writables):
             return 0
-        count = len(sensors) + len(switches) + len(writables)
-        if count > FAST_UPDATE_WARN_COUNT and not self._warned:
-            self._warned = True
-            _LOGGER.warning(
-                "%d values are polled every %s seconds (plant card and the ETA Fast "
-                "Update label). Consider removing the label from some entities to "
-                "reduce load on the ETA terminal",
-                count,
-                self.update_interval.total_seconds() if self.update_interval else "?",
-            )
-
         eta_client = self._create_eta_client()
         sensor_values: dict[str, Any] = {}
         writable_values: dict[str, Any] = {}
