@@ -15,7 +15,6 @@ diagnostics.
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import hashlib
 import json
@@ -152,7 +151,7 @@ async def _async_upload(
             status = resp.status
     except HomeAssistantError:
         raise
-    except (ClientError, TimeoutError, asyncio.TimeoutError, ValueError) as err:
+    except (ClientError, TimeoutError, ValueError) as err:
         _LOGGER.warning("Plant data upload failed: %s", err)
         raise _error("upload_failed") from err
 
