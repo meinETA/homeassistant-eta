@@ -4,7 +4,7 @@
   const H = 860;
   const FLOOR = 610;
   // bump when icon files change, so browsers do not keep stale images
-  const ICON_REV = "2026-11-22c";
+  const ICON_REV = "2026-11-24a";
 
   // type -> [icon file, icon width on the 1600px canvas, aspect w/h]
   const ICONS = {
@@ -203,9 +203,12 @@
     // SH-TWIN: log wood boiler (10391) with pellet unit (10401)
     "10391": ["Kessel/SH/SH_neu.webp", 780 / 980],
     "10401": ["Kessel/TWIN/SH_TWIN_neu.webp", 1020 / 920],
+    "10921": ["Kessel/eSH/FUB_eSH_BE-P3.webp", 904 / 900],
     // other heat source controlled by the ETA (oil / gas burner, heat pump, ...)
     "10281": ["Kessel/Brenner/Brenner_ein.webp", 540 / 440],
   };
+  // tap of the combi tank (x, y fractions of the image): its hot water value stands above
+  const TAP = { "FUBs/PufferFlex/Kombi.webp": [0.84, 0.1] };
   // heating circuit pictures with an "off" variant (…_aus.webp)
   const HK_OFF = /^FUBs\/Heizkreise\/(Radiator|FBH)_ein\.webp$/;
   // SH-TWIN: the pellet unit (key) is built onto the wood boiler (value). ETA controls them as two
@@ -227,11 +230,13 @@
   const SIDE_ICONS = {
     particle_separator: { off: "Kessel/EP_Abscheider/EP.webp", on: "Kessel/EP_Abscheider/EP_aktiv.webp" },
     condenser: { off: "Kessel/Brennwert_WT/Brennwert_WT.webp", on: "Kessel/Brennwert_WT/Brennwert_WT.webp" },
+    switch_valve: { off: "FUBs/Umschaltventil/Umschaltventil.webp", on: "FUBs/Umschaltventil/Umschaltventil.webp" },
   };
   const LABELS = {
     de: {
       silo: "Silo", chip_store: "Hackgutlager", boiler: "Kessel", buffer: "Puffer", heating_circuit: "Heizkreis",
-      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider", condenser: "Brennwertwärmetauscher",
+      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider", condenser: "Brennwertwärmetauscher", switch_valve: "Umschaltventil",
+      source_1: "Erzeuger 1", source_2: "Erzeuger 2",
       external_demand: "Ext. Anforderung", external_heat: "Fremdwärme",
       no_blocks: "Keine Anlagenteile erkannt. Wähle in den Integrationsoptionen die Entitäten von Kessel, Heizkreis usw. aus oder melde deine Anlage über das Zahnrad.", outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
       heat: "Heizen", lower: "Absenken", auto: "Zeitautomatik", ask_off: "wirklich ausschalten?",
@@ -245,11 +250,13 @@
       in_days: (n) => `leeren in ca. ${n} ${n === 1 ? "Tag" : "Tagen"}`,
       in_weeks: (n) => `leeren in ca. ${n} Wochen`, in_months: (n) => `leeren in ca. ${n} Monaten`,
       not_selected: "nicht ausgewählt",
+      lbl_flue_gas: "Abgas", lbl_return: "RL", lbl_room: "Raum",
       hint_selected: "Dieser Wert ist am Terminal vorhanden, aber in der Integration nicht ausgewählt. Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → „Ausgewählte Entitäten aktualisieren“ → Wert auswählen. Soll er nicht angezeigt werden: Zahnrad → Werte manuell zuordnen → „nicht anzeigen“.",
     },
     en: {
       silo: "Storage", chip_store: "Chip store", boiler: "Boiler", buffer: "Buffer", heating_circuit: "Heating circuit",
-      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator", condenser: "Condensing heat exchanger",
+      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator", condenser: "Condensing heat exchanger", switch_valve: "Switch valve",
+      source_1: "Source 1", source_2: "Source 2",
       external_demand: "Ext. demand", external_heat: "External heat",
       no_blocks: "No plant parts detected. Select the boiler, heating circuit, ... entities in the integration options or report your plant via the gear.", outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
       heat: "Heat", lower: "Setback", auto: "Time program", ask_off: "really switch off?",
@@ -263,6 +270,7 @@
       in_days: (n) => `empty in approx. ${n} ${n === 1 ? "day" : "days"}`,
       in_weeks: (n) => `empty in approx. ${n} weeks`, in_months: (n) => `empty in approx. ${n} months`,
       not_selected: "not selected",
+      lbl_flue_gas: "Flue", lbl_return: "Ret", lbl_room: "Room",
       hint_selected: "This value exists on the terminal but is not selected in the integration. Settings → Devices & services → ETA Heating → Configure → \u201cUpdate selected entities\u201d → select the value. To hide it: gear → Assign values manually → \u201cdo not show\u201d.",
     },
   };
@@ -270,14 +278,16 @@
   const TOP_VALUES = {
     silo: ["stock"],
     chip_store: ["discharge"],
-    boiler: ["temperature", "hopper", "pressure", "oxygen"],
-    buffer: ["charge"],
-    heating_circuit: ["flow"],
-    fwm: ["hot_water", "primary_flow"],
+    boiler: ["temperature", "hopper", "pressure", "oxygen", "flue_gas", "return"],
+    buffer: ["hot_water", "charge"],
+    heating_circuit: ["flow", "room", "return"],
+    fwm: ["hot_water", "flow", "primary_flow"],
     dhw: ["temperature"],
     solar: ["collector"],
     external_heat: ["temperature"],
   };
+  // value roles shown with a short label (same unit as the main value)
+  const LABELLED = ["flue_gas", "return", "room"];
   const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "ausgeschaltet", "unavailable", "unknown"];
   const ON = ["ein", "an", "on", "true", "läuft", "running"];
   const CONSUMERS = ["heating_circuit", "external_demand", "fwm", "dhw", "unknown"];
@@ -310,13 +320,16 @@
     plant: [["outside", "Außentemperatur", "Outside temperature", "temp"]],
     boiler: [["temperature", "Kesseltemperatur", "Boiler temperature", "temp"], ["pressure", "Druck", "Pressure", "bar"],
       ["hopper", "Vorratsbehälter", "Hopper", "level"], ["oxygen", "Restsauerstoff", "Residual oxygen", "level"],
+      ["flue_gas", "Abgas", "Flue gas", "temp"], ["return", "Rücklauf", "Return", "temp"],
       ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"]],
     silo: [["stock", "Vorrat", "Stock", "level"], ["status", "Status", "Status", "text"], ["auger", "Förderung", "Conveyor", "onoff"]],
     chip_store: [["auger", "Förderung", "Conveyor", "onoff"], ["discharge", "Austragung", "Discharge", "onoff"]],
     buffer: [["top", "Oben", "Top", "temp"], ["middle", "Mitte", "Middle", "temp"], ["bottom", "Unten", "Bottom", "temp"],
-      ["charge", "Ladezustand", "Charge", "level"], ["status", "Status", "Status", "text"]],
-    heating_circuit: [["flow", "Vorlauftemperatur", "Flow temperature", "temp"], ["status", "Status", "Status", "text"],
+      ["hot_water", "Warmwasser", "Hot water", "temp"], ["charge", "Ladezustand", "Charge", "level"],
+      ["status", "Status", "Status", "text"]],
+    heating_circuit: [["flow", "Vorlauftemperatur", "Flow temperature", "temp"], ["room", "Raumtemperatur", "Room temperature", "temp"],
+      ["return", "Rücklauf", "Return", "temp"], ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"],
       ["heat", "Taste Heizen", "Heat button", "switch"], ["lower", "Taste Absenken", "Setback button", "switch"],
       ["auto", "Taste Zeitautomatik", "Time program button", "switch"]],
@@ -326,12 +339,15 @@
       ["status", "Status", "Status", "text"], ["pump", "Pumpe", "Pump", "onoff"]],
     external_heat: [["temperature", "Temperatur", "Temperature", "temp"], ["storage", "Speicher", "Storage", "temp"],
       ["pump", "Pumpe", "Pump", "onoff"], ["status", "Status", "Status", "text"]],
-    fwm: [["hot_water", "Warmwasser", "Hot water", "temp"], ["primary_flow", "Vorlauf primär", "Primary flow", "temp"],
+    fwm: [["hot_water", "Warmwasser", "Hot water", "temp"], ["flow", "Durchfluss", "Flow rate", "flow"],
+      ["primary_flow", "Vorlauf primär", "Primary flow", "temp"],
       ["primary_return", "Rücklauf primär", "Primary return", "temp"], ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"]],
     external_demand: [["status", "Status", "Status", "text"]],
     particle_separator: [["status", "Status", "Status", "text"]],
     condenser: [["status", "Status", "Status", "text"], ["return", "Rücklauf", "Return", "temp"]],
+    switch_valve: [["status", "Status", "Status", "text"], ["source_1", "Erzeuger 1", "Source 1", "temp"],
+      ["source_2", "Erzeuger 2", "Source 2", "temp"]],
     unknown: [["temperature", "Temperatur", "Temperature", "temp"], ["status", "Status", "Status", "text"]],
   };
   // block types a user can add by hand
@@ -424,42 +440,39 @@
   .ash .col{flex:1;min-width:0}.ash .fc{margin-top:6px;font-size:14px;color:#888}
   .ash .bar{height:12px;margin-top:8px;border-radius:6px;background:#3a3a3a;overflow:hidden}
   .ash .tx{min-width:0;white-space:nowrap}.ash .tx b{font-weight:600;color:#fff}.ash .tx span{color:#aaa;margin-left:8px}
-  .p i{position:absolute;will-change:transform}
-  .p.h i{left:-24px;right:-24px;top:2.5px;height:4px;
-    background:repeating-linear-gradient(90deg,transparent 0 12px,var(--dc) 12px 19px,transparent 19px 24px)}
-  .p.v i{top:-24px;bottom:-24px;left:2.5px;width:4px;
-    background:repeating-linear-gradient(180deg,transparent 0 12px,var(--dc) 12px 19px,transparent 19px 24px)}
-  .p.vl{--dc:#ff8a7a}.p.rl{--dc:#7fb2ff}
-  .on .p.h i{animation:mx .9s linear infinite}.on .p.v i{animation:my .9s linear infinite}
-  .on .p.rev i{animation-direction:reverse}
-  .off .p i{display:none}.off .p{opacity:.65}
-  .p.pe{background:#4a4a4a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);--dc:#ffc400}
-  .p.pe.h i{background:radial-gradient(circle at 3px 2px,#ffc400 0 2.2px,transparent 2.6px) 0 0/8px 4px repeat-x}
-  .p.pe.v i{background:radial-gradient(circle at 2px 3px,#ffc400 0 2.2px,transparent 2.6px) 0 0/4px 8px repeat-y}
-  .on .p.pe.h i{animation:mx .6s linear infinite}.on .p.pe.v i{animation:my .6s linear infinite}
-  .on .p.pe.rev i{animation-direction:reverse}
+  .p.pe{background:#4a4a4a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
   .p.air{background:#3f4850;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
-  .p.air.h i{background:radial-gradient(circle at 3px 2px,#9fd8ff 0 1.8px,transparent 2.2px) 0 0/8px 4px repeat-x}
-  .p.air.v i{background:radial-gradient(circle at 2px 3px,#9fd8ff 0 1.8px,transparent 2.2px) 0 0/4px 8px repeat-y}
-  .on .p.air.h i{animation:mx .6s linear infinite}.on .p.air.v i{animation:my .6s linear infinite}
-  .on .p.air.rev i{animation-direction:reverse}
+  .off .p{opacity:.65}
+  /* moving dashes: one path per pipe run, so they follow the bends */
+  .fl{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
+  .fl.vl{z-index:3}.fl.rl{z-index:1}
+  .fl path{fill:none;stroke-width:4;stroke-dasharray:7 17;stroke-linejoin:round}
+  .fl.vl path{stroke:#ff8a7a}.fl.rl path{stroke:#7fb2ff}
+  .fl.pe path,.fl.air path{stroke-linecap:round;stroke-dasharray:0 8}
+  .fl.pe path{stroke:#ffc400;stroke-width:4.4}.fl.air path{stroke:#9fd8ff;stroke-width:3.6}
+  .on .fl path{animation:fd .9s linear infinite}.on .fl.pe path,.on .fl.air path{animation-duration:.6s}
+  .off .fl{display:none}
   .band{position:absolute;height:16px;border-radius:4px;overflow:hidden;background:#3a3a3a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
   .band i{position:absolute;left:-20px;right:-20px;top:0;bottom:0;will-change:transform;
     background:repeating-linear-gradient(45deg,#ffc400 0 9px,#2a2400 9px 14px)}
   .on .band i{animation:mb 1.2s linear infinite}.off .band i{display:none}
-  @keyframes mx{to{transform:translateX(24px)}}
-  @keyframes my{to{transform:translateY(24px)}}
+  @keyframes fd{from{stroke-dashoffset:var(--o,0px)}to{stroke-dashoffset:calc(var(--o,0px) - 24px)}}
   @keyframes mb{to{transform:translateX(19.8px)}}
   .blk{position:absolute;z-index:4;top:64px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
   .vals{display:flex;align-items:flex-end;gap:8px;padding-bottom:14px}
   .pill.na{display:none}
+  .pill[data-lbl]::before{content:attr(data-lbl);font-size:.6em;color:#aaa;margin-right:5px;vertical-align:middle}
   .pill.ghost{border:1px dashed #888;background:transparent;box-shadow:none;color:#aaa}
   .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
   .t-silo .vals{flex-direction:column;align-items:center;gap:6px}
-  .t-boiler .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
+  .t-boiler .vals,.t-fwm .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
+  /* fresh water module: from the third value on a second row, the first row would reach into the pipes */
+  .vals .br{flex-basis:100%;height:0}
+  .t-fwm .stack{max-width:100%}
   .stack{height:${FLOOR - 64}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
   .icon{display:flex;align-items:flex-end;position:relative}
   .icon img{display:block;position:relative}
+  .tapv{position:absolute;transform:translateX(-50%);margin-bottom:26px;z-index:4}
   .shadow{position:absolute;left:8%;right:8%;bottom:-12px;height:26px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(0,0,0,.7),transparent 70%)}
   .cv{contain:layout paint}
   .name{font-size:22px;font-weight:600;margin-top:40px;text-align:center;max-width:300px}
@@ -501,6 +514,7 @@
   .md i{font-style:normal;line-height:0}
   .md.act{color:#ffc400;border-color:#ffc400;background:#2b2610}
   .tile .vrow{display:flex;gap:10px;margin-top:14px}
+  .tile .src{display:flex;flex-direction:column;align-items:flex-start;gap:4px}.tile .src span{font-size:13px;color:#aaa}
   .tile .pill{font-size:22px}
   .busy{opacity:.5;pointer-events:none}
   .ts{position:relative;margin-top:18px;height:46px;cursor:pointer}
@@ -592,6 +606,12 @@
       return lang.startsWith("de") ? "de" : "en";
     }
 
+    // entity with a real value (not missing, unknown or "xxx")
+    _valid(entityId) {
+      const st = entityId && this._hass && this._hass.states[entityId];
+      return !!st && !["unknown", "unavailable", "", "---", "xxx"].includes(String(st.state));
+    }
+
     _t(key) {
       const lang = this._lang();
       return (LABELS[lang.startsWith("de") ? "de" : "en"] || LABELS.en)[key] || key;
@@ -625,6 +645,8 @@
       this._geo = blocks.map((b, i) => {
         let [file, iw, aspect] = ICONS[b.type] || ICONS.unknown;
         if (DEFAULT_BY_OBJECT[b.object]) [file, aspect] = DEFAULT_BY_OBJECT[b.object];
+        // buffer whose hot water zone has a sensor (not "xxx") and no own hot water tank: combi tank
+        if (b.type === "buffer" && this._valid(b.roles.hot_water) && !blocks.some((x) => ["dhw", "fwm"].includes(x.type))) [file, aspect] = ["FUBs/PufferFlex/Kombi.webp", 300 / 300];
         const pick = webp((this._config.icons || {})[b.id]);
         const choice = pick && (ICON_CHOICES[b.type] || []).find((c) => c[1] === pick);
         if (pick) { file = pick; aspect = choice ? choice[2] : aspect; }
@@ -662,23 +684,32 @@
       for (const g of this._geo) {
         const b = g.b;
         let shown = (TOP_VALUES[b.type] || []).filter((r) => b.roles[r]).map((r) => b.roles[r]);
+        // more temperatures next to the main one: a short label tells them apart
+        const lbl = {};
+        for (const r of LABELLED) if (b.roles[r]) lbl[b.roles[r]] = this._t(`lbl_${r}`);
         // buffer sensors top to bottom: all numbered sensors if present, else top / middle / bottom
         const numbered = Object.keys(b.roles).filter((r) => /^sensor_\d+$/.test(r)).sort((x, y) => +x.slice(7) - +y.slice(7));
         const inner = numbered.length ? numbered : ["top", "middle", "bottom"].filter((r) => b.roles[r]);
         const hasInner = b.type === "buffer" && inner.length > 0;
         // main value found on the terminal but not selected in the integration: placeholder with a hint
-        const main = (TOP_VALUES[b.type] || [])[0];
+        // the buffer's hot water zone often has no sensor: no hint for it, only for the charge
+        const main = b.type === "buffer" ? "charge" : (TOP_VALUES[b.type] || [])[0];
         const ghost = main && !b.roles[main] && (b.unselected || {})[main] ? main : null;
         if (!shown.length && !hasInner && !ghost) shown = this._autoValues(b); // no known roles: pick measurements
         if (b.type === "silo" && plant.silo_days) shown.push(plant.silo_days); // forecast: pellets last approx. n days
-        // narrow columns: fewer value boxes; boilers keep up to four and wrap into a second row
-        shown = shown.slice(0, b.type === "boiler" ? 4 : Math.max(1, Math.floor(colW / 110)));
+        // narrow columns: fewer value boxes; boilers and fresh water modules keep theirs and wrap into a second row
+        shown = shown.slice(0, b.type === "boiler" ? 6 : b.type === "fwm" ? 3 : Math.max(1, Math.floor(colW / 110)));
+        // combi tank: the hot water temperature stands over the tap, not in the row above
+        const tapAt = TAP[g.file];
+        const tapE = b.type === "buffer" && tapAt && b.roles.hot_water;
+        if (tapE) shown = shown.filter((e) => e !== b.roles.hot_water);
         const ghostUnit = ((EDIT_ROLES[b.type] || []).find((r) => r[0] === ghost) || [])[3] === "temp" ? " °C" : "";
         const vals = (ghost ? `<div class="pill ghost" data-hint="${esc(this._roleLabel(b.type, ghost))}: ${this._t("not_selected")}">?${ghostUnit}</div>` : "")
-          + shown.map((e) => `<div class="pill" data-e="${e}"></div>`).join("");
+          + shown.map((e, i) => `${b.type === "fwm" && i === 2 ? '<i class="br"></i>' : ""}<div class="pill" data-e="${e}"${lbl[e] ? ` data-lbl="${esc(lbl[e])}"` : ""}></div>`).join("");
         const tank = b.type === "buffer"
           ? `<div class="tank${inner.length > 4 ? " many" : ""}" style="left:${g.body[0] * 100}%;right:${(1 - g.body[1]) * 100}%">${inner
               .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("")}</div>`
+            + (tapE ? `<div class="tapv" style="left:${tapAt[0] * 100}%;bottom:${(1 - tapAt[1]) * 100}%"><div class="pill" data-e="${b.roles.hot_water}"></div></div>` : "")
           : "";
         // values, name and status stand over the tank body
         const mv = g.shift ? ` style="transform:translateX(${g.shift}px)"` : "";
@@ -810,10 +841,13 @@
       const epHtml = side.map((b) => {
         const st = b.roles.status || this._guessStatus(b);
         const ret = b.roles.return ? `<div class="vrow"><div class="pill" data-e="${b.roles.return}"></div></div>` : "";
+        // switch valve: temperature of both heat sources, with their names
+        const src = ["source_1", "source_2"].filter((r) => b.roles[r]).map((r) =>
+          `<div class="src"><span>${this._t(r)}</span><div class="pill" data-e="${b.roles[r]}"></div></div>`).join("");
         return `<div class="tile" data-tile="${b.id}"><div class="th">
           <img src="${iconSrc(SIDE_ICONS[b.type].off)}" data-ep="${st || ""}" data-side="${b.type}">
           <div class="tx"><div class="tn">${this._name(b)}</div>${st ? `<div class="chip" data-chip="${st}"></div>` : ""}</div>
-        </div>${ret}</div>`;
+        </div>${ret}${src ? `<div class="vrow">${src}</div>` : ""}</div>`;
       }).join("");
       if (!tiles.length && epHtml) return `<div class="tiles">${epHtml}</div>`;
       if (!tiles.length) {
@@ -835,7 +869,7 @@
       return `<div class="tiles">${tiles.map((b) => {
         const name = this._name(b);
         const vals = (TOP_VALUES[b.type] || []).filter((r) => b.roles[r]).slice(0, 2)
-          .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("");
+          .map((r) => `<div class="pill" data-e="${b.roles[r]}"${LABELLED.includes(r) ? ` data-lbl="${esc(this._t(`lbl_${r}`))}"` : ""}></div>`).join("");
         // temporary keys when available: "Heizen" = ETA "Kommen" (until the next setback time),
         // "Absenken" = ETA "Gehen" (until the next heating time)
         const temp = { heat: "come", lower: "go" };
@@ -845,7 +879,7 @@
           return `<button class="md" data-mode="${r}" data-md="${target(r)}"${also}><i>${ic}</i>${this._t(r)}</button>`;
         }).join("");
         return `<div class="tile" data-tile="${b.id}">
-          <div class="th">${geo[b.id] ? `<img src="${iconSrc(geo[b.id].file)}">`
+          <div class="th">${geo[b.id] ? `<img${/^Kessel\/Brenner\/.*_ein\.webp$/.test(geo[b.id].file) ? ` data-onoff="${geo[b.id].file}"` : ""} src="${iconSrc(geo[b.id].file)}">`
             : DEFAULT_BY_OBJECT[b.object] ? `<img src="${iconSrc(DEFAULT_BY_OBJECT[b.object][0])}">` : ""}
             <div class="tx"><div class="tn">${name}</div>${b.roles.status ? `<div class="chip" data-chip="${b.roles.status}"></div>` : ""}</div>
             ${b.roles.switch ? `<div class="tg" data-sw="${b.roles.switch}" data-n="${name}">0<b></b>I</div>` : ""}
@@ -1048,6 +1082,7 @@
       const heats = g.filter((x) => isHeat(x.b, icons));
       const consumers = g.filter((x) => CONSUMERS.includes(x.b.type) && !heats.includes(x));
       const T = 9;
+      const BEND = 5; // radius of the dash curve at pipe bends
       const ys = FLOOR - 300; // supply line height, above the consumers and their values
       const yr = ys + 34; // return runs close below the supply
       const segs = [];
@@ -1055,17 +1090,37 @@
       const seg = (x1, y1, x2, y2, cls) => {
         const hz = y1 === y2;
         segs.push({ cls, hz, x1: Math.min(x1, x2), x2: Math.max(x1, x2), y1: Math.min(y1, y2), y2: Math.max(y1, y2) });
-        const rev = hz ? x2 < x1 : y2 < y1;
         const l = Math.min(x1, x2) - T / 2;
         const t = Math.min(y1, y2) - T / 2;
         const w = hz ? Math.abs(x2 - x1) + T : T;
         const h = hz ? T : Math.abs(y2 - y1) + T;
-        return `<div class="p ${cls} ${hz ? "h" : "v"}${rev ? " rev" : ""}" style="left:${l}px;top:${t}px;width:${w}px;height:${h}px"><i></i></div>`;
+        return `<div class="p ${cls} ${hz ? "h" : "v"}" style="left:${l}px;top:${t}px;width:${w}px;height:${h}px"></div>`;
       };
-      const line = (pts, cls) => {
+      // dash: the path of the moving dashes, may reach a little into the pipe it branches off
+      // phase: {start: g} or {end: g}, the position g on the trunk where the dashes start or end,
+      // so the dash pattern runs on across joints instead of starting anew in every piece
+      const line = (pts, cls, dash = pts, phase = null) => {
         let out = "";
         for (let i = 1; i < pts.length; i++) out += seg(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], cls);
-        return out;
+        pts = dash;
+        // dashes run along the whole line in flow direction, with a small curve at each bend
+        let d = `M${pts[0][0]} ${pts[0][1]}`;
+        let len = 0;
+        for (let i = 1; i < pts.length; i++) {
+          const [x, y] = pts[i];
+          const [px, py] = pts[i - 1];
+          len += Math.hypot(x - px, y - py);
+          const next = pts[i + 1];
+          if (!next) { d += `L${x} ${y}`; break; }
+          const r = Math.min(BEND, Math.hypot(x - px, y - py) / 2, Math.hypot(next[0] - x, next[1] - y) / 2);
+          const ux = Math.sign(x - px), uy = Math.sign(y - py);
+          const vx = Math.sign(next[0] - x), vy = Math.sign(next[1] - y);
+          if (ux !== vx || uy !== vy) len -= 0.38 * r; // the curve is a little shorter than the corner
+          d += `L${x - ux * r} ${y - uy * r}Q${x} ${y} ${x + vx * r} ${y + vy * r}`;
+        }
+        const o = !phase ? 0 : "start" in phase ? phase.start : phase.end - len;
+        const st = o ? ` style="--o:${(((o % 24) + 24) % 24).toFixed(1)}px"` : "";
+        return `${out}<svg class="fl ${cls}"><path d="${d}"${st}/></svg>`;
       };
       const group = (key, inner) => `<div class="g" data-flow="${key}">${inner}</div>`;
       let s = "";
@@ -1227,23 +1282,35 @@
         const ids = (xs) => xs.map((l) => l.id).join(",");
         const all = ids(legs);
         if (legs.length) {
-          if (head.length > 1) s += group(all, line(head, "vl"));
-          if (tail.length > 1) s += group(all, line(tail, "rl"));
+          if (head.length > 1) s += group(all, line(head, "vl", head, { end: head[head.length - 1][0] }));
+          if (tail.length > 1) s += group(all, line(tail, "rl", tail, { start: -tail[0][0] }));
         }
         // supply trunk: from the producer to each riser; a piece carries flow when a consumer behind it runs
         const bySup = [...legs].sort((p, q) => p.xv - q.xv);
+        const lastV = Math.max(...legs.map((l) => l.xv));
+        const lastR = Math.max(...legs.map((l) => l.xr));
         let x = head[head.length - 1][0];
         bySup.forEach((l, i) => {
-          if (l.xv > x) s += group(ids(bySup.slice(i)), line([[x, ys], [l.xv, ys]], "vl"));
+          // the last piece ends in a bend: its dashes stop short and the riser's curve takes over
+          const endV = l.xv === lastV ? l.xv - BEND : l.xv;
+          if (l.xv > x) s += group(ids(bySup.slice(i)), line([[x, ys], [l.xv, ys]], "vl", [[x, ys], [endV, ys]], { start: x }));
           x = Math.max(x, l.xv);
         });
         const byRet = [...legs].sort((p, q) => p.xr - q.xr);
         x = tail[0][0];
         byRet.forEach((l, i) => {
-          if (l.xr > x) s += group(ids(byRet.slice(i)), line([[l.xr, yr], [x, yr]], "rl"));
+          const startR = l.xr === lastR ? l.xr - BEND : l.xr;
+          if (l.xr > x) s += group(ids(byRet.slice(i)), line([[l.xr, yr], [x, yr]], "rl", [[startR, yr], [x, yr]], { start: -startR }));
           x = Math.max(x, l.xr);
         });
-        legs.forEach((l) => { s += group(l.id, line(l.vl, "vl") + line(l.rl, "rl")); });
+        // branch dashes curve out of / into the trunk instead of starting on it
+        const x0 = head[head.length - 1][0];
+        const x1 = tail[0][0];
+        legs.forEach((l) => {
+          const vl = [[l.xv + (l.xv >= x0 ? -BEND : BEND), ys], ...l.vl];
+          const rl = [...l.rl, [l.xr + (l.xr >= x1 ? -BEND : BEND), yr]];
+          s += group(l.id, line(l.vl, "vl", vl, { start: vl[0][0] }) + line(l.rl, "rl", rl, { end: -rl[rl.length - 1][0] }));
+        });
       }
       // supply crossing a return pipe: the supply runs on top, the return gets a gap (bridge)
       const vl = segs.filter((x) => x.cls === "vl");
@@ -1291,7 +1358,7 @@
       let v = st.state;
       const num = Number(v);
       if (v !== "" && !Number.isNaN(num)) {
-        const digits = unit === "bar" ? 2 : 0;
+        const digits = unit === "bar" ? 2 : unit === "l/min" ? 1 : 0;
         v = num.toLocaleString(this._hass.locale ? this._hass.locale.language : undefined, {
           maximumFractionDigits: digits, minimumFractionDigits: digits,
         });
@@ -1477,7 +1544,8 @@
       // other heat sources: flame / coloured fan only while running, same test as their lines
       root.querySelectorAll("img[data-onoff]").forEach((img) => {
         const on = img.dataset.onoff;
-        const b = this._blocks.find((x) => x.id === img.closest(".blk").dataset.b);
+        const host = img.closest(".blk, [data-tile]");
+        const b = this._blocks.find((x) => x.id === (host.dataset.b || host.dataset.tile));
         const file = active(b) ? on : on.replace(/_ein\.webp$/, "_aus.webp");
         if (!img.src.includes(file)) img.src = iconSrc(file);
       });
@@ -1716,6 +1784,7 @@
       const dom = e.split(".")[0];
       if (kind === "temp") return unit === "°C" || unit === "K";
       if (kind === "bar") return unit === "bar";
+      if (kind === "flow") return ["l/min", "l/h", "m³/h"].includes(unit);
       if (kind === "level") return ["kg", "%", "t"].includes(unit);
       if (kind === "switch") return dom === "switch";
       if (kind === "text") return dom === "sensor" && !num && !unit;

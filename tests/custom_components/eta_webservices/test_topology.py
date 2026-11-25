@@ -222,7 +222,7 @@ def test_roles_json_is_consistent() -> None:
         assert len(addresses) == len(set(addresses)), block_type
         for address, role in pairs:
             assert re.fullmatch(r"\d+/\d+/\d+", address), address
-            assert re.fullmatch(r"[a-z_]+", role), role
+            assert re.fullmatch(r"[a-z][a-z0-9_]*", role), role
 
 
 def test_manual_report_has_addresses_only() -> None:
@@ -558,6 +558,24 @@ def test_pe_k_boiler_object_is_a_boiler():
     assert block_type_for_object("10261") == "boiler"
 
 
+def test_every_buffer_and_node_24_boiler_are_detected():
+    """Buffers 2 and 3 use 10252/10253, a boiler can sit on node 24 as 10301 (#37)."""
+    assert block_type_for_object("10251") == "buffer"
+    assert block_type_for_object("10252") == "buffer"
+    assert block_type_for_object("10253") == "buffer"
+    assert block_type_for_object("10301") == "boiler"
+
+
+def test_fwm_flow_rate():
+    """The fresh water module shows its secondary flow rate (#38)."""
+    rows = [
+        (f"eta_{STABLE}_79_10531_0_11148_0", "sensor.fwm_hot_water", None),
+        (f"eta_{STABLE}_79_10531_12785_0_0", "sensor.fwm_flow", None),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    assert blocks[0].roles["flow"] == "sensor.fwm_flow"
+
+
 def test_condenser_status_and_return():
     """Condensing heat exchanger 10851 is its own part with status and return (#25)."""
     rows = [
@@ -588,3 +606,76 @@ def test_unselected_roles_mark_found_but_not_selected_values():
     )
     assert blocks[0].unselected == {"flow": "0/11060/0"}
     assert blocks[0].as_dict()["unselected"] == {"flow": "0/11060/0"}
+
+
+def test_esh_burner_and_switch_valve():
+    """Detect eSH 10921, burner 10281 and switch valve 10651 (#40)."""
+    rows = [
+        (f"eta_{STABLE}_272_10921_0_0_12161", "sensor.esh_temp", None),
+        (f"eta_{STABLE}_272_10921_0_0_12000", "sensor.esh_status", None),
+        (f"eta_{STABLE}_272_10281_0_0_12006", "sensor.burner_requested", None),
+        (f"eta_{STABLE}_272_10281_0_0_12361", "sensor.burner_temp", None),
+        (f"eta_{STABLE}_272_10281_0_0_12289", "sensor.burner_status", None),
+        (f"eta_{STABLE}_272_10651_0_0_12326", "sensor.uv_hysteresis", None),
+        (f"eta_{STABLE}_272_10651_0_0_19447", "sensor.uv_status", None),
+        (f"eta_{STABLE}_272_10651_0_0_13458", "sensor.uv_source_1", None),
+        (f"eta_{STABLE}_272_10651_0_0_13461", "sensor.uv_source_2", None),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    by_object = {b.object: b for b in blocks}
+    assert by_object["10921"].type == "boiler"
+    assert by_object["10921"].roles["temperature"] == "sensor.esh_temp"
+    assert by_object["10281"].type == "external_heat"
+    assert by_object["10281"].roles["temperature"] == "sensor.burner_temp"
+    assert by_object["10281"].roles["status"] == "sensor.burner_status"
+    assert by_object["10651"].type == "switch_valve"
+    assert by_object["10651"].roles == {
+        "status": "sensor.uv_status",
+        "source_1": "sensor.uv_source_1",
+        "source_2": "sensor.uv_source_2",
+    }
+
+
+def test_buffer_hot_water_zone():
+    """Combi tank: hot water temperature of the buffer's hot water zone (#42)."""
+    rows = [
+        (f"eta_{STABLE}_120_10601_0_11327_0", "sensor.pu_top", None),
+        (f"eta_{STABLE}_120_10601_0_0_13434", "sensor.pu_hot_water", None),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    assert blocks[0].roles["hot_water"] == "sensor.pu_hot_water"
+
+
+def test_flue_gas_return_and_room_roles() -> None:
+    """SH20 (#27): flue gas and return at the boiler, room and return at the circuits."""
+    rows = [
+        _row("/48/10391/0/11109/0", "sensor.kessel"),
+        _row("/48/10391/0/0/12162", "sensor.abgas"),
+        _row("/48/10391/0/0/12220", "sensor.kessel_rl"),
+        _row("/120/10101/0/0/12241", "sensor.hk_vl"),
+        _row("/120/10101/0/0/12220", "sensor.hk_rl"),
+        _row("/120/10101/0/0/12634", "sensor.hk_raum"),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    roles = {b.type: b.roles for b in blocks}
+    assert roles["boiler"]["flue_gas"] == "sensor.abgas"
+    assert roles["boiler"]["return"] == "sensor.kessel_rl"
+    assert roles["heating_circuit"]["return"] == "sensor.hk_rl"
+    assert roles["heating_circuit"]["room"] == "sensor.hk_raum"
+
+
+def test_sensor_objects_win_over_parameters() -> None:
+    """With both present, the sensor object (0/11160/0, 0/11110/0, 0/11237/2293) wins."""
+    rows = [
+        _row("/48/10391/0/0/12220", "sensor.rl_param"),
+        _row("/48/10391/0/11160/0", "sensor.rl_sensor"),
+        _row("/48/10391/0/11110/0", "sensor.abgas_sensor"),
+        _row("/48/10391/0/0/12162", "sensor.abgas_param"),
+        _row("/120/10101/0/0/12634", "sensor.raum_param"),
+        _row("/120/10101/0/11237/2293", "sensor.raum_ist"),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    roles = {b.type: b.roles for b in blocks}
+    assert roles["boiler"]["return"] == "sensor.rl_sensor"
+    assert roles["boiler"]["flue_gas"] == "sensor.abgas_sensor"
+    assert roles["heating_circuit"]["room"] == "sensor.raum_ist"
