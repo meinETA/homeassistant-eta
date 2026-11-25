@@ -7,6 +7,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.eta_webservices.const import (
+    CARD_LABEL_ID,
     CHOSEN_FLOAT_SENSORS,
     CHOSEN_SWITCHES,
     CHOSEN_TEXT_SENSORS,
@@ -14,6 +15,7 @@ from custom_components.eta_webservices.const import (
     DOMAIN,
     FAST_UPDATE_LABEL_ID,
     FAST_UPDATE_LABEL_NAME,
+    FAST_UPDATE_MAX,
     FLOAT_DICT,
     READ_LOCK,
     STABLE_ID,
@@ -30,6 +32,7 @@ from custom_components.eta_webservices.topology import (
     Block,
     async_ensure_fast_label,
     async_fast_uris,
+    async_sync_card_label,
     card_entities,
     entity_uris,
 )
@@ -109,7 +112,7 @@ async def _coordinators(config: dict, card: set[str]):
     sensor.async_update_listeners = MagicMock()
     writable.async_update_listeners = MagicMock()
     fast = ETAFastUpdateCoordinator(MagicMock(), config, MagicMock(), sensor, writable)
-    patcher = patch(f"{_MODULE}.async_fast_uris", return_value=card)
+    patcher = patch(f"{_MODULE}.async_fast_uris", return_value=(card, 0))
     patcher.start()
     return sensor, writable, fast, patcher
 
@@ -268,7 +271,7 @@ async def test_fast_label_is_created_once(hass):
 
     label_reg.async_update(FAST_UPDATE_LABEL_ID, name="Schnell")
     async_ensure_fast_label(hass)
-    assert len(label_reg.async_list_labels()) == 1
+    assert len(label_reg.async_list_labels()) == 2
 
     label_reg.async_delete(FAST_UPDATE_LABEL_ID)
     async_ensure_fast_label(hass)
@@ -287,8 +290,91 @@ async def test_labelled_entities_are_polled_fast(hass):
         config_entry=entry,
         suggested_object_id="fwm_durchfluss",
     )
-    assert async_fast_uris(hass, entry) == set()
+    assert async_fast_uris(hass, entry) == (set(), 0)
 
     async_ensure_fast_label(hass)
     ent_reg.async_update_entity(flow.entity_id, labels={FAST_UPDATE_LABEL_ID})
-    assert async_fast_uris(hass, entry) == {"/112/10531/0/0/13000"}
+    assert async_fast_uris(hass, entry) == ({"/112/10531/0/0/13000"}, 0)
+
+
+async def test_labelled_entities_stop_at_the_maximum(hass):
+    """Labelled entities beyond the maximum keep the regular poll."""
+    entry = MockConfigEntry(domain=DOMAIN, data={STABLE_ID: "s1"})
+    entry.add_to_hass(hass)
+    ent_reg = er.async_get(hass)
+    async_ensure_fast_label(hass)
+    for n in range(FAST_UPDATE_MAX + 3):
+        reg = ent_reg.async_get_or_create(
+            "sensor",
+            DOMAIN,
+            f"eta_s1_112_10531_0_0_{13000 + n}",
+            config_entry=entry,
+            suggested_object_id=f"value_{n:03d}",
+        )
+        ent_reg.async_update_entity(reg.entity_id, labels={FAST_UPDATE_LABEL_ID})
+
+    uris, dropped = async_fast_uris(hass, entry)
+    assert len(uris) == FAST_UPDATE_MAX
+    assert dropped == 3
+    # entity id order: the first ones stay fast
+    assert "/112/10531/0/0/13000" in uris
+    assert f"/112/10531/0/0/{13000 + FAST_UPDATE_MAX}" not in uris
+
+
+async def test_card_entities_get_the_card_label(hass):
+    """Card entities carry the card label; it goes away when they leave the card."""
+    entry = MockConfigEntry(domain=DOMAIN, data={STABLE_ID: "s1"})
+    entry.add_to_hass(hass)
+    ent_reg = er.async_get(hass)
+    async_ensure_fast_label(hass)
+    shown = ent_reg.async_get_or_create(
+        "sensor", DOMAIN, "eta_s1_112_10021_0_0_12000", config_entry=entry
+    )
+    other = ent_reg.async_get_or_create(
+        "sensor", DOMAIN, "eta_s1_112_10531_0_0_13000", config_entry=entry
+    )
+    ent_reg.async_update_entity(other.entity_id, labels={CARD_LABEL_ID, "mine"})
+    card = {shown.entity_id}
+    with patch(
+        "custom_components.eta_webservices.topology.card_entities",
+        side_effect=lambda *args: set(card),
+    ):
+        async_fast_uris(hass, entry)
+        assert CARD_LABEL_ID in ent_reg.async_get(shown.entity_id).labels
+        assert ent_reg.async_get(other.entity_id).labels == {"mine"}
+
+        card.clear()
+        async_fast_uris(hass, entry)
+        assert CARD_LABEL_ID not in ent_reg.async_get(shown.entity_id).labels
+
+
+async def test_card_label_set_by_hand_is_reverted(hass):
+    """Only card entities keep the card label, whatever the user does."""
+    entry = MockConfigEntry(domain=DOMAIN, data={STABLE_ID: "s1"})
+    entry.add_to_hass(hass)
+    ent_reg = er.async_get(hass)
+    async_ensure_fast_label(hass)
+    shown = ent_reg.async_get_or_create(
+        "sensor", DOMAIN, "eta_s1_112_10021_0_0_12000", config_entry=entry
+    )
+    disabled = ent_reg.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        "eta_s1_112_10531_0_0_13000",
+        config_entry=entry,
+        disabled_by=er.RegistryEntryDisabler.USER,
+    )
+    lamp = ent_reg.async_get_or_create("light", "hue", "lamp1")
+    for reg in (disabled, lamp):
+        ent_reg.async_update_entity(reg.entity_id, labels={CARD_LABEL_ID})
+    ent_reg.async_update_entity(shown.entity_id, labels=set())
+
+    with patch(
+        "custom_components.eta_webservices.topology.card_entities",
+        return_value={shown.entity_id},
+    ):
+        async_sync_card_label(hass, entry)
+
+    assert ent_reg.async_get(shown.entity_id).labels == {CARD_LABEL_ID}
+    assert ent_reg.async_get(disabled.entity_id).labels == set()
+    assert ent_reg.async_get(lamp.entity_id).labels == set()

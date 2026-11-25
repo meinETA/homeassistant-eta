@@ -24,6 +24,8 @@ from homeassistant.helpers import (
 )
 
 from .const import (
+    CARD_LABEL_ID,
+    CARD_LABEL_NAME,
     CHOSEN_FLOAT_SENSORS,
     CHOSEN_PENDING_SENSORS,
     CHOSEN_SWITCHES,
@@ -32,6 +34,7 @@ from .const import (
     DOMAIN,
     FAST_UPDATE_LABEL_ID,
     FAST_UPDATE_LABEL_NAME,
+    FAST_UPDATE_MAX,
     FLOAT_DICT,
     FORCE_LEGACY_MODE,
     PANEL_DATA,
@@ -340,9 +343,10 @@ def entity_uris(entity_ids: set[str], uid_of: dict[str, str], stable: str) -> se
     return uris
 
 
-@callback
-def async_fast_uris(hass: HomeAssistant, entry: ConfigEntry) -> set[str]:
-    """Return the uris to poll fast: plant card values and labelled entities."""
+def _card_state(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> tuple[list[er.RegistryEntry], set[str], str]:
+    """Enabled registry entries of the entry, the entity ids on its card, the stable id."""
     ent_reg = er.async_get(hass)
     stable = _stable(entry)
     regs = [
@@ -354,30 +358,97 @@ def async_fast_uris(hass: HomeAssistant, entry: ConfigEntry) -> set[str]:
         [(reg.unique_id, reg.entity_id, None) for reg in regs], stable
     )
     stored = hass.data.get(PANEL_DATA, {}).get(entry.entry_id, {})
-    entity_ids = card_entities(blocks, plant, stored.get("card") or {})
-    # entities the user marked with the "ETA Fast Update" label
-    entity_ids.update(
-        reg.entity_id for reg in regs if FAST_UPDATE_LABEL_ID in reg.labels
-    )
+    return regs, card_entities(blocks, plant, stored.get("card") or {}), stable
+
+
+@callback
+def async_fast_uris(hass: HomeAssistant, entry: ConfigEntry) -> tuple[set[str], int]:
+    """Return the uris to poll fast and how many labelled ones were left out.
+
+    Plant card values always come first. Entities with the "ETA Fast Update"
+    label fill the remaining places up to FAST_UPDATE_MAX, in entity id order,
+    so the same ones stay fast; the rest keep the regular poll.
+    """
+    regs, card_ids, stable = _card_state(hass, entry)
+    _sync_card_label(hass, entry, card_ids)
     uid_of = {reg.entity_id: reg.unique_id for reg in regs}
-    return entity_uris(entity_ids, uid_of, stable)
+    uris = entity_uris(card_ids, uid_of, stable)
+    dropped = 0
+    for entity_id in sorted(
+        reg.entity_id for reg in regs if FAST_UPDATE_LABEL_ID in reg.labels
+    ):
+        extra = entity_uris({entity_id}, uid_of, stable) - uris
+        if not extra:
+            continue
+        if len(uris) + len(extra) > FAST_UPDATE_MAX:
+            dropped += 1
+            continue
+        uris |= extra
+    return uris, dropped
+
+
+@callback
+def async_sync_card_label(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Bring the "ETA Fast Update Card" label back in line with the card."""
+    _sync_card_label(hass, entry, _card_state(hass, entry)[1])
+
+
+def _sync_card_label(
+    hass: HomeAssistant, entry: ConfigEntry, card_ids: set[str]
+) -> None:
+    """Put the "ETA Fast Update Card" label on exactly the entities shown on the card.
+
+    The integration owns this label: set by hand on any other entity (also
+    disabled ones or entities of other integrations) it is removed again,
+    removed by hand from a card entity it comes back. Only differences are
+    written, so the registry stays quiet between card changes.
+    """
+    if lr.async_get(hass).async_get_label(CARD_LABEL_ID) is None:
+        return  # name taken by a label of the user: leave it alone
+    ent_reg = er.async_get(hass)
+    own = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
+    foreign = [
+        reg
+        for reg in er.async_entries_for_label(ent_reg, CARD_LABEL_ID)
+        if reg.platform != DOMAIN
+    ]
+    for reg in [*own, *foreign]:
+        want = reg.config_entry_id == entry.entry_id and reg.entity_id in card_ids
+        if want != (CARD_LABEL_ID in reg.labels):
+            ent_reg.async_update_entity(
+                reg.entity_id, labels=reg.labels ^ {CARD_LABEL_ID}
+            )
+
+
+def _ensure_label(
+    hass: HomeAssistant, label_id: str, name: str, icon: str, description: str
+) -> None:
+    """Create a label once. Found by id: a renamed label keeps working, a deleted one comes back."""
+    label_reg = lr.async_get(hass)
+    if label_reg.async_get_label(label_id) is not None:
+        return
+    if label_reg.async_get_label_by_name(name) is not None:
+        return  # same name, other id: leave the user's label alone
+    label_reg.async_create(name, icon=icon, description=description)
 
 
 @callback
 def async_ensure_fast_label(hass: HomeAssistant) -> None:
-    """Create the "ETA Fast Update" label once, so users only pick it.
-
-    Found by id: a renamed label keeps working, a deleted one comes back.
-    """
-    label_reg = lr.async_get(hass)
-    if label_reg.async_get_label(FAST_UPDATE_LABEL_ID) is not None:
-        return
-    if label_reg.async_get_label_by_name(FAST_UPDATE_LABEL_NAME) is not None:
-        return  # same name, other id: leave the user's label alone
-    label_reg.async_create(
+    """Create the "ETA Fast Update" and "ETA Fast Update Card" labels."""
+    _ensure_label(
+        hass,
+        FAST_UPDATE_LABEL_ID,
         FAST_UPDATE_LABEL_NAME,
-        icon="mdi:speedometer",
-        description="Home Assistant reads entities of the ETA integration with this label more often.",
+        "mdi:speedometer",
+        "Home Assistant reads entities of the ETA integration with this label more often.",
+    )
+    _ensure_label(
+        hass,
+        CARD_LABEL_ID,
+        CARD_LABEL_NAME,
+        "mdi:view-dashboard-variant",
+        "Set by the ETA integration on the values shown on the plant card; "
+        "they are read more often. Changes to it are overwritten.",
     )
 
 

@@ -64,7 +64,7 @@ from .panel import (
     async_update_panel,
 )
 from .services import async_setup_services
-from .topology import async_ensure_fast_label
+from .topology import async_ensure_fast_label, async_sync_card_label
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -301,6 +301,17 @@ async def async_setup_entry(
     )
     config[FAST_UPDATE_COORDINATOR] = fast_coordinator
     entry.async_on_unload(fast_coordinator.remove_listener)
+
+    # the "ETA Fast Update Card" label belongs to the integration: a label
+    # changed by hand is put back right away, not only on the next fast poll
+    @core.callback
+    def _labels_changed(event: core.Event[er.EventEntityRegistryUpdatedData]) -> None:
+        if event.data["action"] == "update" and "labels" in event.data["changes"]:
+            async_sync_card_label(hass, entry)
+
+    entry.async_on_unload(
+        hass.bus.async_listen(er.EVENT_ENTITY_REGISTRY_UPDATED, _labels_changed)
+    )
 
     await async_setup_services(hass, entry)
     async_update_panel(hass, entry)
