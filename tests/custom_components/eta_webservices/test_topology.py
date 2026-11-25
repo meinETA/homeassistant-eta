@@ -644,3 +644,38 @@ def test_buffer_hot_water_zone():
     ]
     blocks, _ = build_blocks(rows, STABLE)
     assert blocks[0].roles["hot_water"] == "sensor.pu_hot_water"
+
+
+def test_flue_gas_return_and_room_roles() -> None:
+    """SH20 (#27): flue gas and return at the boiler, room and return at the circuits."""
+    rows = [
+        _row("/48/10391/0/11109/0", "sensor.kessel"),
+        _row("/48/10391/0/0/12162", "sensor.abgas"),
+        _row("/48/10391/0/0/12220", "sensor.kessel_rl"),
+        _row("/120/10101/0/0/12241", "sensor.hk_vl"),
+        _row("/120/10101/0/0/12220", "sensor.hk_rl"),
+        _row("/120/10101/0/0/12634", "sensor.hk_raum"),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    roles = {b.type: b.roles for b in blocks}
+    assert roles["boiler"]["flue_gas"] == "sensor.abgas"
+    assert roles["boiler"]["return"] == "sensor.kessel_rl"
+    assert roles["heating_circuit"]["return"] == "sensor.hk_rl"
+    assert roles["heating_circuit"]["room"] == "sensor.hk_raum"
+
+
+def test_sensor_objects_win_over_parameters() -> None:
+    """With both present, the sensor object (0/11160/0, 0/11110/0, 0/11237/2293) wins."""
+    rows = [
+        _row("/48/10391/0/0/12220", "sensor.rl_param"),
+        _row("/48/10391/0/11160/0", "sensor.rl_sensor"),
+        _row("/48/10391/0/11110/0", "sensor.abgas_sensor"),
+        _row("/48/10391/0/0/12162", "sensor.abgas_param"),
+        _row("/120/10101/0/0/12634", "sensor.raum_param"),
+        _row("/120/10101/0/11237/2293", "sensor.raum_ist"),
+    ]
+    blocks, _ = build_blocks(rows, STABLE)
+    roles = {b.type: b.roles for b in blocks}
+    assert roles["boiler"]["return"] == "sensor.rl_sensor"
+    assert roles["boiler"]["flue_gas"] == "sensor.abgas_sensor"
+    assert roles["heating_circuit"]["room"] == "sensor.raum_ist"

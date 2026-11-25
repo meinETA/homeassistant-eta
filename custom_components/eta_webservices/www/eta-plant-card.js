@@ -250,6 +250,7 @@
       in_days: (n) => `leeren in ca. ${n} ${n === 1 ? "Tag" : "Tagen"}`,
       in_weeks: (n) => `leeren in ca. ${n} Wochen`, in_months: (n) => `leeren in ca. ${n} Monaten`,
       not_selected: "nicht ausgewählt",
+      lbl_flue_gas: "Abgas", lbl_return: "RL", lbl_room: "Raum",
       hint_selected: "Dieser Wert ist am Terminal vorhanden, aber in der Integration nicht ausgewählt. Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → „Ausgewählte Entitäten aktualisieren“ → Wert auswählen. Soll er nicht angezeigt werden: Zahnrad → Werte manuell zuordnen → „nicht anzeigen“.",
     },
     en: {
@@ -269,6 +270,7 @@
       in_days: (n) => `empty in approx. ${n} ${n === 1 ? "day" : "days"}`,
       in_weeks: (n) => `empty in approx. ${n} weeks`, in_months: (n) => `empty in approx. ${n} months`,
       not_selected: "not selected",
+      lbl_flue_gas: "Flue", lbl_return: "Ret", lbl_room: "Room",
       hint_selected: "This value exists on the terminal but is not selected in the integration. Settings → Devices & services → ETA Heating → Configure → \u201cUpdate selected entities\u201d → select the value. To hide it: gear → Assign values manually → \u201cdo not show\u201d.",
     },
   };
@@ -276,14 +278,16 @@
   const TOP_VALUES = {
     silo: ["stock"],
     chip_store: ["discharge"],
-    boiler: ["temperature", "hopper", "pressure", "oxygen"],
+    boiler: ["temperature", "hopper", "pressure", "oxygen", "flue_gas", "return"],
     buffer: ["hot_water", "charge"],
-    heating_circuit: ["flow"],
+    heating_circuit: ["flow", "room", "return"],
     fwm: ["hot_water", "flow", "primary_flow"],
     dhw: ["temperature"],
     solar: ["collector"],
     external_heat: ["temperature"],
   };
+  // value roles shown with a short label (same unit as the main value)
+  const LABELLED = ["flue_gas", "return", "room"];
   const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "ausgeschaltet", "unavailable", "unknown"];
   const ON = ["ein", "an", "on", "true", "läuft", "running"];
   const CONSUMERS = ["heating_circuit", "external_demand", "fwm", "dhw", "unknown"];
@@ -316,6 +320,7 @@
     plant: [["outside", "Außentemperatur", "Outside temperature", "temp"]],
     boiler: [["temperature", "Kesseltemperatur", "Boiler temperature", "temp"], ["pressure", "Druck", "Pressure", "bar"],
       ["hopper", "Vorratsbehälter", "Hopper", "level"], ["oxygen", "Restsauerstoff", "Residual oxygen", "level"],
+      ["flue_gas", "Abgas", "Flue gas", "temp"], ["return", "Rücklauf", "Return", "temp"],
       ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"]],
     silo: [["stock", "Vorrat", "Stock", "level"], ["status", "Status", "Status", "text"], ["auger", "Förderung", "Conveyor", "onoff"]],
@@ -323,7 +328,8 @@
     buffer: [["top", "Oben", "Top", "temp"], ["middle", "Mitte", "Middle", "temp"], ["bottom", "Unten", "Bottom", "temp"],
       ["hot_water", "Warmwasser", "Hot water", "temp"], ["charge", "Ladezustand", "Charge", "level"],
       ["status", "Status", "Status", "text"]],
-    heating_circuit: [["flow", "Vorlauftemperatur", "Flow temperature", "temp"], ["status", "Status", "Status", "text"],
+    heating_circuit: [["flow", "Vorlauftemperatur", "Flow temperature", "temp"], ["room", "Raumtemperatur", "Room temperature", "temp"],
+      ["return", "Rücklauf", "Return", "temp"], ["status", "Status", "Status", "text"],
       ["pump", "Pumpe", "Pump", "onoff"], ["switch", "Ein/Aus-Taste", "On/off button", "switch"],
       ["heat", "Taste Heizen", "Heat button", "switch"], ["lower", "Taste Absenken", "Setback button", "switch"],
       ["auto", "Taste Zeitautomatik", "Time program button", "switch"]],
@@ -455,6 +461,7 @@
   .blk{position:absolute;z-index:4;top:64px;display:flex;flex-direction:column;align-items:center;cursor:pointer}
   .vals{display:flex;align-items:flex-end;gap:8px;padding-bottom:14px}
   .pill.na{display:none}
+  .pill[data-lbl]::before{content:attr(data-lbl);font-size:.6em;color:#aaa;margin-right:5px;vertical-align:middle}
   .pill.ghost{border:1px dashed #888;background:transparent;box-shadow:none;color:#aaa}
   .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
   .t-silo .vals{flex-direction:column;align-items:center;gap:6px}
@@ -675,6 +682,9 @@
       for (const g of this._geo) {
         const b = g.b;
         let shown = (TOP_VALUES[b.type] || []).filter((r) => b.roles[r]).map((r) => b.roles[r]);
+        // more temperatures next to the main one: a short label tells them apart
+        const lbl = {};
+        for (const r of LABELLED) if (b.roles[r]) lbl[b.roles[r]] = this._t(`lbl_${r}`);
         // buffer sensors top to bottom: all numbered sensors if present, else top / middle / bottom
         const numbered = Object.keys(b.roles).filter((r) => /^sensor_\d+$/.test(r)).sort((x, y) => +x.slice(7) - +y.slice(7));
         const inner = numbered.length ? numbered : ["top", "middle", "bottom"].filter((r) => b.roles[r]);
@@ -686,14 +696,14 @@
         if (!shown.length && !hasInner && !ghost) shown = this._autoValues(b); // no known roles: pick measurements
         if (b.type === "silo" && plant.silo_days) shown.push(plant.silo_days); // forecast: pellets last approx. n days
         // narrow columns: fewer value boxes; boilers and fresh water modules keep theirs and wrap into a second row
-        shown = shown.slice(0, b.type === "boiler" ? 4 : b.type === "fwm" ? 3 : Math.max(1, Math.floor(colW / 110)));
+        shown = shown.slice(0, b.type === "boiler" ? 6 : b.type === "fwm" ? 3 : Math.max(1, Math.floor(colW / 110)));
         // combi tank: the hot water temperature stands over the tap, not in the row above
         const tapAt = TAP[g.file];
         const tapE = b.type === "buffer" && tapAt && b.roles.hot_water;
         if (tapE) shown = shown.filter((e) => e !== b.roles.hot_water);
         const ghostUnit = ((EDIT_ROLES[b.type] || []).find((r) => r[0] === ghost) || [])[3] === "temp" ? " °C" : "";
         const vals = (ghost ? `<div class="pill ghost" data-hint="${esc(this._roleLabel(b.type, ghost))}: ${this._t("not_selected")}">?${ghostUnit}</div>` : "")
-          + shown.map((e) => `<div class="pill" data-e="${e}"></div>`).join("");
+          + shown.map((e) => `<div class="pill" data-e="${e}"${lbl[e] ? ` data-lbl="${esc(lbl[e])}"` : ""}></div>`).join("");
         const tank = b.type === "buffer"
           ? `<div class="tank${inner.length > 4 ? " many" : ""}" style="left:${g.body[0] * 100}%;right:${(1 - g.body[1]) * 100}%">${inner
               .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("")}</div>`
@@ -857,7 +867,7 @@
       return `<div class="tiles">${tiles.map((b) => {
         const name = this._name(b);
         const vals = (TOP_VALUES[b.type] || []).filter((r) => b.roles[r]).slice(0, 2)
-          .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("");
+          .map((r) => `<div class="pill" data-e="${b.roles[r]}"${LABELLED.includes(r) ? ` data-lbl="${esc(this._t(`lbl_${r}`))}"` : ""}></div>`).join("");
         // temporary keys when available: "Heizen" = ETA "Kommen" (until the next setback time),
         // "Absenken" = ETA "Gehen" (until the next heating time)
         const temp = { heat: "come", lower: "go" };
