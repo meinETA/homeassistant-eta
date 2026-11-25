@@ -68,7 +68,7 @@
         "step": {
             "init": {
                 "title": "Options",
-                "description": "**Update API & polling settings**: the request limit and update interval are changed.\n\n**Update selected entities**: update the list of entities added to Home Assistant.\n\n**Rediscover available entities and update selected entities**: refreshes the entity list and then lets you adjust your selection.\n\n**ETA Plant in the sidebar**: shows the ETA Plant card as its own sidebar entry, no dashboard needed.\n\n**Plant data upload**: shows your instance UUID and the deletion code for uploaded plant data.",
+                "description": "**Update API & polling settings**: the request limit and update interval are changed.\n\n**Update selected entities**: update the list of entities added to Home Assistant.\n\n**Rediscover available entities and update selected entities**: refreshes the entity list and then lets you adjust your selection.\n\n**ETA Plant in the sidebar**: shows the ETA Plant card as its own sidebar entry, no dashboard needed.\n\n**Plant data upload status**: shows your instance UUID and the deletion code for uploaded plant data.",
                 "data": {
                     "options_update_action": "Action"
                 }
@@ -115,7 +115,7 @@
                 }
             },
             "plant_data": {
-                "title": "Plant data upload",
+                "title": "Plant data upload status",
                 "description": "Plant data is only sent when you press **Upload Plant Data** on the ETA device. It is encrypted before it leaves Home Assistant.\n\n**Instance UUID:** `{uuid}`\n\n**Deletion code:** `{code}`\n\n**Last upload:** {last}\n\nTo have uploaded data deleted, open an issue in the repository of the integration with the instance UUID and the deletion code."
             }
         },
@@ -143,7 +143,7 @@
                 "name": "Resend Error Events"
             },
             "store_api_responses_btn": {
-                "name": "Fetch Raw API Data"
+                "name": "Fetch Plant Data"
             },
             "upload_plant_data_btn": {
                 "name": "Upload Plant Data"
@@ -205,7 +205,7 @@
                 "rediscover_and_update_entities": "Rediscover available entities and update selected entities",
                 "rename_entities_to_named_scheme": "Migrate to the name-based scheme (v2)",
                 "sidebar_panel": "ETA Plant in the sidebar",
-                "plant_data_upload": "Plant data upload"
+                "plant_data_upload": "Plant data upload status"
             }
         }
     },
@@ -229,10 +229,10 @@
             "message": "ETA: Upload Plant Data"
         },
         "raw_data_finished": {
-            "message": "You can help further development of this integration by uploading your anonymized plant data for debugging purposes. Please click the button in the general ETA device ('ETA {name} > Upload Plant Data').\n\nThis step is completely optional and no personal information is ever transmitted. You can download the integration diagnostic data to check what would be transmitted."
+            "message": "You can help further development of this integration by uploading your anonymized plant data for debugging purposes. Please click the button in the general ETA device (\"{devicename}\" -> \"Upload Plant Data\").\n\nThis step is completely optional and no personal information is ever transmitted. You can download the integration diagnostic data to check what would be transmitted."
         },
         "raw_data_already_running": {
-            "message": "The raw API data of {name} is already being collected. Please wait until it is finished."
+            "message": "The plant data of {name} is already being collected. Please wait until it is finished."
         },
         "upload_not_ready": {
             "message": "Upload is not yet ready. Please wait a few minutes and try again. If this issue persists, please try restarting Home Assistant."
@@ -256,7 +256,7 @@
             "message": "ETA: plant data uploaded"
         },
         "upload_done": {
-            "message": "Thank you! The plant data of {name} was sent (upload {upload_id}). It helps us to support more ETA systems.\n\nInstance UUID and deletion code: Settings > Devices & services > ETA Heating > Configure > Plant data upload."
+            "message": "Thank you! The plant data of {name} was sent (upload {upload_id}). It helps us to support more ETA systems.\n\nInstance UUID and deletion code: Settings > Devices & services > ETA Heating > Configure > Plant data upload status."
         }
     },
     "services": {

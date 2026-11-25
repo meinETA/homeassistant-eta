@@ -14,7 +14,7 @@ from typing import Any
 
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
@@ -24,6 +24,7 @@ from homeassistant.util import dt as dt_util
 
 from ..api import EtaAPI  # noqa: TID252
 from ..const import DOMAIN, INSTANCE_UUID  # noqa: TID252
+from .utils import create_device_info
 
 STORAGE_VERSION = 1
 # Version of the layout of the stored dict.
@@ -43,7 +44,7 @@ _FALLBACK_TEXTS = {
     "raw_data_title": "ETA: Upload Plant Data",
     "raw_data_finished": (
         "You can help further development of this integration by uploading your anonymized plant data for debugging purposes. "
-        "Please click the button in the general ETA device ('ETA {name} > Upload Plant Data').\n\n"
+        "Please click the button in the general ETA device ('{devicename} -> Upload Plant Data').\n\n"
         "This step is completely optional and no personal information is ever transmitted. "
         "You can download the integration diagnostic data to check what would be transmitted."
     ),
@@ -56,6 +57,17 @@ def _store(hass: HomeAssistant, entry_id: str) -> Store[dict[str, Any]]:
 
 def _running_tasks(hass: HomeAssistant) -> dict[str, asyncio.Task[None]]:
     return hass.data.setdefault(_TASKS_KEY, {})
+
+
+def _device_name(hass: HomeAssistant, config: dict[str, Any]) -> str:
+    """Return the name of the general ETA device as shown in the UI."""
+    device_info = create_device_info(
+        config.get(CONF_HOST, ""),
+        config.get(CONF_PORT, ""),
+        None,
+        config.get(CONF_NAME),
+    )
+    return str(device_info.get("name") or "ETA")
 
 
 def raw_data_notification_id(entry_id: str) -> str:
@@ -183,7 +195,7 @@ async def _async_collect_raw_data(
 
     persistent_notification.async_create(
         hass,
-        _text(texts, "raw_data_finished", name=name),
+        _text(texts, "raw_data_finished", devicename=_device_name(hass, config)),
         title=_text(texts, "raw_data_title"),
         notification_id=raw_data_notification_id(entry.entry_id),
     )
