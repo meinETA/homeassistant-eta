@@ -120,11 +120,16 @@ This integration is available in the **HACS default store**.
 
 Go to **Settings → Devices & Services → Add Integration**, search for **ETA Heating** and follow the steps (or use the *Add integration* button above).
 
-During setup the integration discovers everything on your unit and shows the counts per category, so you can pick exactly what you want (or add everything at once):
+Enter a **name** for the unit, its host and port. The name becomes the start of the entity IDs and device names, e.g. `sensor.keller_kessel` and "ETA > Keller > Kessel".
 
-<img src="images/setup_choose_entities.png" alt="Choosing entities during setup" width="520">
+The integration then scans every endpoint of the unit once. On large systems (~800 entities) this takes **8–15 minutes**; normal operation later only polls the entities you selected.
 
-> **Note:** After you enter host and port, the integration scans every available endpoint once. On large systems (~800 entities) this initial scan can take **8–15 minutes** — please be patient. This only happens when adding the integration or when you explicitly rediscover; normal operation only polls the entities you selected.
+- **Discover entities in the background** (default): the setup finishes right away, a notification shows the progress, and all entities found are added automatically. You can deselect entities later with `Configure`.
+- Turned off: the dialog waits for the scan and shows the counts per category, so you can pick exactly what you want:
+
+  <img src="images/setup_choose_entities.png" alt="Choosing entities during setup" width="520">
+
+After the scan, the integration reads the raw API answers once more in the background for the optional [plant data upload](#plant-data-upload); nothing is sent without pressing the button.
 
 ## Moving from the Previous Repository
 
@@ -140,7 +145,9 @@ If the sensors on the ETA unit change (e.g. new hardware is added), you can refr
    - **Update API & polling settings** — only changes the request limit and update interval.
    - **Update selected entities** — refreshes the values of your selected entities without rediscovering.
    - **Rediscover available entities and update selected entities** — performs a full rediscovery, then lets you review and adjust your selection.
+   - **Migrate to the name-based scheme (v2)** — for installations from before 2.0: changes entity IDs from `sensor.eta_<ip>_…` to `sensor.<name>_…`. History is kept; automations and dashboards that use entity IDs need to be adjusted.
    - **ETA Plant in the sidebar** — shows or hides the [plant card](#plant-card) as its own sidebar entry.
+   - **Plant data upload** — shows the instance UUID, the deletion code and the last [upload](#plant-data-upload).
 
 **Maximum parallel API requests** controls how many requests are sent at once. Higher values are faster but put more load on the unit and can cause timeouts on older devices.
 
@@ -248,6 +255,8 @@ After the setup, the integration reads all endpoints of the ETA unit once and st
 ## Troubleshooting
 
 Enable verbose logs in the setup dialog (where you enter host and port) to log all communication. After setup, download them at `Settings → System → Logs → Download Full Log`.
+
+If entities are missing or wrong, press **Upload Plant Data** on the ETA device and put the instance UUID into the issue, instead of attaching the diagnostics: issues are public, the upload is encrypted. To read the raw API answers again (e.g. after a firmware update), enable and press **Fetch Raw API Data** on the ETA device.
 
 > Logs can be large and may contain data from other integrations. Trim the file before sharing it publicly.
 
