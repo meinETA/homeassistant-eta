@@ -238,7 +238,7 @@
       fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider", condenser: "Brennwertwärmetauscher", switch_valve: "Umschaltventil",
       source_1: "Erzeuger 1", source_2: "Erzeuger 2",
       external_demand: "Ext. Anforderung", external_heat: "Fremdwärme",
-      no_blocks: "Keine Anlagenteile erkannt. Wähle in den Integrationsoptionen die Entitäten von Kessel, Heizkreis usw. aus oder melde deine Anlage über das Zahnrad.", outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
+      no_blocks: "Keine Anlagenteile erkannt. Wähle in den Integrationsoptionen die Entitäten von Kessel, Heizkreis usw. aus oder melde deine Anlage: „Anlagendaten hochladen“ am ETA-Gerät drücken und ein GitHub-Issue mit der Instanz-UUID eröffnen.", outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
       heat: "Heizen", lower: "Absenken", auto: "Zeitautomatik", ask_off: "wirklich ausschalten?",
       no_ctl: "Keine Schalter gefunden. In den Optionen der Integration die Schalter (z. B. Ein/Aus Taste) auswählen.",
       times: "Heizzeiten", days: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"], from: "von", to: "bis",
@@ -258,7 +258,7 @@
       fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator", condenser: "Condensing heat exchanger", switch_valve: "Switch valve",
       source_1: "Source 1", source_2: "Source 2",
       external_demand: "Ext. demand", external_heat: "External heat",
-      no_blocks: "No plant parts detected. Select the boiler, heating circuit, ... entities in the integration options or report your plant via the gear.", outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
+      no_blocks: "No plant parts detected. Select the boiler, heating circuit, ... entities in the integration options or report your plant: press \u201cUpload Plant Data\u201d on the ETA device and open a GitHub issue with the instance UUID.", outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
       heat: "Heat", lower: "Setback", auto: "Time program", ask_off: "really switch off?",
       no_ctl: "No switches found. Select the switches (e.g. On/Off button) in the integration options.",
       times: "Heating times", days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], from: "from", to: "to",
@@ -1574,9 +1574,8 @@
       auto: "Automatisch", plant: "Anlage", language: "Sprache", lang_auto: "Automatisch (HA)", title: "Name der Anlage",
       store: "Lager", no_icons: "Keine Anlagenteile mit Icon-Auswahl erkannt.", loading: "Anlage wird geladen …",
       report: "Anlage melden",
-      report_text: "Wird deine Anlage nicht richtig dargestellt? „GitHub-Issue öffnen“ lädt die Anlagendatei herunter und öffnet ein Formular auf GitHub. Zieh die Datei dort in das Feld „Plant file“. Die Datei enthält alle Werte der Anlage mit ETA-Namen, Einheiten und aktuellen Messwerten, aber keine IP-Adresse, keine Seriennummer, keine selbst vergebenen Namen und keinen Verlauf. Die Datei ist verschlüsselt, lesen können sie nur die Entwickler der Integration. Unten siehst du ihren Inhalt. Gesendet wird erst, wenn du das Issue auf GitHub selbst abschickst. Das Issue ist öffentlich sichtbar. Achte auf dem Screenshot auf persönliche Namen.",
-      download: "Anlagendatei herunterladen", open_issue: "GitHub-Issue öffnen", file: "Inhalt der Datei (wird verschlüsselt)",
-      seal_failed: "Die Anlagendatei konnte nicht verschlüsselt werden:",
+      report_text: "Wird deine Anlage nicht richtig dargestellt? Drücke zuerst „Anlagendaten hochladen“ am ETA-Gerät: Die Anlagendaten gehen verschlüsselt an die Entwickler der Integration. „GitHub-Issue öffnen“ öffnet dann ein Formular, in dem deine Instanz-UUID schon eingetragen ist. Das Issue ist öffentlich sichtbar: achte auf dem Screenshot auf persönliche Namen.",
+      open_issue: "GitHub-Issue öffnen",
     },
     en: {
       settings: "Settings", reset_all: "Reset everything", cancel: "Cancel", save: "Save",
@@ -1584,12 +1583,10 @@
       auto: "Automatic", plant: "Plant", language: "Language", lang_auto: "Automatic (HA)", title: "Plant name",
       store: "Store", no_icons: "No plant parts with an icon choice detected.", loading: "Loading plant …",
       report: "Report plant",
-      report_text: "Is your plant not shown correctly? \u201cOpen GitHub issue\u201d downloads the plant file and opens a form on GitHub. Drag the file into the \u201cPlant file\u201d field there. The file contains every value of the plant with ETA names, units and current readings, but no IP address, no serial number, no names you gave and no history. The file is encrypted, only the developers of the integration can read it. Its content is shown below. Nothing is sent until you submit the issue on GitHub yourself. The issue is public. Check the screenshot for personal names.",
-      download: "Download plant file", open_issue: "Open GitHub issue", file: "Content of the file (gets encrypted)",
-      seal_failed: "The plant file could not be encrypted:",
+      report_text: "Is your plant not shown correctly? First press \u201cUpload Plant Data\u201d on the ETA device: the plant data goes encrypted to the developers of the integration. \u201cOpen GitHub issue\u201d then opens a form with your instance UUID filled in. The issue is public: check the screenshot for personal names.",
+      open_issue: "Open GitHub issue",
     },
   };
-  const REPORT_FILE = "eta-plant-report.json";
   // English names for the icon choices (ETA model names stay)
   const ICON_EN = {
     "Pelletslager": "Pellet store", "Saugsystem 3-fach": "Suction system 3-way", "Saugsystem 4-fach": "Suction system 4-way",
@@ -1647,9 +1644,6 @@
         .order .ord{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:14px}
         .order .ord span{flex:1}.order .ord.hid{opacity:.5}
         .order button{padding:3px 9px;cursor:pointer}
-        .report{margin-top:20px;padding-top:12px;border-top:1px solid var(--divider-color,#444);font-size:13px}
-        .report textarea{width:100%;box-sizing:border-box;font-family:monospace;font-size:11px;margin:8px 0}
-        .report button{padding:6px 12px;cursor:pointer}
         .vals{margin-top:20px;padding-top:12px;border-top:1px solid var(--divider-color,#444);font-size:13px}
         .vals details{border:1px solid var(--divider-color,#444);border-radius:8px;margin:6px 0;padding:0 10px}
         .vals summary{cursor:pointer;padding:9px 0;font-size:14px;font-weight:500}
@@ -1662,6 +1656,8 @@
         .vals .ft button,.vals .add button{padding:5px 10px;cursor:pointer}
         .vals .add{display:flex;gap:8px;align-items:center;margin-top:10px}
         .vals .danger{background:#c62828;color:#fff;border:1px solid #c62828;border-radius:4px}
+        .report{margin-top:20px;padding-top:12px;border-top:1px solid var(--divider-color,#444);font-size:13px}
+        .report button{padding:6px 12px;cursor:pointer}
       </style>
       ${this._all && this._all.length > 1 && !this.fixedEntry ? `<label>${T.plant}<select id="entry">${this._all.map((e) =>
         `<option value="${e.title}" ${this._topo && this._topo.entry_id === e.entry_id ? "selected" : ""}>${e.title}</option>`).join("")}</select></label>` : ""}
@@ -1674,9 +1670,7 @@
       <div class="report">
         <b>${T.report}</b>
         <p>${T.report_text}</p>
-        <button id="dl">${T.download}</button> <button id="gh">${T.open_issue}</button>
-        ${this._sealErr ? `<p style="color:#e53935">${T.seal_failed} ${esc(this._sealErr)}</p>` : ""}
-        ${this._report ? `<p>${T.file} <code>${REPORT_FILE}</code>:</p><textarea readonly rows="10">${esc(this._report)}</textarea>` : ""}
+        <button id="gh">${T.open_issue}</button>
       </div>`;
       this.shadowRoot.getElementById("lang").addEventListener("change", (ev) => {
         const cfg = { ...this._config, language: ev.target.value };
@@ -1722,20 +1716,11 @@
         this._emit(cfg);
       }));
       if (this._topo) this._wireValues();
-      const $ = (id) => this.shadowRoot.getElementById(id);
-      $("dl").addEventListener("click", async () => {
-        if (await this._makeReport()) this._download();
-        this._render();
-      });
-      $("gh").addEventListener("click", async () => {
-        // open the window synchronously, otherwise the popup blocker kicks in
-        const win = window.open("about:blank", "_blank");
-        if (!(await this._makeReport())) { if (win) win.close(); this._render(); return; }
-        // the encrypted plant file is downloaded and dragged into the issue form by the user
-        this._download();
-        const url = `https://github.com/${REPORT_REPO}/issues/new?template=plant-card.yml&title=${encodeURIComponent("Plant card: ")}`;
-        if (win) win.location.href = url; else window.open(url, "_blank");
-        this._render();
+      this.shadowRoot.getElementById("gh").addEventListener("click", () => {
+        // only the instance UUID goes into the public issue, the plant data comes via the upload
+        const uuid = (this._topo && this._topo.instance_uuid) || "";
+        window.open(`https://github.com/${REPORT_REPO}/issues/new?template=plant-card.yml`
+          + `&title=${encodeURIComponent("Plant card: ")}&uuid=${encodeURIComponent(uuid)}`, "_blank");
       });
     }
 
@@ -1964,44 +1949,6 @@
       this._open = new Set();
       this._emit(cfg);
       this._render();
-    }
-
-    async _makeReport() {
-      // hand-picked values tell us which addresses the detection is missing
-      const manual = [];
-      const types = Object.fromEntries(this._blockList().map((b) => [b.id, b.type]));
-      Object.entries(this._config.roles || {}).forEach(([bid, o]) => Object.entries(o).forEach(([role, e]) => {
-        if (e && e !== "-" && types[bid]) manual.push([types[bid], role, e]);
-      }));
-      const rep = await this._hass.callWS({ type: "eta_webservices/report", entry_id: this._topo && this._topo.entry_id, manual, full: true });
-      // card settings without user-given names: which parts are hidden, added or have another icon
-      const c = this._config;
-      const settings = {
-        hidden: c.hidden || [], extra: (c.extra || []).map((x) => x.type), icons: c.icons || {},
-        renamed: Object.keys(c.names || {}).length, language: c.language || "",
-      };
-      this._report = JSON.stringify({ card: ICON_REV, lang: this._hass.language, settings, ...rep }, null, 1);
-      // the issue is public: the plant file is encrypted for the maintainers by the
-      // integration; the text field above still shows the plain content
-      try {
-        const seal = async (text) => (await this._hass.callWS({ type: "eta_webservices/seal", data: text })).sealed;
-        this._sealed = JSON.stringify({ eta_plant_file: "sealed", v: 1, data: await seal(JSON.stringify(JSON.parse(this._report))) });
-        this._sealErr = null;
-        return true;
-      } catch (err) {
-        this._sealed = null;
-        this._sealErr = (err && err.message) || String(err);
-        return false;
-      }
-    }
-
-    _download() {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([this._sealed], { type: "application/json" }));
-      a.download = REPORT_FILE;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     }
 
     _emit(config) {

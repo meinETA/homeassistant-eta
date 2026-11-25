@@ -14,9 +14,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant, callback
 
 from .const import DOMAIN
-from .plant_file import async_terminal_info
-from .seal import seal
-from .topology import async_get_report, async_get_topology
+from .topology import async_get_topology
 
 CARD_URL_BASE = f"/{DOMAIN}_static"
 CARD_FILE = "eta-plant-card.js"
@@ -34,8 +32,6 @@ async def async_setup_card(hass: HomeAssistant, version: str) -> None:
     hass.data[CARD_JS_URL] = f"{CARD_URL_BASE}/{CARD_FILE}?v={version}-{digest}"
     add_extra_js_url(hass, hass.data[CARD_JS_URL])
     websocket_api.async_register_command(hass, ws_topology)
-    websocket_api.async_register_command(hass, ws_report)
-    websocket_api.async_register_command(hass, ws_seal)
 
 
 def _file_digest(path: Path) -> str:
@@ -51,48 +47,3 @@ def ws_topology(
 ) -> None:
     """Return the detected plant topology of all ETA entries."""
     connection.send_result(msg["id"], async_get_topology(hass))
-
-
-@websocket_api.websocket_command(
-    {
-        vol.Required("type"): f"{DOMAIN}/report",
-        vol.Optional("entry_id"): str,
-        vol.Optional("manual", default=[]): [[str]],
-        vol.Optional("full", default=False): bool,
-    }
-)
-@websocket_api.async_response
-async def ws_report(
-    hass: HomeAssistant,
-    connection: websocket_api.ActiveConnection,
-    msg: dict[str, Any],
-) -> None:
-    """Return the anonymized plant report.
-
-    full adds every discovered endpoint and, read live from the terminal, the
-    API version, the whole menu and details of skipped endpoints.
-    """
-    report = async_get_report(hass, msg.get("entry_id"), msg["manual"], msg["full"])
-    if msg["full"] and report.get("entry_id"):
-        found = {row["uri"] for row in report.get("tree", [])}
-        report["terminal"] = await async_terminal_info(hass, report["entry_id"], found)
-    report.pop("entry_id", None)
-    connection.send_result(msg["id"], report)
-
-
-@websocket_api.websocket_command(
-    {vol.Required("type"): f"{DOMAIN}/seal", vol.Required("data"): str}
-)
-@websocket_api.async_response
-async def ws_seal(
-    hass: HomeAssistant,
-    connection: websocket_api.ActiveConnection,
-    msg: dict[str, Any],
-) -> None:
-    """Encrypt a plant file for the maintainers (it goes into a public issue)."""
-    try:
-        sealed = await hass.async_add_executor_job(seal, msg["data"].encode("utf-8"))
-    except (OSError, ValueError, TypeError) as err:
-        connection.send_error(msg["id"], "seal_failed", str(err))
-        return
-    connection.send_result(msg["id"], {"sealed": sealed})

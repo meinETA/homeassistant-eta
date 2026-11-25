@@ -32,11 +32,11 @@ Your ETA plant on a dashboard, like on the touch display: detected automatically
 
 ## Contents
 
-[Features](#features) · [Plant card](#plant-card) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Moving from the previous repository](#moving-from-the-previous-repository) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Troubleshooting](#troubleshooting)
+[Features](#features) · [Plant card](#plant-card) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Moving from the previous repository](#moving-from-the-previous-repository) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Plant data upload](#plant-data-upload) · [Troubleshooting](#troubleshooting)
 
 ## Features
 
-- **Automatic discovery** of every available endpoint on your ETA unit — with live values shown during setup so you can pick the ones you want.
+- **Automatic discovery** of every available endpoint on your ETA unit — in the background after setup, or with live values in the setup dialog so you can pick the ones you want.
 - **Sensors** for all numeric values (temperatures, pressures, power, flow, counters, …).
 - **State sensors** for text states (e.g. `Ready`, `Heating`).
 - **Switches** for on/off parameters, detected language-independently.
@@ -47,6 +47,7 @@ Your ETA plant on a dashboard, like on the touch display: detected automatically
 - **Stable entity identities**: entity ids stay stable across firmware updates, terminal language changes and IP changes.
 - **Analytics**: ash box fill level, pellet consumption per day and forecasts for ash box and pellet store ([details](#analytics)).
 - **Energy Dashboard** ready ([details](#integrating-the-eta-unit-into-the-energy-dashboard)).
+- **Plant data upload**: send the data of your unit encrypted to the maintainers with one button, so support for more ETA systems can be added ([details](#plant-data-upload)).
 
 ## Plant Card
 
@@ -61,7 +62,7 @@ The integration ships a dashboard card that shows the plant like the ETA touch d
 - **Live values:** values shown on the card are read every 10 seconds, all other entities at the normal update interval.
 - **Ash box:** fill level as a bar above the boiler (orange from 80 %, red from 100 % when ETA asks to empty it) and in the control tab with the expected emptying date.
 - **Card settings:** plant (if several are configured), name, language and an icon per block (e.g. the exact boiler model).
-- **Report a problem:** if the plant is not shown correctly, use **Open GitHub issue** in the card settings. It downloads the plant file `eta-plant-report.json` and opens an issue form; drag the file into the "Plant file" field. The file lists every value of the plant with ETA names, units and current readings, plus the terminal's API version and menu (also values the integration does not support yet), but no IP address, no serial number, no names you gave and no history. Nothing is sent until the issue is submitted on GitHub, and issues are public. The same file is part of the integration's diagnostics (Settings → Devices & services → ETA Heating → ⋮ → Download diagnostics).
+- **Report a problem:** if the plant is not shown correctly, press **Upload Plant Data** on the ETA device (see [Plant data upload](#plant-data-upload)), then use **Open GitHub issue** in the card settings. It opens the issue form with your instance UUID filled in; add a screenshot. The plant data stays encrypted with the maintainers, nothing of it goes into the public issue.
 
 Layouts that are not covered yet will be added based on reports.
 
@@ -120,11 +121,16 @@ This integration is available in the **HACS default store**.
 
 Go to **Settings → Devices & Services → Add Integration**, search for **ETA Heating** and follow the steps (or use the *Add integration* button above).
 
-During setup the integration discovers everything on your unit and shows the counts per category, so you can pick exactly what you want (or add everything at once):
+Enter a **name** for the unit, its host and port. The name becomes the start of the entity IDs and device names, e.g. `sensor.keller_kessel` and "ETA > Keller > Kessel".
 
-<img src="images/setup_choose_entities.png" alt="Choosing entities during setup" width="520">
+The integration then scans every endpoint of the unit once. On large systems (~800 entities) this takes **8–15 minutes**; normal operation later only polls the entities you selected.
 
-> **Note:** After you enter host and port, the integration scans every available endpoint once. On large systems (~800 entities) this initial scan can take **8–15 minutes** — please be patient. This only happens when adding the integration or when you explicitly rediscover; normal operation only polls the entities you selected.
+- **Discover entities in the background** (default): the setup finishes right away, a notification shows the progress, and all entities found are added automatically. You can deselect entities later with `Configure`.
+- Turned off: the dialog waits for the scan and shows the counts per category, so you can pick exactly what you want:
+
+  <img src="images/setup_choose_entities.png" alt="Choosing entities during setup" width="520">
+
+After the scan, the integration reads the raw API answers once more in the background for the optional [plant data upload](#plant-data-upload); nothing is sent without pressing the button.
 
 ## Moving from the Previous Repository
 
@@ -140,7 +146,9 @@ If the sensors on the ETA unit change (e.g. new hardware is added), you can refr
    - **Update API & polling settings** — only changes the request limit and update interval.
    - **Update selected entities** — refreshes the values of your selected entities without rediscovering.
    - **Rediscover available entities and update selected entities** — performs a full rediscovery, then lets you review and adjust your selection.
+   - **Migrate to the name-based scheme (v2)** — for installations from before 2.0: changes entity IDs from `sensor.eta_<ip>_…` to `sensor.<name>_…`. History is kept; automations and dashboards that use entity IDs need to be adjusted.
    - **ETA Plant in the sidebar** — shows or hides the [plant card](#plant-card) as its own sidebar entry.
+   - **Plant data upload** — shows the instance UUID, the deletion code and the last [upload](#plant-data-upload).
 
 **Maximum parallel API requests** controls how many requests are sent at once. Higher values are faster but put more load on the unit and can cause timeouts on older devices.
 
@@ -237,9 +245,22 @@ You can also create the same helper from the UI:
 
 Then add the new sensor to the gas sources of your Energy Dashboard.
 
+## Plant Data Upload
+
+After the setup, the integration reads all endpoints of the ETA unit once and stores the answers (the complete raw data of the unit). Pressing **Upload Plant Data** sends them to the maintainers, so support for more ETA systems can be built and tested. This is optional; nothing is sent without pressing the button.
+
+- **Where:** Settings → Devices & services → ETA Heating → the ETA device → **Diagnostic** → **Upload Plant Data**. A notification confirms the upload.
+- **What:** the menu, units and current values of the unit, the integration settings (selected entities, options), the integration and Home Assistant version; no IP address and no names you gave in Home Assistant. It is encrypted before it leaves Home Assistant, only the maintainers can read it.
+- **Check it:** the diagnostics (Settings → Devices & services → ETA Heating → ⋮ → Download diagnostics) contain the same data unencrypted.
+- **Instance UUID and deletion code:** Settings → Devices & services → ETA Heating → Configure → Plant data upload. The UUID identifies your upload in an issue; keep the deletion code to yourself.
+- **Report a problem:** after the upload, open a [plant card issue](https://github.com/meinETA/homeassistant-eta/issues/new?template=plant-card.yml) (or use **Open GitHub issue** in the card settings, which fills in the UUID). Issues are public: never attach the diagnostics.
+- **Delete:** to have uploaded data deleted, open an issue with the instance UUID and the deletion code.
+
 ## Troubleshooting
 
 Enable verbose logs in the setup dialog (where you enter host and port) to log all communication. After setup, download them at `Settings → System → Logs → Download Full Log`.
+
+If entities are missing or wrong, [upload the plant data](#plant-data-upload) and put the instance UUID into the issue instead of attaching the diagnostics: issues are public, the upload is encrypted. To read the raw API answers again (e.g. after a firmware update), enable and press **Fetch Raw API Data** on the ETA device, then upload again.
 
 > Logs can be large and may contain data from other integrations. Trim the file before sharing it publicly.
 

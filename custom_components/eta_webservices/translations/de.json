@@ -68,7 +68,7 @@
         "step": {
             "init": {
                 "title": "Optionen",
-                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.\n\n**ETA Anlage in der Seitenleiste**: Zeigt die Anlagenkarte ETA Anlage als eigenen Eintrag in der Seitenleiste, ohne dass du ein Dashboard anlegen musst.",
+                "description": "**API- & Aktualisierungseinstellungen ändern**: Anfrage-Limit und Aktualisierungsintervall werden angepasst.\n\n**Ausgewählte Entitäten aktualisieren**: Wähle aus welche Entitäten zu Home Assistant hinzugefügt werden sollen.\n\n**Verfügbare Entitäten neu suchen und Auswahl aktualisieren**: Die Entitätsliste wird neu gesucht und danach kannst du deine Auswahl anpassen.\n\n**ETA Anlage in der Seitenleiste**: Zeigt die Anlagenkarte ETA Anlage als eigenen Eintrag in der Seitenleiste, ohne dass du ein Dashboard anlegen musst.\n\n**Anlagendaten hochladen**: zeigt deine Instanz-UUID und den Löschcode für hochgeladene Anlagendaten.",
                 "data": {
                     "options_update_action": "Aktion"
                 }
@@ -113,6 +113,10 @@
                 "data": {
                     "sidebar_panel": "In Seitenleiste anzeigen"
                 }
+            },
+            "plant_data": {
+                "title": "Anlagendaten hochladen",
+                "description": "Anlagendaten werden nur gesendet, wenn du am ETA-Gerät auf **Anlagendaten hochladen** drückst. Sie werden verschlüsselt, bevor sie Home Assistant verlassen.\n\n**Instanz-UUID:** `{uuid}`\n\n**Löschcode:** `{code}`\n\n**Letzter Upload:** {last}\n\nWenn hochgeladene Daten gelöscht werden sollen, eröffne im Repository der Integration ein Issue mit Instanz-UUID und Löschcode."
             }
         },
         "error": {
@@ -141,7 +145,7 @@
             "store_api_responses_btn": {
                 "name": "Roh-API-Daten anfordern"
             },
-            "upload_plant_data_btn" : {
+            "upload_plant_data_btn": {
                 "name": "Anlagendaten hochladen"
             }
         },
@@ -200,7 +204,8 @@
                 "update_selected_entities": "Ausgewählte Entitäten aktualisieren",
                 "rediscover_and_update_entities": "Verfügbare Entitäten neu suchen und Auswahl aktualisieren",
                 "rename_entities_to_named_scheme": "Auf das namensbasierte Schema migrieren (v2)",
-                "sidebar_panel": "ETA Anlage in der Seitenleiste"
+                "sidebar_panel": "ETA Anlage in der Seitenleiste",
+                "plant_data_upload": "Anlagendaten hochladen"
             }
         }
     },
@@ -231,6 +236,27 @@
         },
         "upload_not_ready": {
             "message": "Ein Upload ist noch nicht möglich. Bitte warte ein paar Minuten und versuche es nochmal. Falls das Problem weiterhin besteht, versuche Home Assistant neu zu starten."
+        },
+        "upload_no_uuid": {
+            "message": "Diese Installation hat noch keine Instanz-UUID, daher kann nichts hochgeladen werden. Bitte die Integration neu laden und erneut versuchen."
+        },
+        "upload_running": {
+            "message": "Die Anlagendaten werden bereits hochgeladen. Bitte einen Moment warten."
+        },
+        "upload_rate_limited": {
+            "message": "Zu viele Uploads. Bitte später erneut versuchen."
+        },
+        "upload_token_mismatch": {
+            "message": "Der Upload-Server kennt diese Instanz mit einem anderen Upload-Schlüssel (z. B. nach dem Wiederherstellen eines alten Backups), die Daten wurden deshalb nicht ersetzt."
+        },
+        "upload_failed": {
+            "message": "Die Anlagendaten konnten nicht hochgeladen werden. Bitte später erneut versuchen."
+        },
+        "upload_done_title": {
+            "message": "ETA: Anlagendaten hochgeladen"
+        },
+        "upload_done": {
+            "message": "Danke! Die Anlagendaten von {name} wurden gesendet (Upload {upload_id}). Das hilft uns, weitere ETA-Anlagen zu unterstützen.\n\nInstanz-UUID und Löschcode: Einstellungen > Geräte & Dienste > ETA Heating > Konfigurieren > Anlagendaten hochladen."
         }
     },
     "services": {

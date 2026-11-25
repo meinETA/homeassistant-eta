@@ -69,6 +69,7 @@ from .panel import (
 )
 from .services import async_setup_services
 from .topology import async_ensure_fast_label, async_sync_card_label
+from .upload import async_remove_upload_info
 from .utils.instance_uuid import create_new_instance_uuid
 from .utils.raw_data import async_remove_raw_data, async_start_raw_data_collection
 
@@ -253,6 +254,12 @@ async def async_setup_entry(
     _apply_pending_rename(hass, entry)
     _remove_stale_rename_duplicates(hass, entry)
     _sync_migration_issue(hass, entry)
+    # Entries created without a UUID (e.g. by a setup path that skipped it) get
+    # one before the update listener is added, so no reload is triggered.
+    if not entry.data.get(INSTANCE_UUID):
+        hass.config_entries.async_update_entry(
+            entry, data={**entry.data, INSTANCE_UUID: create_new_instance_uuid()}
+        )
     config = dict(entry.data)
     # Registers update listener to update config entry when options are updated.
     entry.async_on_unload(entry.add_update_listener(options_update_listener))
@@ -579,9 +586,10 @@ async def async_unload_entry(
 async def async_remove_entry(
     hass: core.HomeAssistant, entry: config_entries.ConfigEntry
 ) -> None:
-    """Forget the sidebar settings and the raw API data of a deleted entry."""
+    """Forget the sidebar settings, the raw API data and the upload token of a deleted entry."""
     async_forget_entry(hass, entry.entry_id)
     await async_remove_raw_data(hass, entry.entry_id)
+    await async_remove_upload_info(hass, entry.entry_id)
     persistent_notification.async_dismiss(
         hass, discovery_notification_id(entry.entry_id)
     )

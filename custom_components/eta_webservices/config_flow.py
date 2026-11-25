@@ -40,6 +40,7 @@ from .const import (
     INVISIBLE_UNITS,
     MAX_PARALLEL_REQUESTS,
     OPTIONS_ACTION_PARALLEL_ONLY,
+    OPTIONS_ACTION_PLANT_DATA,
     OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
     OPTIONS_ACTION_RENAME_ENTITIES,
     OPTIONS_ACTION_SIDEBAR,
@@ -62,6 +63,7 @@ from .migration_restore import (
     async_find_snapshot,
 )
 from .panel import async_set_sidebar, sidebar_enabled
+from .upload import async_get_upload_info
 from .utils.instance_uuid import create_new_instance_uuid
 
 _LOGGER = logging.getLogger(__name__)
@@ -819,6 +821,8 @@ class EtaOptionsFlowHandler(OptionsFlow):
                 return await self.async_step_rename_entities()
             if selected_action == OPTIONS_ACTION_SIDEBAR:
                 return await self.async_step_sidebar()
+            if selected_action == OPTIONS_ACTION_PLANT_DATA:
+                return await self.async_step_plant_data()
 
             self.update_sensor_values = selected_action in (
                 OPTIONS_ACTION_UPDATE_SELECTED,
@@ -857,6 +861,26 @@ class EtaOptionsFlowHandler(OptionsFlow):
                     ): cv.boolean,
                 }
             ),
+        )
+
+    async def async_step_plant_data(self, user_input=None):
+        """Show the instance UUID, the deletion code and the last upload (read only)."""
+        entry = self.config_entry
+        if user_input is not None:
+            return self.async_create_entry(title="", data=dict(entry.options))
+        info = await async_get_upload_info(self.hass, entry.entry_id)
+        current = self._get_runtime_config() or {}
+        last = info.get("last_upload_id")
+        return self.async_show_form(
+            step_id="plant_data",
+            data_schema=vol.Schema({}),
+            description_placeholders={
+                "uuid": str(current.get(INSTANCE_UUID) or "–"),
+                "code": info["code"],
+                "last": f"{last} ({info.get('last_upload_at', '')[:16].replace('T', ' ')} UTC)"
+                if last
+                else "–",
+            },
         )
 
     async def async_step_rename_entities(self, user_input=None):
@@ -990,6 +1014,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
             OPTIONS_ACTION_UPDATE_SELECTED,
             OPTIONS_ACTION_REDISCOVER_AND_UPDATE,
             OPTIONS_ACTION_SIDEBAR,
+            OPTIONS_ACTION_PLANT_DATA,
         ]
         # Offer the one-time v2 migration only while still on the IP-based scheme.
         if not current_data.get(CONF_NAME):
