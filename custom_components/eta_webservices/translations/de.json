@@ -137,6 +137,12 @@
         "button": {
             "send_error_events_btn": {
                 "name": "Fehler-Ereignisse neu senden"
+            },
+            "store_api_responses_btn": {
+                "name": "Roh-API-Daten anfordern"
+            },
+            "upload_plant_data_btn" : {
+                "name": "Anlagendaten hochladen"
             }
         },
         "binary_sensor": {
@@ -181,6 +187,9 @@
                     "seasonal": "Vorjahr (saisonal)",
                     "average": "Ø 14 Tage"
                 }
+            },
+            "instance_uuid": {
+                "name": "UUID der Instanz"
             }
         }
     },
@@ -210,6 +219,18 @@
         },
         "discovery_failed": {
             "message": "Entitätssuche für {name} fehlgeschlagen. Sie wird beim nächsten Neustart oder Neuladen der Integration wiederholt. Details stehen im Log."
+        },
+        "raw_data_title": {
+            "message": "ETA: Anlagendaten hochladen"
+        },
+        "raw_data_finished": {
+            "message": "Du kannst der Entwicklung dieser Integration helfen, indem du die anonymisierten Anlagendaten hochlädst. Bitte drücke dazu den Button im allgemeinen ETA Gerät ('ETA {name} > Anlagendaten hochladen').\n\nDieser Schritt ist komplett optional und es werden keine persönlichen Daten übertragen. Du kannst dir die Daten ansehen, indem du die Diagnosedaten der Integration herunterlädst."
+        },
+        "raw_data_already_running": {
+            "message": "Die Roh-API-Daten von {name} werden bereits gesammelt. Bitte warte, bis die Sammlung abgeschlossen ist."
+        },
+        "upload_not_ready": {
+            "message": "Ein Upload ist noch nicht möglich. Bitte warte ein paar Minuten und versuche es nochmal. Falls das Problem weiterhin besteht, versuche Home Assistant neu zu starten."
         }
     },
     "services": {

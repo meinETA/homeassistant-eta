@@ -198,6 +198,76 @@ class EtaAPI:
         """Request the menu from the ETA API, which includes links to all possible sensors."""
         return await self._http.get_menu()
 
+    async def get_raw_response(self, suffix: str) -> str:
+        """Request an API endpoint and return the raw response text.
+
+        :param suffix: Full path of the endpoint, like /user/var/120/1/123
+        :return: Raw (XML) response text
+        :rtype: str
+        """
+        response = await self._http.get_request(suffix)
+        return await response.text()
+
+    async def get_all_raw_responses(
+        self,
+        progress_callback: Callable[[str, float | None], None] | None = None,
+    ) -> dict[str, str]:
+        """Request the menu and the varinfo and var endpoints of all its URIs.
+
+        Failed requests are skipped, except for the menu. If this coroutine is
+        cancelled, all queued and running requests are cancelled as well.
+
+        :param progress_callback: Optional callback to report progress, takes a message and a progress value between 0 and 1
+        :return: Mapping from the requested path (like /user/var//120/1/123) to the raw response text
+        :rtype: Dict[str, str]
+        """
+        menu_xml = await self.get_raw_response("/user/menu")
+        responses: dict[str, str] = {"/user/menu": menu_xml}
+        try:
+            responses["/user/api"] = await self.get_raw_response("/user/api")
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Failed to get raw response for /user/api: %s", err)
+
+        uris = self._http.extract_uris(xmltodict.parse(menu_xml))
+        suffixes = [
+            f"/user/{kind}/{uri}" for uri in uris for kind in ("varinfo", "var")
+        ]
+        total = len(suffixes)
+        done = 0
+        last_step = -1
+
+        def _on_done(_task: asyncio.Future) -> None:
+            nonlocal done, last_step
+            done += 1
+            step = done * 10 // total
+            if progress_callback is not None and step > last_step:
+                last_step = step
+                progress_callback(
+                    f"Requested {done} of {total} endpoints", done / total
+                )
+
+        tasks = [
+            asyncio.ensure_future(self.get_raw_response(suffix)) for suffix in suffixes
+        ]
+        for task in tasks:
+            task.add_done_callback(_on_done)
+
+        try:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+        except asyncio.CancelledError:
+            for task in tasks:
+                task.cancel()
+            # Let the cancelled requests unwind before passing on the cancellation.
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+        for suffix, result in zip(suffixes, results, strict=True):
+            if isinstance(result, BaseException):
+                _LOGGER.debug("Failed to get raw response for %s: %s", suffix, result)
+            else:
+                responses[suffix] = result
+        return responses
+
     async def get_errors(self):
         """Request a list of active errors from the ETA system.
 

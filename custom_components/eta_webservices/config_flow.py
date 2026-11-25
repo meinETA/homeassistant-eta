@@ -36,6 +36,7 @@ from .const import (
     ENABLE_DEBUG_LOGGING,
     FLOAT_DICT,
     FORCE_LEGACY_MODE,
+    INSTANCE_UUID,
     INVISIBLE_UNITS,
     MAX_PARALLEL_REQUESTS,
     OPTIONS_ACTION_PARALLEL_ONLY,
@@ -61,6 +62,7 @@ from .migration_restore import (
     async_find_snapshot,
 )
 from .panel import async_set_sidebar, sidebar_enabled
+from .utils.instance_uuid import create_new_instance_uuid
 
 _LOGGER = logging.getLogger(__name__)
 _HOSTNAME_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
@@ -331,7 +333,7 @@ def _is_invalid_host_input(host: str) -> bool:
 class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
     """Config flow for Eta."""
 
-    VERSION = 9
+    VERSION = 10
     _restore_candidate: tuple[str, dict[str, Any]] | None = None
     _restore_offered = False
 
@@ -592,6 +594,7 @@ class EtaFlowHandler(ConfigFlow, domain=DOMAIN):
             self.data.pop(BACKGROUND_DISCOVERY, None)
             self.data.setdefault(MAX_PARALLEL_REQUESTS, DEFAULT_MAX_PARALLEL_REQUESTS)
             self.data.setdefault(UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+            self.data[INSTANCE_UUID] = create_new_instance_uuid()
             return self.async_create_entry(
                 title=self.data.get(CONF_NAME) or f"ETA at {self.data[CONF_HOST]}",
                 data=self.data,

@@ -42,6 +42,7 @@ from custom_components.eta_webservices.switch import (
 from custom_components.eta_webservices.time import (
     async_setup_entry as time_async_setup_entry,
 )
+from custom_components.eta_webservices.utils.instance_uuid import EtaInstanceUUIDSensor
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 
@@ -94,6 +95,9 @@ def _assert_coordinator_assignments(
             assert entity.coordinator is error_coordinator, (
                 f"{type(entity).__name__} {entity.unique_id!r} expected error_coordinator"
             )
+            continue
+
+        if isinstance(entity, EtaInstanceUUIDSensor):
             continue
 
         if entity.coordinator is sensor_coordinator:
@@ -216,9 +220,9 @@ async def test_coordinator_assignment_all_sensors(hass: HomeAssistant, load_fixt
     )
 
     # Sanity-check entity count (mirrors test_all_writable_and_non_writable_sensors_handled)
-    # +3: EtaNbrErrorsSensor + EtaLatestErrorSensor (sensor.py) + EtaErrorSensor (binary_sensor.py)
+    # +4: EtaNbrErrorsSensor + EtaLatestErrorSensor (sensor.py) + EtaErrorSensor (binary_sensor.py) + EtaInstanceUUIDSensor (instance_uuid.py)
     assert len(all_entities) == (
-        len(float_dict) + len(text_dict) + len(writable_dict) + len(switch_dict) + 3
+        len(float_dict) + len(text_dict) + len(writable_dict) + len(switch_dict) + 4
     )
 
     _assert_coordinator_assignments(
@@ -259,7 +263,7 @@ async def test_coordinator_assignment_no_writable_sensors(
         entry_id="test_no_writable",
     )
 
-    assert len(all_entities) == len(float_dict) + len(text_dict) + len(switch_dict) + 3
+    assert len(all_entities) == len(float_dict) + len(text_dict) + len(switch_dict) + 4
 
     _assert_coordinator_assignments(
         all_entities, sensor_coordinator, writable_coordinator, error_coordinator
@@ -299,7 +303,7 @@ async def test_coordinator_assignment_only_writable_sensors(
         entry_id="test_only_writable",
     )
 
-    assert len(all_entities) == len(writable_dict) + 3
+    assert len(all_entities) == len(writable_dict) + 4
 
     _assert_coordinator_assignments(
         all_entities, sensor_coordinator, writable_coordinator, error_coordinator

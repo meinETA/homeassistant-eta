@@ -2,7 +2,7 @@
 
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import CUSTOM_UNIT_UNITLESS, DOMAIN
+from ..const import CUSTOM_UNIT_UNITLESS, DOMAIN  # noqa: TID252
 
 
 def create_device_info(
