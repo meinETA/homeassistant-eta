@@ -466,6 +466,8 @@
   .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
   .t-silo .vals{flex-direction:column;align-items:center;gap:6px}
   .t-boiler .vals,.t-fwm .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
+  /* fresh water module: from the third value on a second row, the first row would reach into the pipes */
+  .vals .br{flex-basis:100%;height:0}
   .t-fwm .stack{max-width:100%}
   .stack{height:${FLOOR - 64}px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
   .icon{display:flex;align-items:flex-end;position:relative}
@@ -703,7 +705,7 @@
         if (tapE) shown = shown.filter((e) => e !== b.roles.hot_water);
         const ghostUnit = ((EDIT_ROLES[b.type] || []).find((r) => r[0] === ghost) || [])[3] === "temp" ? " °C" : "";
         const vals = (ghost ? `<div class="pill ghost" data-hint="${esc(this._roleLabel(b.type, ghost))}: ${this._t("not_selected")}">?${ghostUnit}</div>` : "")
-          + shown.map((e) => `<div class="pill" data-e="${e}"${lbl[e] ? ` data-lbl="${esc(lbl[e])}"` : ""}></div>`).join("");
+          + shown.map((e, i) => `${b.type === "fwm" && i === 2 ? '<i class="br"></i>' : ""}<div class="pill" data-e="${e}"${lbl[e] ? ` data-lbl="${esc(lbl[e])}"` : ""}></div>`).join("");
         const tank = b.type === "buffer"
           ? `<div class="tank${inner.length > 4 ? " many" : ""}" style="left:${g.body[0] * 100}%;right:${(1 - g.body[1]) * 100}%">${inner
               .map((r) => `<div class="pill" data-e="${b.roles[r]}"></div>`).join("")}</div>`
