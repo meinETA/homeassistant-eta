@@ -1,6 +1,7 @@
 """Abstract base class for sensor discovery implementations."""
 
 from abc import ABC, abstractmethod
+import asyncio
 from collections.abc import Callable
 
 from ..const import CUSTOM_UNITS  # noqa: TID252
@@ -31,6 +32,17 @@ class SensorDiscoveryBase(ABC):
         if self._progress_callback is None:
             return
         self._progress_callback(message, progress)
+
+    @staticmethod
+    async def _cancel_tasks(tasks: list[asyncio.Task]) -> None:
+        """Cancel still running child tasks and wait until they are finished.
+
+        Used when the discovery itself is cancelled (unload, shutdown, aborted
+        flow), so no orphaned requests keep hitting the ETA terminal.
+        """
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     # Concrete methods (shared by all versions)
 

@@ -175,25 +175,29 @@ class SensorDiscoveryV11(SensorDiscoveryBase):
         total_data_tasks = len(data_tasks)
         progress_step = max(1, total_data_tasks // 20) if total_data_tasks else 1
 
-        for completed_data_tasks, task in enumerate(
-            asyncio.as_completed(data_tasks), 1
-        ):
-            uri, result = await task
-            if isinstance(result, Exception):
-                _LOGGER.debug("Failed to get data for %s: %s", uri, str(result))
-            else:
-                endpoint_data[uri] = result
-            if (
-                completed_data_tasks == total_data_tasks
-                or completed_data_tasks % progress_step == 0
+        try:
+            for completed_data_tasks, task in enumerate(
+                asyncio.as_completed(data_tasks), 1
             ):
-                progress = 0.1 + (
-                    0.85 * completed_data_tasks / max(total_data_tasks, 1)
-                )
-                self._emit_progress(
-                    f"Reading endpoint values {completed_data_tasks}/{total_data_tasks}",
-                    progress,
-                )
+                uri, result = await task
+                if isinstance(result, Exception):
+                    _LOGGER.debug("Failed to get data for %s: %s", uri, str(result))
+                else:
+                    endpoint_data[uri] = result
+                if (
+                    completed_data_tasks == total_data_tasks
+                    or completed_data_tasks % progress_step == 0
+                ):
+                    progress = 0.1 + (
+                        0.85 * completed_data_tasks / max(total_data_tasks, 1)
+                    )
+                    self._emit_progress(
+                        f"Reading endpoint values {completed_data_tasks}/{total_data_tasks}",
+                        progress,
+                    )
+        except asyncio.CancelledError:
+            await self._cancel_tasks(data_tasks)
+            raise
 
         # Sanitize duplicates
         self._emit_progress("Resolving duplicate endpoints", 0.95)

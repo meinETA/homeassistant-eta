@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from homeassistant import config_entries, core
+from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT, Platform
 from homeassistant.helpers import (
     config_validation as cv,
@@ -17,6 +18,7 @@ from homeassistant.loader import async_get_integration
 from .card import async_setup_card
 from .config_flow import EtaFlowHandler
 from .const import (
+    BACKGROUND_DISCOVERY,
     CHOSEN_FLOAT_SENSORS,
     CHOSEN_PENDING_SENSORS,
     CHOSEN_SWITCHES,
@@ -52,6 +54,7 @@ from .coordinator import (
     ETASensorUpdateCoordinator,
     ETAWritableUpdateCoordinator,
 )
+from .discovery import async_run_background_discovery, discovery_notification_id
 from .migration_restore import (
     RESTORE_SNAPSHOT_ID,
     async_remove_snapshot,
@@ -263,6 +266,20 @@ async def async_setup_entry(
         else:
             config.pop(key, None)
 
+    # An entry created with background discovery has no endpoint data yet;
+    # start with empty selections until the discovery has stored its results.
+    for key in (FLOAT_DICT, SWITCHES_DICT, TEXT_DICT, WRITABLE_DICT, PENDING_DICT):
+        config.setdefault(key, {})
+    for key in (
+        CHOSEN_FLOAT_SENSORS,
+        CHOSEN_SWITCHES,
+        CHOSEN_TEXT_SENSORS,
+        CHOSEN_WRITABLE_SENSORS,
+        CHOSEN_PENDING_SENSORS,
+    ):
+        config.setdefault(key, [])
+    config.setdefault(FORCE_LEGACY_MODE, False)
+
     config[MAX_PARALLEL_REQUESTS] = int(
         config.get(MAX_PARALLEL_REQUESTS, DEFAULT_MAX_PARALLEL_REQUESTS)
     )
@@ -315,6 +332,15 @@ async def async_setup_entry(
 
     await async_setup_services(hass, entry)
     async_update_panel(hass, entry)
+
+    if entry.data.get(BACKGROUND_DISCOVERY):
+        # Runs after setup; HA cancels it on unload/reload and on shutdown.
+        # The stored results trigger a reload that adds the new entities.
+        entry.async_create_background_task(
+            hass,
+            async_run_background_discovery(hass, entry, config),
+            name=f"{DOMAIN} endpoint discovery {entry.entry_id}",
+        )
 
     return True
 
@@ -542,3 +568,6 @@ async def async_remove_entry(
 ) -> None:
     """Forget the sidebar settings of a deleted entry."""
     async_forget_entry(hass, entry.entry_id)
+    persistent_notification.async_dismiss(
+        hass, discovery_notification_id(entry.entry_id)
+    )
