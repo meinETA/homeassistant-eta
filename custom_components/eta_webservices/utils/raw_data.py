@@ -120,8 +120,14 @@ async def async_remove_raw_data(hass: HomeAssistant, entry_id: str) -> None:
 
 
 async def async_get_raw_data(hass: HomeAssistant, entry: ConfigEntry) -> dict | None:
-    """Load the stored raw API data and return them."""
-    return await _store(hass, entry.entry_id).async_load()
+    """Load the stored raw API data and return them.
+
+    Data collected while the entry had no UUID yet gets the entry's UUID.
+    """
+    data = await _store(hass, entry.entry_id).async_load()
+    if data is not None and not data.get(INSTANCE_UUID):
+        data[INSTANCE_UUID] = entry.data.get(INSTANCE_UUID) or ""
+    return data
 
 
 async def _async_collect_raw_data(

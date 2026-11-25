@@ -254,6 +254,12 @@ async def async_setup_entry(
     _apply_pending_rename(hass, entry)
     _remove_stale_rename_duplicates(hass, entry)
     _sync_migration_issue(hass, entry)
+    # Entries created without a UUID (e.g. by a setup path that skipped it) get
+    # one before the update listener is added, so no reload is triggered.
+    if not entry.data.get(INSTANCE_UUID):
+        hass.config_entries.async_update_entry(
+            entry, data={**entry.data, INSTANCE_UUID: create_new_instance_uuid()}
+        )
     config = dict(entry.data)
     # Registers update listener to update config entry when options are updated.
     entry.async_on_unload(entry.add_update_listener(options_update_listener))

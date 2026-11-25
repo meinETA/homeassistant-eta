@@ -247,3 +247,23 @@ async def test_remove_raw_data_removes_store_file():
 
     store_factory.assert_called_once_with(hass, "entry1")
     store.async_remove.assert_awaited_once()
+
+
+async def test_get_raw_data_fills_missing_uuid():
+    """Data collected before the entry had a UUID gets the entry's UUID."""
+    entry = _entry()
+    entry.data = {INSTANCE_UUID: UUID}
+    stored = {"version": 1, INSTANCE_UUID: "", "responses": RESPONSES}
+    with patch.object(raw_data, "_store", return_value=_store(stored)):
+        data = await raw_data.async_get_raw_data(_hass(), entry)
+    assert data[INSTANCE_UUID] == UUID
+
+
+async def test_get_raw_data_keeps_stored_uuid():
+    """A stored UUID is not replaced."""
+    entry = _entry()
+    entry.data = {INSTANCE_UUID: "other"}
+    stored = {"version": 1, INSTANCE_UUID: UUID, "responses": RESPONSES}
+    with patch.object(raw_data, "_store", return_value=_store(stored)):
+        data = await raw_data.async_get_raw_data(_hass(), entry)
+    assert data[INSTANCE_UUID] == UUID
