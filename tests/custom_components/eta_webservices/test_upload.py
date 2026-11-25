@@ -240,3 +240,33 @@ async def test_running_flag_is_cleared_after_failure():
     ):
         await upload.async_upload_plant_file(hass, _entry(), DATA)
     assert hass.data[upload._RUNNING_KEY] == set()
+
+
+async def test_upload_entry_needs_collected_data():
+    """Before the raw data is collected, the button says "not ready"."""
+    entry = _entry()
+    with (
+        patch.object(upload, "async_get_raw_data", AsyncMock(return_value=None)),
+        pytest.raises(HomeAssistantError) as err,
+    ):
+        await upload.async_upload_entry(_hass(), entry)
+    assert err.value.translation_key == "upload_not_ready"
+
+
+async def test_upload_entry_uploads_and_notifies():
+    """With data, the entry is uploaded and the user is told."""
+    entry = _entry()
+    notify = AsyncMock()
+    with (
+        patch.object(upload, "async_get_raw_data", AsyncMock(return_value=DATA)),
+        patch.object(
+            upload,
+            "async_upload_plant_file",
+            AsyncMock(return_value={"upload_id": "U-1", "status": "stored"}),
+        ),
+        patch.object(upload, "async_notify_uploaded", notify),
+    ):
+        result = await upload.async_upload_entry(_hass(), entry)
+    assert result == {"upload_id": "U-1", "status": "stored"}
+    notify.assert_awaited_once()
+    assert notify.await_args.args[2] == UUID

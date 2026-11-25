@@ -6,7 +6,25 @@ body:
   - type: markdown
     attributes:
       value: |
-        Easiest way: open the card settings (gear) and click **Open GitHub issue**. It downloads the plant file and opens this form; drag the file into **Plant file**.
+        First press **Upload Plant Data** on the ETA device (Settings → Devices & services → ETA Heating → ETA device → Diagnostic). The plant data goes encrypted to the maintainers; only they can read it.
+        Then open the card settings (gear) and click **Open GitHub issue**: it fills in your instance UUID.
+
+        Issues are public. Do not attach diagnostics or other files with plant data.
+  - type: input
+    id: uuid
+    attributes:
+      label: Instance UUID
+      description: Settings → Devices & services → ETA Heating → Configure → Plant data upload (also the diagnostic sensor "Instance UUID").
+      placeholder: 00000000-0000-4000-8000-000000000000
+    validations:
+      required: true
+  - type: checkboxes
+    id: uploaded
+    attributes:
+      label: Plant data
+      options:
+        - label: I pressed **Upload Plant Data** on the ETA device.
+          required: true
   - type: textarea
     id: what
     attributes:
@@ -19,12 +37,5 @@ body:
     attributes:
       label: Screenshot
       description: Drag a screenshot of the card here. Check it for personal names first.
-    validations:
-      required: false
-  - type: textarea
-    id: file
-    attributes:
-      label: Plant file
-      description: Drag the downloaded file `eta-plant-report.json` here (it is in your download folder). It is encrypted, only the maintainers can read it. It contains every value of the plant, without IP address, serial number or names you gave.
     validations:
       required: false

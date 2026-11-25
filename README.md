@@ -61,7 +61,7 @@ The integration ships a dashboard card that shows the plant like the ETA touch d
 - **Live values:** values shown on the card are read every 10 seconds, all other entities at the normal update interval.
 - **Ash box:** fill level as a bar above the boiler (orange from 80 %, red from 100 % when ETA asks to empty it) and in the control tab with the expected emptying date.
 - **Card settings:** plant (if several are configured), name, language and an icon per block (e.g. the exact boiler model).
-- **Report a problem:** if the plant is not shown correctly, press **Upload Plant Data** on the ETA device (see [Plant data upload](#plant-data-upload)) and open an issue with the instance UUID and a screenshot. The maintainers then see the complete, encrypted data of your unit; nothing of it becomes public. **Open GitHub issue** in the card settings opens the issue form as well; it also downloads the plant file `eta-plant-report.json` with the current readings of your unit. Issues are public, so only attach it if you are fine with that.
+- **Report a problem:** if the plant is not shown correctly, press **Upload Plant Data** on the ETA device (see [Plant data upload](#plant-data-upload)), then use **Open GitHub issue** in the card settings. It opens the issue form with your instance UUID filled in; add a screenshot. The plant data stays encrypted with the maintainers, nothing of it goes into the public issue.
 
 Layouts that are not covered yet will be added based on reports.
 

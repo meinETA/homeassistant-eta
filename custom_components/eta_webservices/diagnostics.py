@@ -17,8 +17,7 @@ from .const import (
     MAX_PARALLEL_REQUESTS,
     REQUEST_SEMAPHORE,
 )
-from .plant_file import async_terminal_info
-from .topology import async_get_report, async_get_topology
+from .topology import async_get_topology
 from .utils.raw_data import async_get_raw_data
 
 # the terminal address and anything that could identify the owner
@@ -51,18 +50,11 @@ async def async_get_config_entry_diagnostics(
         None,
     )
 
-    plant_file = async_get_report(hass, entry.entry_id, full=True)
-    plant_file.pop("entry_id", None)
-    plant_file["terminal"] = await async_terminal_info(
-        hass, entry.entry_id, {row["uri"] for row in plant_file.get("tree", [])}
-    )
-
     return {
         "config": async_redact_data(
             {k: v for k, v in config.items() if k != REQUEST_SEMAPHORE}, TO_REDACT
         ),
         "api_version": str(api_version),
         "topology": topology,
-        "plant_file": plant_file,
         "raw_responses": await async_get_raw_data(hass, entry),
     }

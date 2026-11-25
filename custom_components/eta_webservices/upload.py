@@ -39,6 +39,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, INSTANCE_UUID
 from .seal import seal
+from .utils.raw_data import async_get_raw_data
 
 UPLOAD_URL = "https://upload.meineta.net"
 STORAGE_VERSION = 1
@@ -192,6 +193,26 @@ async def _async_upload(
         "upload_id": answer["upload_id"],
         "status": answer.get("status", "stored"),
     }
+
+
+async def async_upload_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, Any]:
+    """Upload the stored raw data of an entry and tell the user (button "Upload Plant Data").
+
+    :return: {"upload_id", "status"}
+    :raises HomeAssistantError: no data or UUID yet, or the upload failed
+    """
+    data = await async_get_raw_data(hass, entry)
+    if data is None or not data.get(INSTANCE_UUID):
+        if data is not None:
+            _LOGGER.error("Instance UUID in raw data is empty")
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="upload_not_ready",
+            translation_placeholders={"name": entry.title},
+        )
+    result = await async_upload_plant_file(hass, entry, data)
+    await async_notify_uploaded(hass, entry, str(data[INSTANCE_UUID]), result)
+    return result
 
 
 _FALLBACK_TEXTS = {
