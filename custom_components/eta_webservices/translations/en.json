@@ -219,6 +219,18 @@
         },
         "discovery_failed": {
             "message": "Entity discovery for {name} failed. It is retried on the next restart or reload of the integration. See the log for details."
+        },
+        "raw_data_title": {
+            "message": "ETA: Upload Plant Data"
+        },
+        "raw_data_finished": {
+            "message": "You can help further development of this integration by uploading your anonymized plant data for debugging purposes. Please click the button in the general ETA device ('ETA {name} > Upload Plant Data').\n\nThis step is completely optional and no personal information is ever transmitted. You can download the integration diagnostic data to check what would be transmitted."
+        },
+        "raw_data_already_running": {
+            "message": "The raw API data of {name} is already being collected. Please wait until it is finished."
+        },
+        "upload_not_ready": {
+            "message": "Upload is not yet ready. Please wait a few minutes and try again. If this issue persists, please try restarting Home Assistant."
         }
     },
     "services": {
@@ -289,20 +301,6 @@
                     "description": "The target temperature within the timeslot"
                 }
             }
-        }
-    },
-    "exceptions": {
-        "raw_data_title": {
-            "message": "ETA: Upload Plant Data"
-        },
-        "raw_data_finished": {
-            "message": "You can help further development of this integration by uploading your anonymized plant data for debugging purposes. Please click the button in the general ETA device ('ETA {name} > Upload Plant Data').\n\nThis step is completely optional and no personal information is ever transmitted. You can download the integration diagnostic data to check what would be transmitted."
-        },
-        "raw_data_already_running": {
-            "message": "The raw API data of {name} is already being collected. Please wait until it is finished."
-        },
-        "upload_not_ready": {
-            "message": "Upload is not yet ready. Please wait a few minutes and try again. If this issue persists, please try restarting Home Assistant."
         }
     }
 }

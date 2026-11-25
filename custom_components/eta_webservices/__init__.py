@@ -345,6 +345,7 @@ async def async_setup_entry(
             name=f"{DOMAIN} endpoint discovery {entry.entry_id}",
         )
     else:
+        # Runs after all entities have been discovered
         await async_start_raw_data_collection(hass, entry, config)
 
     return True
