@@ -32,7 +32,7 @@ Your ETA plant on a dashboard, like on the touch display: detected automatically
 
 ## Contents
 
-[Features](#features) · [Plant card](#plant-card) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Moving from the previous repository](#moving-from-the-previous-repository) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Troubleshooting](#troubleshooting)
+[Features](#features) · [Plant card](#plant-card) · [Prerequisites](#prerequisites) · [Installation](#installation) · [Moving from the previous repository](#moving-from-the-previous-repository) · [Updating the sensor list](#updating-the-list-of-sensors) · [Error events](#error-events) · [Writable sensors](#writable-sensors) · [Services](#custom-services) · [Energy Dashboard](#integrating-the-eta-unit-into-the-energy-dashboard) · [Plant data upload](#plant-data-upload) · [Troubleshooting](#troubleshooting)
 
 ## Features
 
@@ -236,6 +236,14 @@ You can also create the same helper from the UI:
 <img src="images/template_sensor.png" alt="Template helper" width="380">
 
 Then add the new sensor to the gas sources of your Energy Dashboard.
+
+## Plant Data Upload
+
+After the setup, the integration reads all endpoints of the ETA unit once and stores the answers. Pressing **Upload Plant Data** on the ETA device sends them to the maintainers, so support for more ETA systems can be built and tested. This is optional; nothing is sent without pressing the button.
+
+- The data is encrypted before it leaves Home Assistant; only the maintainers can read it. It contains the menu, units and current values of the unit, the integration and Home Assistant version, but no IP address and no names you gave in Home Assistant.
+- The diagnostics (Settings → Devices & services → ETA Heating → ⋮ → Download diagnostics) contain the same data unencrypted, so you can check what is sent.
+- To have uploaded data deleted, open an issue with the instance UUID and the deletion code. Both are shown in Settings → Devices & services → ETA Heating → Configure → Plant data upload.
 
 ## Troubleshooting
 

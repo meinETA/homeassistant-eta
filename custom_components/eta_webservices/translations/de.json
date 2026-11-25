@@ -116,7 +116,7 @@
             },
             "plant_data": {
                 "title": "Anlagendaten hochladen",
-                "description": "Anlagendaten werden nur gesendet, wenn du am ETA-Gerät auf **Anlagendaten hochladen** drückst. Sie werden verschlüsselt, bevor sie Home Assistant verlassen.\n\n**Instanz-UUID:** `{uuid}`\n\n**Löschcode:** `{code}`\n\n**Letzter Upload:** {last}\n\nWie du hochgeladene Daten löschen kannst, steht in der README der Integration. Behalte den Löschcode für dich."
+                "description": "Anlagendaten werden nur gesendet, wenn du am ETA-Gerät auf **Anlagendaten hochladen** drückst. Sie werden verschlüsselt, bevor sie Home Assistant verlassen.\n\n**Instanz-UUID:** `{uuid}`\n\n**Löschcode:** `{code}`\n\n**Letzter Upload:** {last}\n\nWenn hochgeladene Daten gelöscht werden sollen, eröffne im Repository der Integration ein Issue mit Instanz-UUID und Löschcode."
             }
         },
         "error": {
@@ -247,7 +247,7 @@
             "message": "Zu viele Uploads. Bitte später erneut versuchen."
         },
         "upload_token_mismatch": {
-            "message": "Der Upload-Server kennt diese Instanz mit einem anderen Löschcode, die Daten wurden deshalb nicht ersetzt."
+            "message": "Der Upload-Server kennt diese Instanz mit einem anderen Upload-Schlüssel (z. B. nach dem Wiederherstellen eines alten Backups), die Daten wurden deshalb nicht ersetzt."
         },
         "upload_failed": {
             "message": "Die Anlagendaten konnten nicht hochgeladen werden. Bitte später erneut versuchen."
@@ -256,7 +256,7 @@
             "message": "ETA: Anlagendaten hochgeladen"
         },
         "upload_done": {
-            "message": "Danke! Die Anlagendaten von {name} wurden gesendet (Upload {upload_id}). Das hilft uns, weitere ETA-Anlagen zu unterstützen.\n\nFalls du sie einmal löschen möchtest: Einstellungen > Geräte & Dienste > ETA Heating > Konfigurieren > Anlagendaten hochladen."
+            "message": "Danke! Die Anlagendaten von {name} wurden gesendet (Upload {upload_id}). Das hilft uns, weitere ETA-Anlagen zu unterstützen.\n\nInstanz-UUID und Löschcode: Einstellungen > Geräte & Dienste > ETA Heating > Konfigurieren > Anlagendaten hochladen."
         }
     },
     "services": {

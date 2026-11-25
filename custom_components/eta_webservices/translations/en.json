@@ -116,7 +116,7 @@
             },
             "plant_data": {
                 "title": "Plant data upload",
-                "description": "Plant data is only sent when you press **Upload Plant Data** on the ETA device. It is encrypted before it leaves Home Assistant.\n\n**Instance UUID:** `{uuid}`\n\n**Deletion code:** `{code}`\n\n**Last upload:** {last}\n\nHow to delete uploaded data is described in the README of the integration. Keep the deletion code private."
+                "description": "Plant data is only sent when you press **Upload Plant Data** on the ETA device. It is encrypted before it leaves Home Assistant.\n\n**Instance UUID:** `{uuid}`\n\n**Deletion code:** `{code}`\n\n**Last upload:** {last}\n\nTo have uploaded data deleted, open an issue in the repository of the integration with the instance UUID and the deletion code."
             }
         },
         "error": {
@@ -247,7 +247,7 @@
             "message": "Too many uploads. Please try again later."
         },
         "upload_token_mismatch": {
-            "message": "The upload server knows this instance with another deletion code, so the data was not replaced."
+            "message": "The upload server knows this instance with another upload key (e.g. after restoring an old backup), so the data was not replaced."
         },
         "upload_failed": {
             "message": "The plant data could not be uploaded. Please try again later."
@@ -256,7 +256,7 @@
             "message": "ETA: plant data uploaded"
         },
         "upload_done": {
-            "message": "Thank you! The plant data of {name} was sent (upload {upload_id}). It helps us to support more ETA systems.\n\nShould you ever want it deleted: Settings > Devices & services > ETA Heating > Configure > Plant data upload."
+            "message": "Thank you! The plant data of {name} was sent (upload {upload_id}). It helps us to support more ETA systems.\n\nInstance UUID and deletion code: Settings > Devices & services > ETA Heating > Configure > Plant data upload."
         }
     },
     "services": {

@@ -876,7 +876,7 @@ class EtaOptionsFlowHandler(OptionsFlow):
             data_schema=vol.Schema({}),
             description_placeholders={
                 "uuid": str(current.get(INSTANCE_UUID) or "–"),
-                "code": info.get("token") or "–",
+                "code": info["code"],
                 "last": f"{last} ({info.get('last_upload_at', '')[:16].replace('T', ' ')} UTC)"
                 if last
                 else "–",

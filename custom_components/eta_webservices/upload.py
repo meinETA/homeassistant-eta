@@ -7,10 +7,11 @@ the server against floods.
 
 Every config entry gets a random upload token on its first upload. The server
 binds it to the instance UUID, so nobody else can overwrite the plant data of
-this instance; the same token is the deletion code the user enters on
-https://delete.meineta.net. It is kept in its own store, not in the config
-entry (changing the entry would reload the integration) and never in the
-diagnostics.
+this instance. Next to it, each entry has a short deletion code: it travels
+sealed with every upload, and a user who asks for the deletion of the data names
+it (shown in the options), so the maintainers can check the request.
+Both are kept in their own store, not in the config entry (changing the entry
+would reload the integration), and never in the diagnostics.
 """
 
 from __future__ import annotations
@@ -40,7 +41,6 @@ from .const import DOMAIN, INSTANCE_UUID
 from .seal import seal
 
 UPLOAD_URL = "https://upload.meineta.net"
-DELETE_URL = "https://delete.meineta.net"
 STORAGE_VERSION = 1
 TIMEOUT = ClientTimeout(total=120)
 
@@ -49,6 +49,9 @@ _UUID_RE = re.compile(
 )
 # hass.data key of the running uploads, by config entry id
 _RUNNING_KEY = f"{DOMAIN}_uploads_running"
+# deletion code: easy to read out, no 0/O or 1/I/L
+_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
+_CODE_LENGTH = 6
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,9 +60,18 @@ def _store(hass: HomeAssistant, entry_id: str) -> Store[dict[str, Any]]:
     return Store(hass, STORAGE_VERSION, f"{DOMAIN}.upload_{entry_id}")
 
 
+def _new_code() -> str:
+    return "".join(secrets.choice(_CODE_ALPHABET) for _ in range(_CODE_LENGTH))
+
+
 async def async_get_upload_info(hass: HomeAssistant, entry_id: str) -> dict[str, Any]:
-    """Token (= deletion code) and the last upload of an entry; empty before the first upload."""
-    return await _store(hass, entry_id).async_load() or {}
+    """Deletion code, token and last upload of an entry; the code is created on first use."""
+    store = _store(hass, entry_id)
+    info = await store.async_load() or {}
+    if not info.get("code"):
+        info["code"] = _new_code()
+        await store.async_save(info)
+    return info
 
 
 async def async_remove_upload_info(hass: HomeAssistant, entry_id: str) -> None:
@@ -97,7 +109,7 @@ async def async_upload_plant_file(
     """Seal and send the raw plant data of an entry.
 
     :param data: the stored raw data ({"version", "instance_uuid", "collected_at", "responses"})
-    :return: {"upload_id", "status" ("stored" or "unchanged"), "deletion_code"}
+    :return: {"upload_id", "status" ("stored" or "unchanged")}
     :raises HomeAssistantError: no UUID, already running, or the server refused it
     """
     instance_uuid = str(data.get(INSTANCE_UUID) or "").lower()
@@ -118,12 +130,17 @@ async def _async_upload(
     hass: HomeAssistant, entry: ConfigEntry, data: dict[str, Any], instance_uuid: str
 ) -> dict[str, Any]:
     store = _store(hass, entry.entry_id)
-    info = await store.async_load() or {}
+    info = await async_get_upload_info(hass, entry.entry_id)
     if not info.get("token"):
         info["token"] = secrets.token_urlsafe(32)
         await store.async_save(info)
 
-    plain = json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode()
+    # the deletion code goes sealed with the data, only the maintainers see it
+    plain = json.dumps(
+        {**data, "deletion_code": info["code"]},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode()
     sealed = await hass.async_add_executor_job(seal, plain)
     integration = await async_get_integration(hass, DOMAIN)
     session = async_get_clientsession(hass)
@@ -174,7 +191,6 @@ async def _async_upload(
     return {
         "upload_id": answer["upload_id"],
         "status": answer.get("status", "stored"),
-        "deletion_code": info["token"],
     }
 
 
@@ -183,7 +199,7 @@ _FALLBACK_TEXTS = {
     "upload_done": (
         "Thank you! The plant data of {name} was sent (upload {upload_id}). "
         "It helps us to support more ETA systems.\n\n"
-        "Should you ever want it deleted: Settings > Devices & services > "
+        "Instance UUID and deletion code: Settings > Devices & services > "
         "ETA Heating > Configure > Plant data upload."
     ),
 }
@@ -197,7 +213,7 @@ def upload_notification_id(entry_id: str) -> str:
 async def async_notify_uploaded(
     hass: HomeAssistant, entry: ConfigEntry, instance_uuid: str, result: dict[str, Any]
 ) -> None:
-    """Tell the user that the upload worked, with the deletion code."""
+    """Tell the user that the upload worked."""
     texts = await translation.async_get_translations(
         hass, hass.config.language, "exceptions", {DOMAIN}
     )

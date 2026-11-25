@@ -4,6 +4,7 @@ import base64
 from contextlib import asynccontextmanager, contextmanager
 import hashlib
 import json
+import re
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -118,20 +119,53 @@ async def test_upload_creates_token_and_sends_sealed_data():
     body = session.posted
     token = body["upload_token"]
     assert len(token) >= 32
-    assert result == {
-        "upload_id": "U-0123456789ab",
-        "status": "stored",
-        "deletion_code": token,
-    }
+    assert result == {"upload_id": "U-0123456789ab", "status": "stored"}
     assert body["instance_uuid"] == UUID
     assert body["integration_version"] == "2.2.0"
-    plain = json.dumps(DATA, ensure_ascii=False, separators=(",", ":")).encode()
-    assert body["sha256"] == hashlib.sha256(plain).hexdigest()
     assert base64.b64decode(body["sealed"])[:4] == b"ETA1"
     assert b"<menu/>" not in base64.b64decode(body["sealed"])
     saved = store.async_save.await_args.args[0]
     assert saved["token"] == token
     assert saved["last_upload_id"] == "U-0123456789ab"
+    assert re.fullmatch(r"[23456789A-HJKMNP-Z]{6}", saved["code"])
+    assert token not in json.dumps(result)
+
+
+async def test_deletion_code_travels_sealed():
+    """The short deletion code is inside the sealed data, the hash covers it."""
+    session = _Session(201, {"status": "stored", "upload_id": "U-0123456789ab"})
+    sealed_plain: list[bytes] = []
+
+    def fake_seal(plain: bytes) -> str:
+        sealed_plain.append(plain)
+        return base64.b64encode(b"ETA1" + b"x" * 64).decode()
+
+    with (
+        _patched(session, _store({"token": "t" * 43, "code": "K7MQ2X"})),
+        patch.object(upload, "seal", fake_seal),
+    ):
+        await upload.async_upload_plant_file(_hass(), _entry(), DATA)
+
+    plain = sealed_plain[0]
+    assert json.loads(plain) == {**DATA, "deletion_code": "K7MQ2X"}
+    assert session.posted["sha256"] == hashlib.sha256(plain).hexdigest()
+    assert "K7MQ2X" not in json.dumps(session.posted)
+
+
+async def test_deletion_code_is_created_once():
+    """The code exists before the first upload and stays the same."""
+    store = _store(None)
+    with patch.object(upload, "_store", return_value=store):
+        info = await upload.async_get_upload_info(_hass(), "entry1")
+    code = info["code"]
+    assert re.fullmatch(r"[23456789A-HJKMNP-Z]{6}", code)
+    store.async_save.assert_awaited_once()
+
+    store = _store({"code": code})
+    with patch.object(upload, "_store", return_value=store):
+        info = await upload.async_get_upload_info(_hass(), "entry1")
+    assert info["code"] == code
+    store.async_save.assert_not_awaited()
 
 
 async def test_upload_reuses_stored_token():
