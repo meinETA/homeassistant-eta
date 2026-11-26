@@ -517,7 +517,7 @@ async def async_migrate_entry(  # noqa: C901, D103
     is_migrated = False
 
     if current_version == 1:
-        new_data[WRITABLE_DICT] = []
+        new_data[WRITABLE_DICT] = {}
         new_data[CHOSEN_WRITABLE_SENSORS] = []
         current_version = 2
         is_migrated = True

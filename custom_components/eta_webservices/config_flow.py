@@ -1356,6 +1356,10 @@ class EtaOptionsFlowHandler(OptionsFlow):
             FORCE_LEGACY_MODE,
         ]:
             self.data[key] = copy.copy(current_data[key])
+        # Entries migrated from config version 1 stored WRITABLE_DICT as a list.
+        for key in [FLOAT_DICT, SWITCHES_DICT, TEXT_DICT, WRITABLE_DICT, PENDING_DICT]:
+            if not isinstance(self.data[key], dict):
+                self.data[key] = {}
         (
             self.data[CHOSEN_FLOAT_SENSORS],
             self.data[CHOSEN_SWITCHES],

@@ -225,6 +225,23 @@ async def test_prepare_data_structures_copies_all_keys_from_runtime_config():
 
 
 @pytest.mark.asyncio
+async def test_prepare_data_structures_replaces_legacy_list_writable_dict():
+    """Entries migrated from v1 stored WRITABLE_DICT as a list; it must become a dict.
+
+    Otherwise adding rediscovered writable sensors fails with
+    "TypeError: list indices must be integers or slices, not str".
+    """
+    config = _make_runtime_config({WRITABLE_DICT: []})
+    flow = _make_flow(config)
+
+    await flow._prepare_data_structures()
+
+    assert flow.data[WRITABLE_DICT] == {}
+    flow._handle_new_sensors({}, {}, {}, {"w1": _make_sensor()}, {})
+    assert "w1" in flow.data[WRITABLE_DICT]
+
+
+@pytest.mark.asyncio
 async def test_prepare_data_structures_data_is_shallow_copied():
     """Dict values are shallow-copied; mutating flow.data must not touch the original."""
     original_float = {"s1": _make_sensor()}
