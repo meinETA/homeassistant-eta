@@ -491,7 +491,7 @@ async def test_async_migrate_entry_v1_to_v7():
     new_data = call_kwargs["data"]
 
     # Fields added by the v1-specific step.
-    assert new_data[WRITABLE_DICT] == []
+    assert new_data[WRITABLE_DICT] == {}
     assert new_data[CHOSEN_WRITABLE_SENSORS] == []
     assert new_data[FORCE_LEGACY_MODE] is False
 
