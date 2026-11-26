@@ -34,7 +34,7 @@ class EtaInstanceUUIDSensor(SensorEntity):
         self._attr_translation_key = "instance_uuid"
 
         stable = config.get(STABLE_ID) or host.replace(".", "_")
-        self._attr_unique_id = "eta_" + stable + "_" + str(port) + "_instance_uuid"
+        self._attr_unique_id = "eta_" + stable + "_instance_uuid"
         self.entity_id = generate_entity_id(
             ENTITY_ID_FORMAT, self._attr_unique_id, hass=hass
         )

@@ -86,9 +86,7 @@ class EtaStoreApiResponsesButton(ButtonEntity):
 
         self._attr_translation_key = "store_api_responses_btn"
         stable = config.get(STABLE_ID) or host.replace(".", "_")
-        self._attr_unique_id = (
-            "eta_" + stable + "_" + str(port) + "_store_api_responses_btn"
-        )
+        self._attr_unique_id = "eta_" + stable + "_store_api_responses_btn"
         self.entity_id = generate_entity_id(
             ENTITY_ID_FORMAT, self._attr_unique_id, hass=hass
         )
@@ -125,9 +123,7 @@ class EtaUploadPlantDataButton(ButtonEntity):
 
         self._attr_translation_key = "upload_plant_data_btn"
         stable = config.get(STABLE_ID) or host.replace(".", "_")
-        self._attr_unique_id = (
-            "eta_" + stable + "_" + str(port) + "_upload_plant_data_btn"
-        )
+        self._attr_unique_id = "eta_" + stable + "_upload_plant_data_btn"
         self.entity_id = generate_entity_id(
             ENTITY_ID_FORMAT, self._attr_unique_id, hass=hass
         )

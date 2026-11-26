@@ -24,7 +24,7 @@ def test_store_api_responses_button_attributes():
     """The button is a disabled-by-default diagnostic entity."""
     entity = _store_api_responses_button(MagicMock(), MagicMock())
 
-    assert entity.unique_id == "eta_boiler_8080_store_api_responses_btn"
+    assert entity.unique_id == "eta_boiler_store_api_responses_btn"
     assert entity.translation_key == "store_api_responses_btn"
     assert entity.entity_category is EntityCategory.DIAGNOSTIC
     assert entity.entity_registry_enabled_default is False
