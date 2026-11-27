@@ -17,6 +17,7 @@
     "10601": "buffer",
     "10291": "external_heat",
     "10311": "external_demand",
+    "10541": "heat_meter",
     "10531": "fwm",
     "10571": "particle_separator",
     "10851": "condenser",
@@ -125,6 +126,16 @@
     ],
     "external_demand": [
       ["0/0/19416", "status"]
+    ],
+    "heat_meter": [
+      ["14580/0/2287", "power"],
+      ["14580/0/12350", "today"],
+      ["14580/0/12769", "yesterday"],
+      ["14580/0/2273", "energy"],
+      ["14580/0/2271", "flow"],
+      ["14580/0/11160", "return"],
+      ["14580/0/12488", "spread"],
+      ["14580/0/2272", "flow_rate"]
     ],
     "condenser": [
       ["0/0/19457", "status"],

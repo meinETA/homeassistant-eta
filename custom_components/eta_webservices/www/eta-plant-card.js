@@ -231,11 +231,17 @@
     particle_separator: { off: "Kessel/EP_Abscheider/EP.webp", on: "Kessel/EP_Abscheider/EP_aktiv.webp" },
     condenser: { off: "Kessel/Brennwert_WT/Brennwert_WT.webp", on: "Kessel/Brennwert_WT/Brennwert_WT.webp" },
     switch_valve: { off: "FUBs/Umschaltventil/Umschaltventil.webp", on: "FUBs/Umschaltventil/Umschaltventil.webp" },
+    heat_meter: { off: "FUBs/System/Messwert.webp", on: "FUBs/System/Messwert.webp" },
   };
+  // heat meter tile: [role, label key] per row
+  const METER_ROWS = [
+    [["power", null], ["today", "lbl_today"], ["yesterday", "lbl_yesterday"], ["energy", null]],
+    [["flow", "lbl_flow"], ["return", "lbl_return"], ["spread", "lbl_spread"], ["flow_rate", null]],
+  ];
   const LABELS = {
     de: {
       silo: "Silo", chip_store: "Hackgutlager", boiler: "Kessel", buffer: "Puffer", heating_circuit: "Heizkreis",
-      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider", condenser: "Brennwertwärmetauscher", switch_valve: "Umschaltventil",
+      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider", condenser: "Brennwertwärmetauscher", switch_valve: "Umschaltventil", heat_meter: "Wärmemengenzähler",
       source_1: "Erzeuger 1", source_2: "Erzeuger 2",
       external_demand: "Ext. Anforderung", external_heat: "Fremdwärme",
       no_blocks: "Keine Anlagenteile erkannt. Wähle in den Integrationsoptionen die Entitäten von Kessel, Heizkreis usw. aus oder melde deine Anlage: „Anlagendaten hochladen“ am ETA-Gerät drücken und ein GitHub-Issue mit der Instanz-UUID eröffnen.", outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
@@ -250,12 +256,13 @@
       in_days: (n) => `leeren in ca. ${n} ${n === 1 ? "Tag" : "Tagen"}`,
       in_weeks: (n) => `leeren in ca. ${n} Wochen`, in_months: (n) => `leeren in ca. ${n} Monaten`,
       not_selected: "nicht ausgewählt",
-      lbl_flue_gas: "Abgas", lbl_return: "RL", lbl_room: "Raum",
+      lbl_flue_gas: "Abgas", lbl_return: "RL", lbl_room: "Raum", lbl_spread: "Δ",
+      lbl_today: "heute", lbl_yesterday: "gestern", lbl_flow: "VL",
       hint_selected: "Dieser Wert ist am Terminal vorhanden, aber in der Integration nicht ausgewählt. Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → „Ausgewählte Entitäten aktualisieren“ → Wert auswählen. Soll er nicht angezeigt werden: Zahnrad → Werte manuell zuordnen → „nicht anzeigen“.",
     },
     en: {
       silo: "Storage", chip_store: "Chip store", boiler: "Boiler", buffer: "Buffer", heating_circuit: "Heating circuit",
-      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator", condenser: "Condensing heat exchanger", switch_valve: "Switch valve",
+      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator", condenser: "Condensing heat exchanger", switch_valve: "Switch valve", heat_meter: "Heat meter",
       source_1: "Source 1", source_2: "Source 2",
       external_demand: "Ext. demand", external_heat: "External heat",
       no_blocks: "No plant parts detected. Select the boiler, heating circuit, ... entities in the integration options or report your plant: press \u201cUpload Plant Data\u201d on the ETA device and open a GitHub issue with the instance UUID.", outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
@@ -270,7 +277,8 @@
       in_days: (n) => `empty in approx. ${n} ${n === 1 ? "day" : "days"}`,
       in_weeks: (n) => `empty in approx. ${n} weeks`, in_months: (n) => `empty in approx. ${n} months`,
       not_selected: "not selected",
-      lbl_flue_gas: "Flue", lbl_return: "Ret", lbl_room: "Room",
+      lbl_flue_gas: "Flue", lbl_return: "Ret", lbl_room: "Room", lbl_spread: "Δ",
+      lbl_today: "today", lbl_yesterday: "yesterday", lbl_flow: "Flow",
       hint_selected: "This value exists on the terminal but is not selected in the integration. Settings → Devices & services → ETA Heating → Configure → \u201cUpdate selected entities\u201d → select the value. To hide it: gear → Assign values manually → \u201cdo not show\u201d.",
     },
   };
@@ -284,13 +292,19 @@
     fwm: ["hot_water", "flow", "primary_flow"],
     dhw: ["temperature"],
     solar: ["collector"],
-    external_heat: ["temperature"],
+    external_heat: ["temperature", "return", "spread", "power", "energy"],
   };
   // value roles shown with a short label (same unit as the main value)
-  const LABELLED = ["flue_gas", "return", "room"];
+  const LABELLED = ["flue_gas", "return", "room", "spread"];
   const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "ausgeschaltet", "unavailable", "unknown"];
   const ON = ["ein", "an", "on", "true", "läuft", "running"];
   const CONSUMERS = ["heating_circuit", "external_demand", "fwm", "dhw", "unknown"];
+  // picture of an other heat source by the name given on the terminal (German and English)
+  const HEAT_BY_NAME = [
+    [/holz|ofen|kamin|kachel|biomass|wood|stove|fireplace/i, "Kessel/Brenner/Biomasse_ein.webp"],
+    [/w(ä|ae)rmepumpe|\bwp\b|heat ?pump/i, "Kessel/Brenner/Waermepumpe_ein.webp"],
+    [/(ö|oe)l|gas|brenner|therme|burner/i, "Kessel/Brenner/Brenner_ein.webp"],
+  ];
   // other heat sources (heat pump, oil / gas burner, ...) feed the buffer like a boiler:
   // parts of type "Fremdwärme", the ETA burner object 10281 and parts shown with such an image
   const HEAT_IMG = /^Kessel\/Brenner\//;
@@ -337,7 +351,9 @@
       ["pump", "Pumpe", "Pump", "onoff"]],
     solar: [["collector", "Kollektor", "Collector", "temp"], ["storage_top", "Speicher oben", "Storage top", "temp"],
       ["status", "Status", "Status", "text"], ["pump", "Pumpe", "Pump", "onoff"]],
-    external_heat: [["temperature", "Temperatur", "Temperature", "temp"], ["storage", "Speicher", "Storage", "temp"],
+    external_heat: [["temperature", "Temperatur", "Temperature", "temp"], ["return", "Rücklauf", "Return", "temp"],
+      ["spread", "Spreizung", "Spread", "temp"], ["power", "Leistung", "Power", "power"], ["energy", "Energie", "Energy", "energy"],
+      ["storage", "Speicher", "Storage", "temp"],
       ["pump", "Pumpe", "Pump", "onoff"], ["status", "Status", "Status", "text"]],
     fwm: [["hot_water", "Warmwasser", "Hot water", "temp"], ["flow", "Durchfluss", "Flow rate", "flow"],
       ["primary_flow", "Vorlauf primär", "Primary flow", "temp"],
@@ -346,9 +362,21 @@
     external_demand: [["status", "Status", "Status", "text"]],
     particle_separator: [["status", "Status", "Status", "text"]],
     condenser: [["status", "Status", "Status", "text"], ["return", "Rücklauf", "Return", "temp"]],
+    heat_meter: [["power", "Leistung", "Power", "power"], ["today", "Ertrag heute", "Yield today", "energy"],
+      ["yesterday", "Ertrag gestern", "Yield yesterday", "energy"], ["energy", "Energie", "Energy", "energy"],
+      ["flow", "Vorlauf", "Flow", "temp"], ["return", "Rücklauf", "Return", "temp"], ["spread", "Spreizung", "Spread", "temp"],
+      ["flow_rate", "Durchfluss", "Flow rate", "flow"]],
     switch_valve: [["status", "Status", "Status", "text"], ["source_1", "Erzeuger 1", "Source 1", "temp"],
       ["source_2", "Erzeuger 2", "Source 2", "temp"]],
     unknown: [["temperature", "Temperatur", "Temperature", "temp"], ["status", "Status", "Status", "text"]],
+  };
+  // numbered buffer sensors top to bottom; by default at most 4, spread from the top to the bottom one,
+  // the others can be switched on in the editor ("+" shows, "-" hides a sensor)
+  const MAX_SENSORS = 4;
+  const bufferSensors = (roles) => Object.keys(roles).filter((r) => /^sensor_\d+$/.test(r)).sort((x, y) => +x.slice(7) - +y.slice(7));
+  const defaultSensors = (keys) => {
+    if (keys.length <= MAX_SENSORS) return new Set(keys);
+    return new Set(Array.from({ length: MAX_SENSORS }, (_, i) => keys[Math.round(i * (keys.length - 1) / (MAX_SENSORS - 1))]));
   };
   // block types a user can add by hand
   const ADD_TYPES = ["boiler", "silo", "buffer", "heating_circuit", "dhw", "solar", "fwm", "external_heat"];
@@ -364,7 +392,13 @@
     (cfg.extra || []).forEach((x) => blocks.push({ id: x.id, type: x.type, object: "", name: null, roles: {}, entities: [], manual: true }));
     blocks.forEach((b) => {
       const o = ov[b.id] || {};
+      if (b.type === "buffer") {
+        const keys = bufferSensors(b.roles);
+        const def = defaultSensors(keys);
+        keys.filter((r) => !(o[r] === "+" || (def.has(r) && o[r] !== "-"))).forEach((r) => delete b.roles[r]);
+      }
       Object.entries(o).forEach(([role, e]) => {
+        if (/^sensor_\d+$/.test(role)) return;
         if (b.unselected && e) delete b.unselected[role]; // picked or hidden by hand: no hint
         if (e === "-") delete b.roles[role];
         else if (e) {
@@ -465,7 +499,7 @@
   .pill.ghost{border:1px dashed #888;background:transparent;box-shadow:none;color:#aaa}
   .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
   .t-silo .vals{flex-direction:column;align-items:center;gap:6px}
-  .t-boiler .vals,.t-fwm .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
+  .t-boiler .vals,.t-fwm .vals,.t-heating_circuit .vals,.t-external_heat .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
   /* fresh water module: from the third value on a second row, the first row would reach into the pipes */
   .vals .br{flex-basis:100%;height:0}
   .t-fwm .stack{max-width:100%}
@@ -513,7 +547,7 @@
     padding:12px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
   .md i{font-style:normal;line-height:0}
   .md.act{color:#ffc400;border-color:#ffc400;background:#2b2610}
-  .tile .vrow{display:flex;gap:10px;margin-top:14px}
+  .tile .vrow{display:flex;gap:10px;margin-top:14px}.tile .vrow.wrap{flex-wrap:wrap;row-gap:8px}
   .tile .src{display:flex;flex-direction:column;align-items:flex-start;gap:4px}.tile .src span{font-size:13px;color:#aaa}
   .tile .pill{font-size:22px}
   .busy{opacity:.5;pointer-events:none}
@@ -645,6 +679,11 @@
       this._geo = blocks.map((b, i) => {
         let [file, iw, aspect] = ICONS[b.type] || ICONS.unknown;
         if (DEFAULT_BY_OBJECT[b.object]) [file, aspect] = DEFAULT_BY_OBJECT[b.object];
+        // other heat source ("Fremdwärme"): the picture from the name the installer gave, else the module
+        if (b.type === "external_heat" && !DEFAULT_BY_OBJECT[b.object]) {
+          const guess = HEAT_BY_NAME.find(([re]) => re.test(b.name || ""));
+          if (guess) [file, aspect] = [guess[1], 540 / 440];
+        }
         // buffer whose hot water zone has a sensor (not "xxx") and no own hot water tank: combi tank
         if (b.type === "buffer" && this._valid(b.roles.hot_water) && !blocks.some((x) => ["dhw", "fwm"].includes(x.type))) [file, aspect] = ["FUBs/PufferFlex/Kombi.webp", 300 / 300];
         const pick = webp((this._config.icons || {})[b.id]);
@@ -688,17 +727,20 @@
         const lbl = {};
         for (const r of LABELLED) if (b.roles[r]) lbl[b.roles[r]] = this._t(`lbl_${r}`);
         // buffer sensors top to bottom: all numbered sensors if present, else top / middle / bottom
-        const numbered = Object.keys(b.roles).filter((r) => /^sensor_\d+$/.test(r)).sort((x, y) => +x.slice(7) - +y.slice(7));
+        const numbered = bufferSensors(b.roles);
         const inner = numbered.length ? numbered : ["top", "middle", "bottom"].filter((r) => b.roles[r]);
         const hasInner = b.type === "buffer" && inner.length > 0;
         // main value found on the terminal but not selected in the integration: placeholder with a hint
         // the buffer's hot water zone often has no sensor: no hint for it, only for the charge
         const main = b.type === "buffer" ? "charge" : (TOP_VALUES[b.type] || [])[0];
         const ghost = main && !b.roles[main] && (b.unselected || {})[main] ? main : null;
-        if (!shown.length && !hasInner && !ghost) shown = this._autoValues(b); // no known roles: pick measurements
+        const auto = !shown.length && !hasInner && !ghost;
+        if (auto) shown = this._autoValues(b); // no known roles: pick measurements
         if (b.type === "silo" && plant.silo_days) shown.push(plant.silo_days); // forecast: pellets last approx. n days
-        // narrow columns: fewer value boxes; boilers and fresh water modules keep theirs and wrap into a second row
-        shown = shown.slice(0, b.type === "boiler" ? 6 : b.type === "fwm" ? 3 : Math.max(1, Math.floor(colW / 110)));
+        // narrow columns: fewer value boxes; boilers, fresh water modules, heating circuits and other heat
+        // sources keep theirs and wrap into a second row
+        const KEEP = { boiler: 6, fwm: 3, heating_circuit: 3, external_heat: 5 };
+        shown = shown.slice(0, (!auto && KEEP[b.type]) || Math.max(1, Math.floor(colW / 110)));
         // combi tank: the hot water temperature stands over the tap, not in the row above
         const tapAt = TAP[g.file];
         const tapE = b.type === "buffer" && tapAt && b.roles.hot_water;
@@ -844,10 +886,14 @@
         // switch valve: temperature of both heat sources, with their names
         const src = ["source_1", "source_2"].filter((r) => b.roles[r]).map((r) =>
           `<div class="src"><span>${this._t(r)}</span><div class="pill" data-e="${b.roles[r]}"></div></div>`).join("");
+        // heat meter: power and yields, then the temperatures
+        const meter = b.type === "heat_meter" ? METER_ROWS.map((row) => row.filter(([r]) => b.roles[r]))
+          .filter((row) => row.length).map((row) => `<div class="vrow wrap">${row.map(([r, l]) =>
+            `<div class="pill" data-e="${b.roles[r]}"${l ? ` data-lbl="${esc(this._t(l))}"` : ""}></div>`).join("")}</div>`).join("") : "";
         return `<div class="tile" data-tile="${b.id}"><div class="th">
           <img src="${iconSrc(SIDE_ICONS[b.type].off)}" data-ep="${st || ""}" data-side="${b.type}">
           <div class="tx"><div class="tn">${this._name(b)}</div>${st ? `<div class="chip" data-chip="${st}"></div>` : ""}</div>
-        </div>${ret}${src ? `<div class="vrow">${src}</div>` : ""}</div>`;
+        </div>${b.type === "heat_meter" ? meter : ret}${src ? `<div class="vrow">${src}</div>` : ""}</div>`;
       }).join("");
       if (!tiles.length && epHtml) return `<div class="tiles">${epHtml}</div>`;
       if (!tiles.length) {
@@ -1358,7 +1404,7 @@
       let v = st.state;
       const num = Number(v);
       if (v !== "" && !Number.isNaN(num)) {
-        const digits = unit === "bar" ? 2 : unit === "l/min" ? 1 : 0;
+        const digits = unit === "bar" || unit === "m³/h" ? 2 : unit === "l/min" || unit === "kW" ? 1 : 0;
         v = num.toLocaleString(this._hass.locale ? this._hass.locale.language : undefined, {
           maximumFractionDigits: digits, minimumFractionDigits: digits,
         });
@@ -1651,6 +1697,9 @@
         .vals summary .mod{font-size:11px;background:#ffc400;color:#1a1a1a;border-radius:6px;padding:1px 6px;margin-left:6px}
         .vals .row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0;font-size:14px}
         .vals .row select,.vals .row input[type=text]{min-width:0;width:62%}
+        .vals .sub{margin:12px 0 2px;font-size:13px;font-weight:600;opacity:.8}
+        .vals .row.sep{margin-top:14px;padding-top:10px;border-top:1px solid rgba(127,127,127,.25)}
+        .vals .row .dim{opacity:.6;font-size:12px;margin-left:6px;flex:1}
         .vals .hid{opacity:.5}
         .vals .ft{display:flex;justify-content:space-between;gap:8px;margin:8px 0 10px}
         .vals .ft button,.vals .add button{padding:5px 10px;cursor:pointer}
@@ -1771,6 +1820,8 @@
       if (kind === "bar") return unit === "bar";
       if (kind === "flow") return ["l/min", "l/h", "m³/h"].includes(unit);
       if (kind === "level") return ["kg", "%", "t"].includes(unit);
+      if (kind === "power") return ["W", "kW", "MW"].includes(unit);
+      if (kind === "energy") return ["Wh", "kWh", "MWh"].includes(unit);
       if (kind === "switch") return dom === "switch";
       if (kind === "text") return dom === "sensor" && !num && !unit;
       if (kind === "onoff") return dom === "switch" || dom === "binary_sensor" || (dom === "sensor" && !unit);
@@ -1861,11 +1912,21 @@
         </select></label>`;
       }).join("");
       if (b.type === "plant") return rows;
+      // numbered buffer sensors: a tick per sensor, the default is the spread of at most 4
+      const keys = b.type === "buffer" ? bufferSensors(b.roles) : [];
+      const def = defaultSensors(keys);
+      const sensors = keys.length ? `<div class="sub">${de ? "Pufferfühler im Tank (oben nach unten)" : "Buffer sensors in the tank (top to bottom)"}</div>`
+        + keys.map((r) => {
+          const on = o[r] === "+" || (def.has(r) && o[r] !== "-");
+          const e = b.roles[r];
+          return `<label class="row">${de ? "Fühler" : "Sensor"} ${r.slice(7)}${this._hass.states[e] ? ` <span class="dim">${esc(this._optText(e))}</span>` : ""}
+            <input type="checkbox" data-sensor="${r}" data-def="${def.has(r) ? 1 : 0}" ${on ? "checked" : ""}></label>`;
+        }).join("") : "";
       const name = (this._config.names || {})[b.id] || "";
       const hidden = (this._config.hidden || []).includes(b.id);
       return `<label class="row">${de ? "Name" : "Name"}<input type="text" data-name value="${esc(name)}" placeholder="${esc(this._label(b))}"></label>
-        ${rows}
-        <label class="row">${de ? "Auf der Karte anzeigen" : "Show on the card"}<input type="checkbox" data-show ${hidden ? "" : "checked"}></label>
+        ${rows}${sensors}
+        <label class="row${sensors ? " sep" : ""}">${de ? "Auf der Karte anzeigen" : "Show on the card"}<input type="checkbox" data-show ${hidden ? "" : "checked"}></label>
         <div class="ft"><button data-reset>${de ? "Alles auf automatisch" : "Reset to automatic"}</button>
           ${b.manual ? `<button data-remove>${de ? "Anlagenteil entfernen" : "Remove plant part"}</button>` : ""}</div>`;
     }
@@ -1893,6 +1954,14 @@
           const o = { ...(roles[bid] || {}) };
           const v = sel.value.trim();
           if (v) o[sel.dataset.role] = v; else delete o[sel.dataset.role];
+          if (Object.keys(o).length) roles[bid] = o; else delete roles[bid];
+          set({ roles });
+        }));
+        d.querySelectorAll("[data-sensor]").forEach((cb) => cb.addEventListener("change", () => {
+          const roles = { ...(this._config.roles || {}) };
+          const o = { ...(roles[bid] || {}) };
+          if (cb.checked === (cb.dataset.def === "1")) delete o[cb.dataset.sensor];
+          else o[cb.dataset.sensor] = cb.checked ? "+" : "-";
           if (Object.keys(o).length) roles[bid] = o; else delete roles[bid];
           set({ roles });
         }));
