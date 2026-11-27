@@ -250,7 +250,7 @@
       in_days: (n) => `leeren in ca. ${n} ${n === 1 ? "Tag" : "Tagen"}`,
       in_weeks: (n) => `leeren in ca. ${n} Wochen`, in_months: (n) => `leeren in ca. ${n} Monaten`,
       not_selected: "nicht ausgewählt",
-      lbl_flue_gas: "Abgas", lbl_return: "RL", lbl_room: "Raum",
+      lbl_flue_gas: "Abgas", lbl_return: "RL", lbl_room: "Raum", lbl_spread: "Δ",
       hint_selected: "Dieser Wert ist am Terminal vorhanden, aber in der Integration nicht ausgewählt. Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → „Ausgewählte Entitäten aktualisieren“ → Wert auswählen. Soll er nicht angezeigt werden: Zahnrad → Werte manuell zuordnen → „nicht anzeigen“.",
     },
     en: {
@@ -270,7 +270,7 @@
       in_days: (n) => `empty in approx. ${n} ${n === 1 ? "day" : "days"}`,
       in_weeks: (n) => `empty in approx. ${n} weeks`, in_months: (n) => `empty in approx. ${n} months`,
       not_selected: "not selected",
-      lbl_flue_gas: "Flue", lbl_return: "Ret", lbl_room: "Room",
+      lbl_flue_gas: "Flue", lbl_return: "Ret", lbl_room: "Room", lbl_spread: "Δ",
       hint_selected: "This value exists on the terminal but is not selected in the integration. Settings → Devices & services → ETA Heating → Configure → \u201cUpdate selected entities\u201d → select the value. To hide it: gear → Assign values manually → \u201cdo not show\u201d.",
     },
   };
@@ -284,10 +284,10 @@
     fwm: ["hot_water", "flow", "primary_flow"],
     dhw: ["temperature"],
     solar: ["collector"],
-    external_heat: ["temperature"],
+    external_heat: ["temperature", "return", "spread", "power", "energy"],
   };
   // value roles shown with a short label (same unit as the main value)
-  const LABELLED = ["flue_gas", "return", "room"];
+  const LABELLED = ["flue_gas", "return", "room", "spread"];
   const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "ausgeschaltet", "unavailable", "unknown"];
   const ON = ["ein", "an", "on", "true", "läuft", "running"];
   const CONSUMERS = ["heating_circuit", "external_demand", "fwm", "dhw", "unknown"];
@@ -337,7 +337,9 @@
       ["pump", "Pumpe", "Pump", "onoff"]],
     solar: [["collector", "Kollektor", "Collector", "temp"], ["storage_top", "Speicher oben", "Storage top", "temp"],
       ["status", "Status", "Status", "text"], ["pump", "Pumpe", "Pump", "onoff"]],
-    external_heat: [["temperature", "Temperatur", "Temperature", "temp"], ["storage", "Speicher", "Storage", "temp"],
+    external_heat: [["temperature", "Temperatur", "Temperature", "temp"], ["return", "Rücklauf", "Return", "temp"],
+      ["spread", "Spreizung", "Spread", "temp"], ["power", "Leistung", "Power", "power"], ["energy", "Energie", "Energy", "energy"],
+      ["storage", "Speicher", "Storage", "temp"],
       ["pump", "Pumpe", "Pump", "onoff"], ["status", "Status", "Status", "text"]],
     fwm: [["hot_water", "Warmwasser", "Hot water", "temp"], ["flow", "Durchfluss", "Flow rate", "flow"],
       ["primary_flow", "Vorlauf primär", "Primary flow", "temp"],
@@ -465,7 +467,7 @@
   .pill.ghost{border:1px dashed #888;background:transparent;box-shadow:none;color:#aaa}
   .t-silo .vals,.t-chip_store .vals{padding-bottom:34px}
   .t-silo .vals{flex-direction:column;align-items:center;gap:6px}
-  .t-boiler .vals,.t-fwm .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
+  .t-boiler .vals,.t-fwm .vals,.t-heating_circuit .vals,.t-external_heat .vals{flex-wrap:wrap;justify-content:center;row-gap:8px;width:100%}
   /* fresh water module: from the third value on a second row, the first row would reach into the pipes */
   .vals .br{flex-basis:100%;height:0}
   .t-fwm .stack{max-width:100%}
@@ -695,10 +697,13 @@
         // the buffer's hot water zone often has no sensor: no hint for it, only for the charge
         const main = b.type === "buffer" ? "charge" : (TOP_VALUES[b.type] || [])[0];
         const ghost = main && !b.roles[main] && (b.unselected || {})[main] ? main : null;
-        if (!shown.length && !hasInner && !ghost) shown = this._autoValues(b); // no known roles: pick measurements
+        const auto = !shown.length && !hasInner && !ghost;
+        if (auto) shown = this._autoValues(b); // no known roles: pick measurements
         if (b.type === "silo" && plant.silo_days) shown.push(plant.silo_days); // forecast: pellets last approx. n days
-        // narrow columns: fewer value boxes; boilers and fresh water modules keep theirs and wrap into a second row
-        shown = shown.slice(0, b.type === "boiler" ? 6 : b.type === "fwm" ? 3 : Math.max(1, Math.floor(colW / 110)));
+        // narrow columns: fewer value boxes; boilers, fresh water modules, heating circuits and other heat
+        // sources keep theirs and wrap into a second row
+        const KEEP = { boiler: 6, fwm: 3, heating_circuit: 3, external_heat: 5 };
+        shown = shown.slice(0, (!auto && KEEP[b.type]) || Math.max(1, Math.floor(colW / 110)));
         // combi tank: the hot water temperature stands over the tap, not in the row above
         const tapAt = TAP[g.file];
         const tapE = b.type === "buffer" && tapAt && b.roles.hot_water;
@@ -1771,6 +1776,8 @@
       if (kind === "bar") return unit === "bar";
       if (kind === "flow") return ["l/min", "l/h", "m³/h"].includes(unit);
       if (kind === "level") return ["kg", "%", "t"].includes(unit);
+      if (kind === "power") return ["W", "kW", "MW"].includes(unit);
+      if (kind === "energy") return ["Wh", "kWh", "MWh"].includes(unit);
       if (kind === "switch") return dom === "switch";
       if (kind === "text") return dom === "sensor" && !num && !unit;
       if (kind === "onoff") return dom === "switch" || dom === "binary_sensor" || (dom === "sensor" && !unit);

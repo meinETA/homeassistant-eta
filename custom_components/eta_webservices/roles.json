@@ -17,6 +17,7 @@
     "10601": "buffer",
     "10291": "external_heat",
     "10311": "external_demand",
+    "10541": "heat_meter",
     "10531": "fwm",
     "10571": "particle_separator",
     "10851": "condenser",
