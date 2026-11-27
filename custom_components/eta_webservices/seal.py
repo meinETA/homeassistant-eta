@@ -1,7 +1,7 @@
-"""Encrypt plant files before they leave Home Assistant.
+"""Encrypt plant data before it leaves Home Assistant.
 
-Plant files are attached to public GitHub issues. Only the maintainers can read
-them: the content is compressed and encrypted with a random AES-256-GCM key,
+The plant data upload (upload.py) sends it sealed. Only the maintainers can read
+it: the content is compressed and encrypted with a random AES-256-GCM key,
 that key is encrypted with the RSA public key below (OAEP, SHA-256). The
 private key is kept outside this repository.
 
