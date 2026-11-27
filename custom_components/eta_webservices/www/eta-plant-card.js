@@ -231,11 +231,17 @@
     particle_separator: { off: "Kessel/EP_Abscheider/EP.webp", on: "Kessel/EP_Abscheider/EP_aktiv.webp" },
     condenser: { off: "Kessel/Brennwert_WT/Brennwert_WT.webp", on: "Kessel/Brennwert_WT/Brennwert_WT.webp" },
     switch_valve: { off: "FUBs/Umschaltventil/Umschaltventil.webp", on: "FUBs/Umschaltventil/Umschaltventil.webp" },
+    heat_meter: { off: "FUBs/System/Messwert.webp", on: "FUBs/System/Messwert.webp" },
   };
+  // heat meter tile: [role, label key] per row
+  const METER_ROWS = [
+    [["power", null], ["today", "lbl_today"], ["yesterday", "lbl_yesterday"], ["energy", null]],
+    [["flow", "lbl_flow"], ["return", "lbl_return"], ["spread", "lbl_spread"], ["flow_rate", null]],
+  ];
   const LABELS = {
     de: {
       silo: "Silo", chip_store: "Hackgutlager", boiler: "Kessel", buffer: "Puffer", heating_circuit: "Heizkreis",
-      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider", condenser: "Brennwertwärmetauscher", switch_valve: "Umschaltventil",
+      fwm: "Frischwasser", dhw: "Warmwasser", solar: "Solar", unknown: "Modul", particle_separator: "Partikelabscheider", condenser: "Brennwertwärmetauscher", switch_valve: "Umschaltventil", heat_meter: "Wärmemengenzähler",
       source_1: "Erzeuger 1", source_2: "Erzeuger 2",
       external_demand: "Ext. Anforderung", external_heat: "Fremdwärme",
       no_blocks: "Keine Anlagenteile erkannt. Wähle in den Integrationsoptionen die Entitäten von Kessel, Heizkreis usw. aus oder melde deine Anlage: „Anlagendaten hochladen“ am ETA-Gerät drücken und ein GitHub-Issue mit der Instanz-UUID eröffnen.", outside: "Außen", tab_plant: "Anlage", tab_ctl: "Bedienung",
@@ -251,11 +257,12 @@
       in_weeks: (n) => `leeren in ca. ${n} Wochen`, in_months: (n) => `leeren in ca. ${n} Monaten`,
       not_selected: "nicht ausgewählt",
       lbl_flue_gas: "Abgas", lbl_return: "RL", lbl_room: "Raum", lbl_spread: "Δ",
+      lbl_today: "heute", lbl_yesterday: "gestern", lbl_flow: "VL",
       hint_selected: "Dieser Wert ist am Terminal vorhanden, aber in der Integration nicht ausgewählt. Einstellungen → Geräte & Dienste → ETA Heating → Konfigurieren → „Ausgewählte Entitäten aktualisieren“ → Wert auswählen. Soll er nicht angezeigt werden: Zahnrad → Werte manuell zuordnen → „nicht anzeigen“.",
     },
     en: {
       silo: "Storage", chip_store: "Chip store", boiler: "Boiler", buffer: "Buffer", heating_circuit: "Heating circuit",
-      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator", condenser: "Condensing heat exchanger", switch_valve: "Switch valve",
+      fwm: "Fresh water", dhw: "Hot water", solar: "Solar", unknown: "Module", particle_separator: "Particle separator", condenser: "Condensing heat exchanger", switch_valve: "Switch valve", heat_meter: "Heat meter",
       source_1: "Source 1", source_2: "Source 2",
       external_demand: "Ext. demand", external_heat: "External heat",
       no_blocks: "No plant parts detected. Select the boiler, heating circuit, ... entities in the integration options or report your plant: press \u201cUpload Plant Data\u201d on the ETA device and open a GitHub issue with the instance UUID.", outside: "Outside", tab_plant: "Plant", tab_ctl: "Control",
@@ -271,6 +278,7 @@
       in_weeks: (n) => `empty in approx. ${n} weeks`, in_months: (n) => `empty in approx. ${n} months`,
       not_selected: "not selected",
       lbl_flue_gas: "Flue", lbl_return: "Ret", lbl_room: "Room", lbl_spread: "Δ",
+      lbl_today: "today", lbl_yesterday: "yesterday", lbl_flow: "Flow",
       hint_selected: "This value exists on the terminal but is not selected in the integration. Settings → Devices & services → ETA Heating → Configure → \u201cUpdate selected entities\u201d → select the value. To hide it: gear → Assign values manually → \u201cdo not show\u201d.",
     },
   };
@@ -354,6 +362,10 @@
     external_demand: [["status", "Status", "Status", "text"]],
     particle_separator: [["status", "Status", "Status", "text"]],
     condenser: [["status", "Status", "Status", "text"], ["return", "Rücklauf", "Return", "temp"]],
+    heat_meter: [["power", "Leistung", "Power", "power"], ["today", "Ertrag heute", "Yield today", "energy"],
+      ["yesterday", "Ertrag gestern", "Yield yesterday", "energy"], ["energy", "Energie", "Energy", "energy"],
+      ["flow", "Vorlauf", "Flow", "temp"], ["return", "Rücklauf", "Return", "temp"], ["spread", "Spreizung", "Spread", "temp"],
+      ["flow_rate", "Durchfluss", "Flow rate", "flow"]],
     switch_valve: [["status", "Status", "Status", "text"], ["source_1", "Erzeuger 1", "Source 1", "temp"],
       ["source_2", "Erzeuger 2", "Source 2", "temp"]],
     unknown: [["temperature", "Temperatur", "Temperature", "temp"], ["status", "Status", "Status", "text"]],
@@ -521,7 +533,7 @@
     padding:12px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
   .md i{font-style:normal;line-height:0}
   .md.act{color:#ffc400;border-color:#ffc400;background:#2b2610}
-  .tile .vrow{display:flex;gap:10px;margin-top:14px}
+  .tile .vrow{display:flex;gap:10px;margin-top:14px}.tile .vrow.wrap{flex-wrap:wrap;row-gap:8px}
   .tile .src{display:flex;flex-direction:column;align-items:flex-start;gap:4px}.tile .src span{font-size:13px;color:#aaa}
   .tile .pill{font-size:22px}
   .busy{opacity:.5;pointer-events:none}
@@ -860,10 +872,14 @@
         // switch valve: temperature of both heat sources, with their names
         const src = ["source_1", "source_2"].filter((r) => b.roles[r]).map((r) =>
           `<div class="src"><span>${this._t(r)}</span><div class="pill" data-e="${b.roles[r]}"></div></div>`).join("");
+        // heat meter: power and yields, then the temperatures
+        const meter = b.type === "heat_meter" ? METER_ROWS.map((row) => row.filter(([r]) => b.roles[r]))
+          .filter((row) => row.length).map((row) => `<div class="vrow wrap">${row.map(([r, l]) =>
+            `<div class="pill" data-e="${b.roles[r]}"${l ? ` data-lbl="${esc(this._t(l))}"` : ""}></div>`).join("")}</div>`).join("") : "";
         return `<div class="tile" data-tile="${b.id}"><div class="th">
           <img src="${iconSrc(SIDE_ICONS[b.type].off)}" data-ep="${st || ""}" data-side="${b.type}">
           <div class="tx"><div class="tn">${this._name(b)}</div>${st ? `<div class="chip" data-chip="${st}"></div>` : ""}</div>
-        </div>${ret}${src ? `<div class="vrow">${src}</div>` : ""}</div>`;
+        </div>${b.type === "heat_meter" ? meter : ret}${src ? `<div class="vrow">${src}</div>` : ""}</div>`;
       }).join("");
       if (!tiles.length && epHtml) return `<div class="tiles">${epHtml}</div>`;
       if (!tiles.length) {
@@ -1374,7 +1390,7 @@
       let v = st.state;
       const num = Number(v);
       if (v !== "" && !Number.isNaN(num)) {
-        const digits = unit === "bar" ? 2 : unit === "l/min" ? 1 : 0;
+        const digits = unit === "bar" || unit === "m³/h" ? 2 : unit === "l/min" || unit === "kW" ? 1 : 0;
         v = num.toLocaleString(this._hass.locale ? this._hass.locale.language : undefined, {
           maximumFractionDigits: digits, minimumFractionDigits: digits,
         });
