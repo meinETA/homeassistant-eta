@@ -15,7 +15,7 @@ body:
     attributes:
       label: Instance UUID
       description: Settings → Devices & services → ETA Heating → Configure → Plant data upload (also the diagnostic sensor "Instance UUID").
-      placeholder: 00000000-0000-4000-8000-000000000000
+      placeholder: 00000000-0000-4000-x000-000000000000
     validations:
       required: true
   - type: checkboxes
