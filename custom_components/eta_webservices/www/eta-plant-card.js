@@ -1698,6 +1698,7 @@
         .vals .row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0;font-size:14px}
         .vals .row select,.vals .row input[type=text]{min-width:0;width:62%}
         .vals .sub{margin:12px 0 2px;font-size:13px;font-weight:600;opacity:.8}
+        .vals .row.sep{margin-top:14px;padding-top:10px;border-top:1px solid rgba(127,127,127,.25)}
         .vals .row .dim{opacity:.6;font-size:12px;margin-left:6px;flex:1}
         .vals .hid{opacity:.5}
         .vals .ft{display:flex;justify-content:space-between;gap:8px;margin:8px 0 10px}
@@ -1925,7 +1926,7 @@
       const hidden = (this._config.hidden || []).includes(b.id);
       return `<label class="row">${de ? "Name" : "Name"}<input type="text" data-name value="${esc(name)}" placeholder="${esc(this._label(b))}"></label>
         ${rows}${sensors}
-        <label class="row">${de ? "Auf der Karte anzeigen" : "Show on the card"}<input type="checkbox" data-show ${hidden ? "" : "checked"}></label>
+        <label class="row${sensors ? " sep" : ""}">${de ? "Auf der Karte anzeigen" : "Show on the card"}<input type="checkbox" data-show ${hidden ? "" : "checked"}></label>
         <div class="ft"><button data-reset>${de ? "Alles auf automatisch" : "Reset to automatic"}</button>
           ${b.manual ? `<button data-remove>${de ? "Anlagenteil entfernen" : "Remove plant part"}</button>` : ""}</div>`;
     }
