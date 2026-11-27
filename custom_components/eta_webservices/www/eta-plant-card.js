@@ -370,6 +370,14 @@
       ["source_2", "Erzeuger 2", "Source 2", "temp"]],
     unknown: [["temperature", "Temperatur", "Temperature", "temp"], ["status", "Status", "Status", "text"]],
   };
+  // numbered buffer sensors top to bottom; by default at most 4, spread from the top to the bottom one,
+  // the others can be switched on in the editor ("+" shows, "-" hides a sensor)
+  const MAX_SENSORS = 4;
+  const bufferSensors = (roles) => Object.keys(roles).filter((r) => /^sensor_\d+$/.test(r)).sort((x, y) => +x.slice(7) - +y.slice(7));
+  const defaultSensors = (keys) => {
+    if (keys.length <= MAX_SENSORS) return new Set(keys);
+    return new Set(Array.from({ length: MAX_SENSORS }, (_, i) => keys[Math.round(i * (keys.length - 1) / (MAX_SENSORS - 1))]));
+  };
   // block types a user can add by hand
   const ADD_TYPES = ["boiler", "silo", "buffer", "heating_circuit", "dhw", "solar", "fwm", "external_heat"];
 
@@ -384,7 +392,13 @@
     (cfg.extra || []).forEach((x) => blocks.push({ id: x.id, type: x.type, object: "", name: null, roles: {}, entities: [], manual: true }));
     blocks.forEach((b) => {
       const o = ov[b.id] || {};
+      if (b.type === "buffer") {
+        const keys = bufferSensors(b.roles);
+        const def = defaultSensors(keys);
+        keys.filter((r) => !(o[r] === "+" || (def.has(r) && o[r] !== "-"))).forEach((r) => delete b.roles[r]);
+      }
       Object.entries(o).forEach(([role, e]) => {
+        if (/^sensor_\d+$/.test(role)) return;
         if (b.unselected && e) delete b.unselected[role]; // picked or hidden by hand: no hint
         if (e === "-") delete b.roles[role];
         else if (e) {
@@ -713,7 +727,7 @@
         const lbl = {};
         for (const r of LABELLED) if (b.roles[r]) lbl[b.roles[r]] = this._t(`lbl_${r}`);
         // buffer sensors top to bottom: all numbered sensors if present, else top / middle / bottom
-        const numbered = Object.keys(b.roles).filter((r) => /^sensor_\d+$/.test(r)).sort((x, y) => +x.slice(7) - +y.slice(7));
+        const numbered = bufferSensors(b.roles);
         const inner = numbered.length ? numbered : ["top", "middle", "bottom"].filter((r) => b.roles[r]);
         const hasInner = b.type === "buffer" && inner.length > 0;
         // main value found on the terminal but not selected in the integration: placeholder with a hint
@@ -1683,6 +1697,8 @@
         .vals summary .mod{font-size:11px;background:#ffc400;color:#1a1a1a;border-radius:6px;padding:1px 6px;margin-left:6px}
         .vals .row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0;font-size:14px}
         .vals .row select,.vals .row input[type=text]{min-width:0;width:62%}
+        .vals .sub{margin:12px 0 2px;font-size:13px;font-weight:600;opacity:.8}
+        .vals .row .dim{opacity:.6;font-size:12px;margin-left:6px;flex:1}
         .vals .hid{opacity:.5}
         .vals .ft{display:flex;justify-content:space-between;gap:8px;margin:8px 0 10px}
         .vals .ft button,.vals .add button{padding:5px 10px;cursor:pointer}
@@ -1895,10 +1911,20 @@
         </select></label>`;
       }).join("");
       if (b.type === "plant") return rows;
+      // numbered buffer sensors: a tick per sensor, the default is the spread of at most 4
+      const keys = b.type === "buffer" ? bufferSensors(b.roles) : [];
+      const def = defaultSensors(keys);
+      const sensors = keys.length ? `<div class="sub">${de ? "Pufferfühler im Tank (oben nach unten)" : "Buffer sensors in the tank (top to bottom)"}</div>`
+        + keys.map((r) => {
+          const on = o[r] === "+" || (def.has(r) && o[r] !== "-");
+          const e = b.roles[r];
+          return `<label class="row">${de ? "Fühler" : "Sensor"} ${r.slice(7)}${this._hass.states[e] ? ` <span class="dim">${esc(this._optText(e))}</span>` : ""}
+            <input type="checkbox" data-sensor="${r}" data-def="${def.has(r) ? 1 : 0}" ${on ? "checked" : ""}></label>`;
+        }).join("") : "";
       const name = (this._config.names || {})[b.id] || "";
       const hidden = (this._config.hidden || []).includes(b.id);
       return `<label class="row">${de ? "Name" : "Name"}<input type="text" data-name value="${esc(name)}" placeholder="${esc(this._label(b))}"></label>
-        ${rows}
+        ${rows}${sensors}
         <label class="row">${de ? "Auf der Karte anzeigen" : "Show on the card"}<input type="checkbox" data-show ${hidden ? "" : "checked"}></label>
         <div class="ft"><button data-reset>${de ? "Alles auf automatisch" : "Reset to automatic"}</button>
           ${b.manual ? `<button data-remove>${de ? "Anlagenteil entfernen" : "Remove plant part"}</button>` : ""}</div>`;
@@ -1927,6 +1953,14 @@
           const o = { ...(roles[bid] || {}) };
           const v = sel.value.trim();
           if (v) o[sel.dataset.role] = v; else delete o[sel.dataset.role];
+          if (Object.keys(o).length) roles[bid] = o; else delete roles[bid];
+          set({ roles });
+        }));
+        d.querySelectorAll("[data-sensor]").forEach((cb) => cb.addEventListener("change", () => {
+          const roles = { ...(this._config.roles || {}) };
+          const o = { ...(roles[bid] || {}) };
+          if (cb.checked === (cb.dataset.def === "1")) delete o[cb.dataset.sensor];
+          else o[cb.dataset.sensor] = cb.checked ? "+" : "-";
           if (Object.keys(o).length) roles[bid] = o; else delete roles[bid];
           set({ roles });
         }));
