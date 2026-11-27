@@ -291,6 +291,12 @@
   const IDLE = ["bereit", "aus", "ready", "off", "standby", "abgeschaltet", "ausgeschaltet", "unavailable", "unknown"];
   const ON = ["ein", "an", "on", "true", "läuft", "running"];
   const CONSUMERS = ["heating_circuit", "external_demand", "fwm", "dhw", "unknown"];
+  // picture of an other heat source by the name given on the terminal (German and English)
+  const HEAT_BY_NAME = [
+    [/holz|ofen|kamin|kachel|biomass|wood|stove|fireplace/i, "Kessel/Brenner/Biomasse_ein.webp"],
+    [/w(ä|ae)rmepumpe|\bwp\b|heat ?pump/i, "Kessel/Brenner/Waermepumpe_ein.webp"],
+    [/(ö|oe)l|gas|brenner|therme|burner/i, "Kessel/Brenner/Brenner_ein.webp"],
+  ];
   // other heat sources (heat pump, oil / gas burner, ...) feed the buffer like a boiler:
   // parts of type "Fremdwärme", the ETA burner object 10281 and parts shown with such an image
   const HEAT_IMG = /^Kessel\/Brenner\//;
@@ -647,6 +653,11 @@
       this._geo = blocks.map((b, i) => {
         let [file, iw, aspect] = ICONS[b.type] || ICONS.unknown;
         if (DEFAULT_BY_OBJECT[b.object]) [file, aspect] = DEFAULT_BY_OBJECT[b.object];
+        // other heat source ("Fremdwärme"): the picture from the name the installer gave, else the module
+        if (b.type === "external_heat" && !DEFAULT_BY_OBJECT[b.object]) {
+          const guess = HEAT_BY_NAME.find(([re]) => re.test(b.name || ""));
+          if (guess) [file, aspect] = [guess[1], 540 / 440];
+        }
         // buffer whose hot water zone has a sensor (not "xxx") and no own hot water tank: combi tank
         if (b.type === "buffer" && this._valid(b.roles.hot_water) && !blocks.some((x) => ["dhw", "fwm"].includes(x.type))) [file, aspect] = ["FUBs/PufferFlex/Kombi.webp", 300 / 300];
         const pick = webp((this._config.icons || {})[b.id]);
